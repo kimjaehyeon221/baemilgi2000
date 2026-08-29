@@ -19,20 +19,49 @@
       "buildNumber": "1",
       "backgroundColor": "#0B0B0A",
       "icon": "./assets/icon.png",
-      "config": { "usesNonExemptEncryption": false },
-      "infoPlist": { "ITSAppUsesNonExemptEncryption": false },
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "privacyManifests": {
         "NSPrivacyTracking": false,
         "NSPrivacyTrackingDomains": [],
         "NSPrivacyCollectedDataTypes": [],
-        "NSPrivacyAccessedAPITypes": [{
-          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-          "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
-        }]
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
       }
     },
-    "platforms": ["ios"],
-    "runtimeVersion": { "policy": "appVersion" },
-    "updates": { "checkAutomatically": "ON_LOAD", "fallbackToCacheTimeout": 0 }
+    "platforms": [
+      "ios"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/732aa481-f0bf-491f-a9c8-39f45fdc4825"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "732aa481-f0bf-491f-a9c8-39f45fdc4825"
+      }
+    },
+    "owner": "magpie221",
+    "android": {}
   }
 }
