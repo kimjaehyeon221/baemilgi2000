@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "배밀기 2000",
+    "name": "Baemilgi2000",
     "slug": "baemilgi-2000",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,7 +23,8 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "배밀기 2000"
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
