@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "배밀기 2000",
+    "slug": "baemilgi-2000",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0B0A",
+    "scheme": "baemilgi2000",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0B0A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.baemilgi2000.ios",
+      "buildNumber": "1",
+      "backgroundColor": "#0B0B0A",
+      "icon": "./assets/icon.png",
+      "config": { "usesNonExemptEncryption": false },
+      "infoPlist": { "ITSAppUsesNonExemptEncryption": false },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [{
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+          "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+        }]
+      }
+    },
+    "platforms": ["ios"],
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": { "checkAutomatically": "ON_LOAD", "fallbackToCacheTimeout": 0 }
+  }
+}

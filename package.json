@@ -1,0 +1,21 @@
+{
+  "name": "baemilgi2000",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "doctor": "npx expo-doctor",
+    "update:production": "eas update --channel production --platform ios --environment production"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "^57.0.0",
+    "expo-keep-awake": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.0",
+    "expo-updates": "~57.0.18"
+  }
+}

@@ -1,0 +1,20 @@
+name: Update Production
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'App.tsx'
+      - 'src/**'
+      - 'package.json'
+      - 'app.json'
+      - 'assets/**'
+
+jobs:
+  update_production:
+    name: Send iOS OTA update
+    type: update
+    environment: production
+    params:
+      platform: ios
+      channel: production
