@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, SafeAreaView, ScrollView, Share, StatusBar, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Updates from 'expo-updates';
@@ -52,7 +52,7 @@ export default function App() {
   const nextLevel = state.clearedLevel >= 200 ? 200 : Math.max(state.clearedLevel + 1, state.selectedLevel);
   const nextTarget = targetForLevel(nextLevel);
   const currentReps = state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0;
-  const history = useMemo(() => [...state.sessions].reverse().slice(0, 30), [state.sessions]);
+  const history = [...state.sessions].reverse().slice(0, 30);
 
   const reset = () => Alert.alert('기록을 모두 지울까?', '이 기기에 저장된 진행 기록만 삭제돼.', [
     { text: '취소', style: 'cancel' },
