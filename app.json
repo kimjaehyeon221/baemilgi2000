@@ -35,12 +35,6 @@
             "NSPrivacyAccessedAPITypeReasons": [
               "CA92.1"
             ]
-          },
-          {
-            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": [
-              "CA92.1"
-            ]
           }
         ]
       }
@@ -49,7 +43,7 @@
       "ios"
     ],
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "checkAutomatically": "ON_LOAD",
