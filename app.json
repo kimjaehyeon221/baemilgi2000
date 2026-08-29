@@ -1,61 +1,24 @@
 {
   "expo": {
-    "name": "배밀기 2000",
-    "slug": "baemilgi-2000",
-    "version": "1.0.0",
+    "name": "PUSH TOTAL",
+    "slug": "push-total",
+    "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0B0A",
-    "scheme": "baemilgi2000",
-    "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0B0A"
-    },
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F4F3EE",
+    "scheme": "pushtotal",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.baemilgi2000.ios",
+      "bundleIdentifier": "com.magpie221.pushtotal",
       "buildNumber": "1",
-      "backgroundColor": "#0B0B0A",
-      "icon": "./assets/icon.png",
+      "backgroundColor": "#F4F3EE",
       "config": {
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "privacyManifests": {
-        "NSPrivacyTracking": false,
-        "NSPrivacyTrackingDomains": [],
-        "NSPrivacyCollectedDataTypes": [],
-        "NSPrivacyAccessedAPITypes": [
-          {
-            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": [
-              "CA92.1"
-            ]
-          }
-        ]
       }
     },
-    "platforms": [
-      "ios"
-    ],
-    "runtimeVersion": {
-      "policy": "fingerprint"
-    },
-    "updates": {
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/732aa481-f0bf-491f-a9c8-39f45fdc4825"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "732aa481-f0bf-491f-a9c8-39f45fdc4825"
-      }
-    },
-    "owner": "magpie221",
-    "android": {}
+    "platforms": ["ios"]
   }
 }

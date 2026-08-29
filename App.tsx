@@ -1,122 +1,681 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, SafeAreaView, ScrollView, Share, StatusBar, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Updates from 'expo-updates';
-import { AppState, GAMA_SOURCE_URL, PRIVACY_URL, STORAGE_KEY, SUPPORT_URL, initialState, safeState, targetForLevel } from './src/core';
-import { styles } from './src/styles';
-import { Button, FormStep, Header } from './src/ui';
-import { Onboarding } from './src/Onboarding';
-import { Challenge, Training } from './src/Workout';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+type Entry = {
+  id: string;
+  amount: number;
+  date: string;
+  createdAt: string;
+};
+
+type PersistedState = {
+  onboarded: boolean;
+  baseTotal: number;
+  entries: Entry[];
+};
+
+type Tab = 'home' | 'history';
+
+const STORAGE_KEY = 'push-total-state-v1';
+const BG = '#F4F3EE';
+const INK = '#11110F';
+const MUTED = '#77756E';
+const LINE = '#D8D6CF';
+const ACCENT = '#315CFF';
+const PANEL = '#FFFFFF';
+
+const MILESTONES = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+
+function localDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatNumber(value: number) {
+  return Math.max(0, Math.round(value)).toLocaleString('en-US');
+}
+
+function parsePositiveInt(value: string) {
+  const onlyDigits = value.replace(/[^0-9]/g, '');
+  const number = Number(onlyDigits);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  return Math.floor(number);
+}
+
+function startOfWeek(date = new Date()) {
+  const copy = new Date(date);
+  const day = copy.getDay();
+  const distance = day === 0 ? 6 : day - 1;
+  copy.setDate(copy.getDate() - distance);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function startOfMonth(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function sumSince(entries: Entry[], start: Date) {
+  const threshold = start.getTime();
+  return entries.reduce((sum, item) => {
+    const time = new Date(item.createdAt).getTime();
+    return time >= threshold ? sum + item.amount : sum;
+  }, 0);
+}
+
+function groupByDay(entries: Entry[]) {
+  const map = new Map<string, number>();
+  entries.forEach((entry) => map.set(entry.date, (map.get(entry.date) ?? 0) + entry.amount));
+  return [...map.entries()]
+    .map(([date, amount]) => ({ date, amount }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function lastSevenDays(entries: Entry[]) {
+  const grouped = new Map(groupByDay(entries).map((item) => [item.date, item.amount]));
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const key = localDateKey(date);
+    return {
+      key,
+      label: ['일', '월', '화', '수', '목', '금', '토'][date.getDay()],
+      amount: grouped.get(key) ?? 0,
+    };
+  });
+}
+
+const initialState: PersistedState = {
+  onboarded: false,
+  baseTotal: 0,
+  entries: [],
+};
 
 export default function App() {
-  const { isUpdatePending } = Updates.useUpdates();
-  const [state, setState] = useState<AppState | null>(null);
-  const [tab, setTab] = useState<'home' | 'quests' | 'records'>('home');
-  const [infoOpen, setInfoOpen] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
-  const [whyOpen, setWhyOpen] = useState(false);
-  const [challengeLevel, setChallengeLevel] = useState<number | null>(null);
-  const [trainingLevel, setTrainingLevel] = useState<number | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [state, setState] = useState<PersistedState>(initialState);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState<Tab>('home');
+  const [customValue, setCustomValue] = useState('');
+  const [existingValue, setExistingValue] = useState('');
 
-  useEffect(() => { if (isUpdatePending) Updates.reloadAsync().catch(() => {}); }, [isUpdatePending]);
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => setState(raw ? safeState(JSON.parse(raw)) : initialState)).catch(() => setState(initialState));
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as PersistedState;
+          setState({
+            onboarded: Boolean(parsed.onboarded),
+            baseTotal: Math.max(0, Number(parsed.baseTotal) || 0),
+            entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+          });
+        }
+      } catch {
+        // If local data is unreadable, keep a safe empty state.
+      } finally {
+        setLoaded(true);
+      }
+    })();
   }, []);
 
-  const commit = async (next: AppState) => { setState(next); await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)); };
-  if (!state) return <SafeAreaView style={styles.root} />;
-  if (!state.onboarded) return <Onboarding onDone={commit} />;
+  useEffect(() => {
+    if (!loaded) return;
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+  }, [state, loaded]);
 
-  if (challengeLevel !== null) {
-    return <Challenge level={challengeLevel} onCancel={() => setChallengeLevel(null)} onFinish={async (success, seconds) => {
-      const old = state.clearedLevel;
-      const clearedLevel = success ? Math.max(old, challengeLevel) : old;
-      await commit({ ...state, clearedLevel, selectedLevel: success ? Math.min(200, Math.max(clearedLevel + 1, state.selectedLevel)) : state.selectedLevel, sessions: [...state.sessions, { at: new Date().toISOString(), type: 'challenge', level: challengeLevel, target: targetForLevel(challengeLevel), success, seconds }].slice(-300) });
-      setChallengeLevel(null);
-      if (success && clearedLevel >= 200) setMessage('2,000. Final Quest를 완료했어.');
-      else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) setMessage('500. 여기까지 와도 충분해. 마지막은 2,000이야.');
-      else setMessage(success ? `LEVEL ${challengeLevel} CLEAR. 아래 레벨도 모두 완료됐어.` : `LEVEL ${challengeLevel}은 아직이야. 기록은 그대로 유지돼.`);
-    }} />;
+  const todayKey = localDateKey();
+  const entriesTotal = useMemo(() => state.entries.reduce((sum, entry) => sum + entry.amount, 0), [state.entries]);
+  const lifetimeTotal = state.baseTotal + entriesTotal;
+  const todayTotal = useMemo(
+    () => state.entries.filter((entry) => entry.date === todayKey).reduce((sum, entry) => sum + entry.amount, 0),
+    [state.entries, todayKey],
+  );
+  const weekTotal = useMemo(() => sumSince(state.entries, startOfWeek()), [state.entries]);
+  const monthTotal = useMemo(() => sumSince(state.entries, startOfMonth()), [state.entries]);
+  const dailyHistory = useMemo(() => groupByDay(state.entries), [state.entries]);
+  const sevenDays = useMemo(() => lastSevenDays(state.entries), [state.entries]);
+  const maxSeven = Math.max(1, ...sevenDays.map((item) => item.amount));
+  const nextMilestone = MILESTONES.find((value) => value > lifetimeTotal) ?? null;
+  const milestoneStart = nextMilestone ? [...MILESTONES].reverse().find((value) => value <= lifetimeTotal) ?? 0 : lifetimeTotal;
+  const milestoneProgress = nextMilestone
+    ? Math.min(1, (lifetimeTotal - milestoneStart) / Math.max(1, nextMilestone - milestoneStart))
+    : 1;
+
+  const addPushups = (amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const now = new Date();
+    const entry: Entry = {
+      id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+      amount: Math.floor(amount),
+      date: localDateKey(now),
+      createdAt: now.toISOString(),
+    };
+    setState((current) => ({ ...current, entries: [...current.entries, entry] }));
+  };
+
+  const submitCustom = () => {
+    const amount = parsePositiveInt(customValue);
+    if (!amount) return;
+    addPushups(amount);
+    setCustomValue('');
+  };
+
+  const undoLast = () => {
+    if (state.entries.length === 0) return;
+    const last = state.entries[state.entries.length - 1];
+    Alert.alert('마지막 기록 취소', `${formatNumber(last.amount)}개 기록을 지울까요?`, [
+      { text: '아니요', style: 'cancel' },
+      {
+        text: '취소하기',
+        style: 'destructive',
+        onPress: () => setState((current) => ({ ...current, entries: current.entries.slice(0, -1) })),
+      },
+    ]);
+  };
+
+  const finishOnboarding = (baseTotal: number) => {
+    setState({ onboarded: true, baseTotal: Math.max(0, Math.floor(baseTotal)), entries: [] });
+  };
+
+  const exportData = async () => {
+    const lines = ['date,pushups'];
+    dailyHistory
+      .slice()
+      .reverse()
+      .forEach((item) => lines.push(`${item.date},${item.amount}`));
+    lines.push(`existing_total_before_app,${state.baseTotal}`);
+    lines.push(`lifetime_total,${lifetimeTotal}`);
+    try {
+      await Share.share({
+        title: 'PUSH TOTAL 기록',
+        message: lines.join('\n'),
+      });
+    } catch {
+      Alert.alert('내보내기 실패', '잠시 후 다시 시도해 주세요.');
+    }
+  };
+
+  const resetAll = () => {
+    Alert.alert('모든 기록 삭제', '누적 기록을 모두 삭제합니다. 이 작업은 되돌릴 수 없습니다.', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '모두 삭제',
+        style: 'destructive',
+        onPress: () => {
+          setState(initialState);
+          setExistingValue('');
+          setCustomValue('');
+          setTab('home');
+        },
+      },
+    ]);
+  };
+
+  if (!loaded) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" />
+      </SafeAreaView>
+    );
   }
 
-  if (trainingLevel !== null) {
-    const currentBest = state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0;
-    return <Training level={trainingLevel} currentBest={currentBest} onCancel={() => setTrainingLevel(null)} onFinish={async (seconds) => {
-      await commit({ ...state, sessions: [...state.sessions, { at: new Date().toISOString(), type: 'training', level: trainingLevel, target: targetForLevel(trainingLevel), success: true, seconds }].slice(-300) });
-      setTrainingLevel(null);
-      setMessage('훈련 완료. 준비됐다고 느껴질 때 Quest에 도전해.');
-    }} />;
+  if (!state.onboarded) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" />
+        <KeyboardAvoidingView
+          style={styles.onboardingWrap}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View>
+            <Text style={styles.wordmark}>PUSH TOTAL</Text>
+            <Text style={styles.onboardingTitle}>평생 푸쉬업,{`\n`}몇 개나 할 수 있을까요?</Text>
+            <Text style={styles.onboardingBody}>오늘 한 만큼 기록하세요. 나머지는 계속 더해둘게요.</Text>
+          </View>
+
+          <View style={styles.onboardingActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="0에서 시작"
+              style={styles.primaryButton}
+              onPress={() => finishOnboarding(0)}
+            >
+              <Text style={styles.primaryButtonText}>0에서 시작</Text>
+            </Pressable>
+
+            <View style={styles.existingBox}>
+              <Text style={styles.existingLabel}>이미 해온 기록이 있다면</Text>
+              <View style={styles.existingRow}>
+                <TextInput
+                  value={existingValue}
+                  onChangeText={setExistingValue}
+                  keyboardType="number-pad"
+                  placeholder="예: 12500"
+                  placeholderTextColor="#A4A19A"
+                  style={styles.existingInput}
+                  accessibilityLabel="기존 누적 푸쉬업 입력"
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.existingStart}
+                  onPress={() => {
+                    const value = existingValue.trim() === '' ? 0 : parsePositiveInt(existingValue);
+                    if (value === null) {
+                      Alert.alert('숫자를 확인해 주세요', '1 이상의 푸쉬업 개수를 입력해 주세요.');
+                      return;
+                    }
+                    finishOnboarding(value);
+                  }}
+                >
+                  <Text style={styles.existingStartText}>이어서 시작</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
   }
-
-  const nextLevel = state.clearedLevel >= 200 ? 200 : Math.max(state.clearedLevel + 1, state.selectedLevel);
-  const nextTarget = targetForLevel(nextLevel);
-  const currentReps = state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0;
-  const history = useMemo(() => [...state.sessions].reverse().slice(0, 30), [state.sessions]);
-
-  const reset = () => Alert.alert('기록을 모두 지울까?', '이 기기에 저장된 진행 기록만 삭제돼.', [
-    { text: '취소', style: 'cancel' },
-    { text: '삭제', style: 'destructive', onPress: async () => { await AsyncStorage.removeItem(STORAGE_KEY); setInfoOpen(false); setState(initialState); } },
-  ]);
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
-      <Header onInfo={() => setInfoOpen(true)} />
-      {tab === 'home' && (
-        <ScrollView contentContainerStyle={styles.page}>
-          <Text style={styles.kicker}>CURRENT</Text>
-          <Text style={styles.heroLevel}>LEVEL {state.clearedLevel}</Text>
-          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} /></View>
-          <View style={styles.metaRow}><Text style={styles.mutedSmall}>{state.clearedLevel} / 200 QUEST</Text><Text style={styles.mutedSmall}>현재 최고 {currentReps}</Text></View>
-          <View style={styles.card}>
-            <Text style={styles.kicker}>NEXT QUEST</Text>
-            <Text style={styles.cardLevel}>LEVEL {nextLevel}</Text>
-            <Text style={styles.cardNumber}>{nextTarget}</Text>
-            <Text style={styles.cardUnit}>연속 배밀기</Text>
-            <Button label="도전하기" onPress={() => setChallengeLevel(nextLevel)} />
-            <View style={{ height: 9 }} />
-            <Button label="훈련하기" secondary onPress={() => setTrainingLevel(nextLevel)} />
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" />
+      {tab === 'home' ? (
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.homeContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.topRow}>
+              <Text style={styles.wordmark}>PUSH TOTAL</Text>
+              <Pressable accessibilityRole="button" onPress={() => setTab('history')} hitSlop={12}>
+                <Text style={styles.textButton}>기록</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.lifetimeBlock}>
+              <Text style={styles.eyebrow}>지금까지</Text>
+              <Text
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                minimumFontScale={0.55}
+                style={styles.lifetimeNumber}
+              >
+                {formatNumber(lifetimeTotal)}
+              </Text>
+              <Text style={styles.unit}>PUSH-UPS</Text>
+            </View>
+
+            <View style={styles.todayLine}>
+              <Text style={styles.todayLabel}>오늘</Text>
+              <Text style={styles.todayValue}>{formatNumber(todayTotal)}</Text>
+            </View>
+
+            <View style={styles.quickSection}>
+              <Text style={styles.sectionLabel}>추가하기</Text>
+              <View style={styles.quickRow}>
+                {[10, 20, 50].map((amount) => (
+                  <Pressable
+                    key={amount}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${amount}개 추가`}
+                    style={({ pressed }) => [styles.quickButton, pressed && styles.pressed]}
+                    onPress={() => addPushups(amount)}
+                  >
+                    <Text style={styles.quickButtonText}>+{amount}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={styles.customRow}>
+                <TextInput
+                  value={customValue}
+                  onChangeText={setCustomValue}
+                  onSubmitEditing={submitCustom}
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                  placeholder="직접 입력"
+                  placeholderTextColor="#9C9992"
+                  style={styles.customInput}
+                  accessibilityLabel="푸쉬업 직접 입력"
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="직접 입력한 푸쉬업 기록"
+                  style={({ pressed }) => [styles.recordButton, pressed && styles.pressed]}
+                  onPress={submitCustom}
+                >
+                  <Text style={styles.recordButtonText}>기록</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.bottomUtility}>
+              {nextMilestone ? (
+                <View style={styles.miniMilestone}>
+                  <Text style={styles.miniMilestoneText}>{formatNumber(nextMilestone)}까지</Text>
+                  <Text style={styles.miniMilestoneRemaining}>{formatNumber(nextMilestone - lifetimeTotal)}개</Text>
+                </View>
+              ) : (
+                <View style={styles.miniMilestone}>
+                  <Text style={styles.miniMilestoneText}>1,000,000+</Text>
+                  <Text style={styles.miniMilestoneRemaining}>계속 기록 중</Text>
+                </View>
+              )}
+
+              <Pressable accessibilityRole="button" disabled={state.entries.length === 0} onPress={undoLast}>
+                <Text style={[styles.undoText, state.entries.length === 0 && styles.disabledText]}>마지막 입력 취소</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.historyContent}>
+          <View style={styles.topRow}>
+            <Pressable accessibilityRole="button" onPress={() => setTab('home')} hitSlop={12}>
+              <Text style={styles.textButton}>← 홈</Text>
+            </Pressable>
+            <Text style={styles.wordmark}>RECORD</Text>
           </View>
-          <Pressable style={styles.linkRow} onPress={() => setTab('quests')}><Text style={styles.linkText}>200개의 Quest 보기</Text><Text style={styles.linkArrow}>→</Text></Pressable>
-          <View style={styles.section}><Text style={styles.sectionTitle}>기록은 스스로에게 정직하게.</Text><Text style={styles.sectionBody}>카메라도 자동 판정도 없어. 정해진 횟수를 공식 자세로 완료했다면 CLEAR.</Text></View>
-        </ScrollView>
-      )}
 
-      {tab === 'quests' && (
-        <ScrollView contentContainerStyle={styles.page}>
-          <Text style={styles.pageTitle}>200{`\n`}QUESTS</Text>
-          <Text style={styles.pageCopy}>더 높은 Quest를 먼저 깨면 그 아래 레벨도 모두 완료돼. 완료한 레벨은 눌러서 훈련용으로 다시 쓸 수 있어.</Text>
-          <View style={styles.grid}>{Array.from({ length: 200 }, (_, i) => i + 1).map((level) => {
-            const done = level <= state.clearedLevel;
-            const selected = level === state.selectedLevel && !done;
-            const reps = targetForLevel(level);
-            const landmark = [50, 100, 250, 500, 1000, 2000].includes(reps);
-            return <Pressable key={level} onPress={async () => { if (done) setTrainingLevel(level); else { await commit({ ...state, selectedLevel: level }); setTab('home'); } }} style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected, landmark && styles.cellLandmark]}><Text style={styles.cellLevel}>{level}</Text><Text style={styles.cellReps}>{reps}</Text></Pressable>;
-          })}</View>
-        </ScrollView>
-      )}
-
-      {tab === 'records' && (
-        <ScrollView contentContainerStyle={styles.page}>
-          <Text style={styles.pageTitle}>RECORD</Text>
-          <Text style={styles.pageCopy}>앱 사용 시간이 아니라 실제 기록이 얼마나 늘었는지가 중요해.</Text>
-          <View style={styles.stats}>
-            <View style={styles.stat}><Text style={styles.statLabel}>START</Text><Text style={styles.statValue}>{state.firstBaemilgiMax ?? '—'}</Text></View>
-            <View style={styles.stat}><Text style={styles.statLabel}>CURRENT</Text><Text style={styles.statValue}>{currentReps || '—'}</Text></View>
-            <View style={styles.stat}><Text style={styles.statLabel}>QUEST</Text><Text style={styles.statValue}>{state.clearedLevel}</Text></View>
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryLabel}>이번 주</Text>
+              <Text style={styles.summaryValue}>{formatNumber(weekTotal)}</Text>
+            </View>
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryLabel}>이번 달</Text>
+              <Text style={styles.summaryValue}>{formatNumber(monthTotal)}</Text>
+            </View>
           </View>
-          <Text style={styles.sectionTitle}>최근 기록</Text>
-          {history.length === 0 ? <Text style={styles.pageCopy}>아직 기록이 없어.</Text> : history.map((session) => <View key={`${session.at}-${session.level}`} style={styles.historyRow}><View><Text style={styles.historyMain}>{session.type === 'challenge' ? `LEVEL ${session.level} ${session.success ? 'CLEAR' : 'FAIL'}` : `LEVEL ${session.level} TRAINING`}</Text><Text style={styles.historySub}>{new Date(session.at).toLocaleDateString('ko-KR')}</Text></View><Text style={styles.historyTarget}>{session.target}</Text></View>)}
+
+          <View style={styles.chartCard}>
+            <Text style={styles.sectionLabel}>최근 7일</Text>
+            <View style={styles.chartRow}>
+              {sevenDays.map((item) => {
+                const ratio = item.amount / maxSeven;
+                return (
+                  <View key={item.key} style={styles.barColumn}>
+                    <Text style={styles.barValue}>{item.amount > 0 ? formatNumber(item.amount) : ''}</Text>
+                    <View style={styles.barTrack}>
+                      <View style={[styles.barFill, { height: `${Math.max(item.amount > 0 ? 10 : 0, ratio * 100)}%` }]} />
+                    </View>
+                    <Text style={styles.barLabel}>{item.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.milestoneCard}>
+            <Text style={styles.sectionLabel}>다음 마일스톤</Text>
+            {nextMilestone ? (
+              <>
+                <View style={styles.milestoneHeadlineRow}>
+                  <Text style={styles.milestoneBig}>{formatNumber(nextMilestone)}</Text>
+                  <Text style={styles.milestoneSmall}>{formatNumber(nextMilestone - lifetimeTotal)}개 남음</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${Math.max(2, milestoneProgress * 100)}%` }]} />
+                </View>
+              </>
+            ) : (
+              <Text style={styles.milestoneBig}>1,000,000+</Text>
+            )}
+          </View>
+
+          <View style={styles.historySection}>
+            <Text style={styles.sectionLabel}>일별 기록</Text>
+            {dailyHistory.length === 0 ? (
+              <Text style={styles.emptyText}>아직 기록이 없습니다.</Text>
+            ) : (
+              dailyHistory.slice(0, 30).map((item) => (
+                <View key={item.date} style={styles.historyRow}>
+                  <Text style={styles.historyDate}>{item.date}</Text>
+                  <Text style={styles.historyAmount}>{formatNumber(item.amount)}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.dataActions}>
+            <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={exportData}>
+              <Text style={styles.secondaryButtonText}>기록 내보내기</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={resetAll} hitSlop={10}>
+              <Text style={styles.deleteText}>모든 기록 삭제</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       )}
-
-      <View style={styles.nav}>{(['home', 'quests', 'records'] as const).map((name) => <Pressable key={name} onPress={() => setTab(name)} style={styles.navButton}><Text style={[styles.navText, tab === name && styles.navTextActive]}>{name === 'home' ? 'HOME' : name === 'quests' ? 'QUEST' : 'RECORD'}</Text></Pressable>)}</View>
-
-      <Modal visible={infoOpen} transparent animationType="slide" onRequestClose={() => setInfoOpen(false)}><View style={styles.overlay}><View style={styles.sheet}><Text style={styles.sheetTitle}>배밀기 2000</Text><Text style={styles.sheetCopy}>2,000은 의학적 권장량이 아니라 역사적 Dand 고반복 기록에서 가져온 Final Quest야.</Text><View style={{ gap: 9 }}><Button label="공식 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} /><Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} /><Button label="개인정보 처리방침" secondary onPress={() => Linking.openURL(PRIVACY_URL)} /><Button label="지원" secondary onPress={() => Linking.openURL(SUPPORT_URL)} /><Button label="기록 초기화" danger onPress={reset} /><Button label="닫기" onPress={() => setInfoOpen(false)} /></View></View></View></Modal>
-      <Modal visible={formOpen} transparent animationType="slide" onRequestClose={() => setFormOpen(false)}><View style={styles.overlay}><View style={styles.sheet}><Text style={styles.sheetTitle}>공식 배밀기 자세</Text><FormStep n="1" title="엉덩이를 높여 시작" body="역 V자에 가깝게." /><FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽혀 낮게 통과." /><FormStep n="3" title="팔을 펴고 가슴을 든다" body="앞으로 나간 뒤 상체를 올림." /><FormStep n="4" title="팔을 편 채 뒤로" body="엉덩이를 뒤·위로 보내 원위치." /><View style={{ height: 14 }} /><Button label="닫기" onPress={() => setFormOpen(false)} /></View></View></Modal>
-      <Modal visible={whyOpen} transparent animationType="slide" onRequestClose={() => setWhyOpen(false)}><View style={styles.overlay}><View style={styles.sheet}><Text style={styles.sheetTitle}>왜 2,000?</Text><Text style={styles.sheetCopy}>1911년 T. M. Alexander는 Great Gama가 약 3시간 동안 2,000회가 넘는 dand를 하는 것을 세었다고 기록했어. 현대식 공인 기록은 아니야.</Text><Text style={[styles.sheetTitle, { fontSize: 23, marginVertical: 18 }]}>1년 뒤, 당신은 몇 개까지 갈 수 있을까?</Text><Button label="역사적 기록 보기" secondary onPress={() => Linking.openURL(GAMA_SOURCE_URL)} /><View style={{ height: 9 }} /><Button label="닫기" onPress={() => setWhyOpen(false)} /></View></View></Modal>
-      <Modal visible={message !== null} transparent animationType="fade" onRequestClose={() => setMessage(null)}><View style={styles.centerOverlay}><View style={styles.messageCard}><Text style={styles.messageText}>{message}</Text><Button label="확인" onPress={() => setMessage(null)} />{message?.includes('CLEAR') ? <><View style={{ height: 9 }} /><Button label="공유" secondary onPress={() => Share.share({ message: `${message}\n배밀기 2000` })} /></> : null}</View></View></Modal>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  safe: { flex: 1, backgroundColor: BG },
+  onboardingWrap: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 42,
+    paddingBottom: 26,
+    justifyContent: 'space-between',
+    backgroundColor: BG,
+  },
+  wordmark: {
+    color: INK,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  onboardingTitle: {
+    marginTop: 54,
+    color: INK,
+    fontSize: 46,
+    lineHeight: 52,
+    fontWeight: '800',
+    letterSpacing: -2.2,
+  },
+  onboardingBody: {
+    marginTop: 18,
+    color: MUTED,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '500',
+  },
+  onboardingActions: { gap: 14 },
+  primaryButton: {
+    minHeight: 58,
+    borderRadius: 14,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  existingBox: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: '#FAF9F5',
+  },
+  existingLabel: { color: MUTED, fontSize: 13, fontWeight: '700', marginBottom: 10 },
+  existingRow: { flexDirection: 'row', gap: 10 },
+  existingInput: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: LINE,
+    paddingHorizontal: 14,
+    color: INK,
+    backgroundColor: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  existingStart: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  existingStartText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  homeContent: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 20, paddingBottom: 32 },
+  historyContent: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 50 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  textButton: { color: ACCENT, fontSize: 15, fontWeight: '800' },
+  lifetimeBlock: { marginTop: 68 },
+  eyebrow: { color: MUTED, fontSize: 14, fontWeight: '700' },
+  lifetimeNumber: {
+    marginTop: 2,
+    color: INK,
+    fontSize: 92,
+    lineHeight: 100,
+    fontWeight: '900',
+    letterSpacing: -5,
+    fontVariant: ['tabular-nums'],
+  },
+  unit: { marginTop: -4, color: MUTED, fontSize: 13, fontWeight: '800', letterSpacing: 1.2 },
+  todayLine: {
+    marginTop: 40,
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: LINE,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  todayLabel: { color: MUTED, fontSize: 15, fontWeight: '700' },
+  todayValue: { color: INK, fontSize: 34, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  quickSection: { marginTop: 34 },
+  sectionLabel: { color: MUTED, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
+  quickRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  quickButton: {
+    flex: 1,
+    minHeight: 64,
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: LINE,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickButtonText: { color: INK, fontSize: 24, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  pressed: { opacity: 0.55 },
+  customRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  customInput: {
+    flex: 1,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: '#FFFFFF',
+    color: INK,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  recordButton: {
+    width: 86,
+    minHeight: 56,
+    borderRadius: 12,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  bottomUtility: {
+    marginTop: 34,
+    gap: 18,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderColor: LINE,
+  },
+  miniMilestone: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  miniMilestoneText: { color: MUTED, fontSize: 14, fontWeight: '700' },
+  miniMilestoneRemaining: { color: INK, fontSize: 15, fontWeight: '800' },
+  undoText: { color: MUTED, fontSize: 14, fontWeight: '700', textDecorationLine: 'underline' },
+  disabledText: { opacity: 0.35 },
+  summaryGrid: { flexDirection: 'row', gap: 10, marginTop: 34 },
+  summaryCell: {
+    flex: 1,
+    padding: 18,
+    minHeight: 110,
+    borderRadius: 14,
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: LINE,
+    justifyContent: 'space-between',
+  },
+  summaryLabel: { color: MUTED, fontSize: 13, fontWeight: '700' },
+  summaryValue: { color: INK, fontSize: 30, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  chartCard: { marginTop: 28, paddingTop: 4 },
+  chartRow: { flexDirection: 'row', gap: 7, height: 168, alignItems: 'flex-end', marginTop: 18 },
+  barColumn: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'flex-end' },
+  barValue: { color: MUTED, fontSize: 10, fontWeight: '700', height: 16 },
+  barTrack: {
+    width: '72%',
+    flex: 1,
+    maxHeight: 118,
+    minHeight: 54,
+    backgroundColor: '#E6E4DE',
+    borderRadius: 5,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: { width: '100%', backgroundColor: ACCENT, borderRadius: 5 },
+  barLabel: { marginTop: 8, color: MUTED, fontSize: 11, fontWeight: '700' },
+  milestoneCard: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderColor: LINE,
+  },
+  milestoneHeadlineRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 10 },
+  milestoneBig: { color: INK, fontSize: 38, fontWeight: '900', letterSpacing: -1.6, fontVariant: ['tabular-nums'] },
+  milestoneSmall: { color: MUTED, fontSize: 13, fontWeight: '700' },
+  progressTrack: { marginTop: 14, height: 7, borderRadius: 99, backgroundColor: '#DEDDD7', overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 99, backgroundColor: ACCENT },
+  historySection: { marginTop: 34 },
+  historyRow: {
+    minHeight: 52,
+    borderBottomWidth: 1,
+    borderColor: LINE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  historyDate: { color: MUTED, fontSize: 14, fontWeight: '650' },
+  historyAmount: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  emptyText: { marginTop: 18, color: MUTED, fontSize: 14 },
+  dataActions: { marginTop: 34, gap: 24, alignItems: 'center' },
+  secondaryButton: {
+    width: '100%',
+    minHeight: 54,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: { color: INK, fontSize: 15, fontWeight: '900' },
+  deleteText: { color: '#A34036', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+});
