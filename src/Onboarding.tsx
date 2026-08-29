@@ -34,14 +34,16 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   if (step === 'intro') {
     return (
       <SafeAreaView style={styles.onboarding}>
-        <View style={styles.grow}>
+        <View style={styles.introGrow}>
           <Text style={styles.kicker}>1911 · GREAT GAMA</Text>
-          <Text style={styles.title}>3시간.{`\n`}2,000개.</Text>
-          <Text style={styles.copy}>
-            전설적인 레슬러 Great Gama가 3시간 동안 2,000회가 넘는 Dand를 했다는 기록이 남아 있어.{`\n\n`}
-            배밀기 2000은 그 숫자를 마지막 퀘스트로 둔다. 200개의 벽을 하나씩 넘어서, 1년 뒤 어디까지 갈 수 있는지 보는 앱이야.
+          <Text style={styles.introTitle}>3시간.{`\n`}2,000개.</Text>
+          <Text style={styles.introCopy}>
+            Great Gama는 20세기 초를 대표하는 전설적인 프로 레슬러야. 당시 기록에는 그가 약 3시간 동안 2,000회가 넘는 Dand를 했다고 남아 있어.
           </Text>
-          <Text style={[styles.note, { marginTop: 18, marginBottom: 0 }]}>
+          <Text style={styles.introCopy}>
+            배밀기 2000은 그 숫자를 마지막 Quest로 둔다. 200개의 벽을 하나씩 넘어서, 1년 뒤 어디까지 갈 수 있는지 확인하는 앱이야.
+          </Text>
+          <Text style={styles.introNote}>
             2,000은 건강 권장량이 아니라 역사적 도전 기록이야.
           </Text>
         </View>
@@ -113,7 +115,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
             keyboardType="number-pad"
             inputMode="numeric"
             placeholder="0"
-            placeholderTextColor="#5F5B54"
+            placeholderTextColor="#A79F93"
             style={styles.bigInput}
             maxLength={4}
             accessibilityLabel="최대 푸쉬업 개수"
@@ -154,7 +156,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
             keyboardType="number-pad"
             inputMode="numeric"
             placeholder="0"
-            placeholderTextColor="#5F5B54"
+            placeholderTextColor="#A79F93"
             style={styles.bigInput}
             maxLength={4}
             accessibilityLabel="배밀기 최고 기록"
