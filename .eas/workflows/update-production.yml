@@ -5,10 +5,8 @@ on:
     branches: ['main']
     paths:
       - 'App.tsx'
+      - 'index.js'
       - 'src/**'
-      - 'package.json'
-      - 'app.json'
-      - 'assets/**'
 
 jobs:
   update_production:
