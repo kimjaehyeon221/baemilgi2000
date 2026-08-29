@@ -7,16 +7,34 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#F4F3EE",
     "scheme": "pushtotal",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F3EE"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.magpie221.pushtotal",
       "buildNumber": "1",
       "backgroundColor": "#F4F3EE",
+      "icon": "./assets/icon.png",
       "config": {
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
       }
     },
     "platforms": ["ios"]
