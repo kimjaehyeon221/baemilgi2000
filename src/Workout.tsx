@@ -68,7 +68,7 @@ export function Challenge({
           <Text style={styles.kicker}>실패 기록</Text>
           <Text style={styles.failureQuestion}>몇 개까지{`\n`}성공했어?</Text>
           <Text style={styles.workoutHint}>목표는 {target}개였어. 실패한 지점도 다음 기록에 남겨.</Text>
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, { width: '100%' }]}>
             <TextInput
               value={failedReps}
               onChangeText={(value) => setFailedReps(value.replace(/[^0-9]/g, '').slice(0, 4))}
