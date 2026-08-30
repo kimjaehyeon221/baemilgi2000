@@ -41,6 +41,13 @@ export function Challenge({
       return;
     }
     const reps = Math.max(0, Math.floor(Number(failedReps) || 0));
+    if (reps >= target) {
+      Alert.alert(
+        '목표 횟수 이상이야',
+        `${target}개를 완료했다면 뒤로 가서 ‘완료했어’를 눌러줘. 실패 기록은 ${Math.max(0, target - 1)}개까지 저장할 수 있어.`,
+      );
+      return;
+    }
     Keyboard.dismiss();
     onFinish(false, seconds, reps);
   };
