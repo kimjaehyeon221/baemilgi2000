@@ -14,7 +14,7 @@ export const C = {
 
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  onboarding: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 28, paddingBottom: 24 },
+  onboarding: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 36, paddingBottom: 24 },
   grow: { flex: 1, justifyContent: 'center' },
   introGrow: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   introTitle: { color: C.text, fontSize: 56, lineHeight: 58, fontWeight: '900', letterSpacing: -3, textAlign: 'center' },
@@ -22,8 +22,8 @@ export const styles = StyleSheet.create({
   introNote: { color: '#725649', backgroundColor: C.accentSoft, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, fontSize: 12, lineHeight: 18, marginTop: 20, textAlign: 'center', maxWidth: 330 },
   kicker: { color: C.accent, fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginBottom: 14 },
   title: { color: C.text, fontSize: 58, lineHeight: 59, fontWeight: '900', letterSpacing: -3 },
-  question: { color: C.text, fontSize: 41, lineHeight: 44, fontWeight: '900', letterSpacing: -2 },
-  copy: { color: C.muted, fontSize: 16, lineHeight: 24, marginTop: 18 },
+  question: { color: C.text, fontSize: 41, lineHeight: 44, fontWeight: '900', letterSpacing: -2, maxWidth: 305 },
+  copy: { color: C.muted, fontSize: 16, lineHeight: 24, marginTop: 18, maxWidth: 305 },
   bigInput: { color: C.text, fontSize: 88, fontWeight: '900', letterSpacing: -5, borderBottomWidth: 2, borderColor: C.text, paddingVertical: 14, marginTop: 30 },
   button: { minHeight: 56, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   buttonSecondary: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line },
