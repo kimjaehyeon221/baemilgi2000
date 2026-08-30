@@ -102,7 +102,7 @@ export default function App() {
           if (!saved) return;
           if (success && clearedLevel >= 200) setMessage('2,000. 마지막 퀘스트를 완료했어.');
           else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) {
-            setMessage('500개를 넘었어. 마지막 벽은 2,000이야.');
+            setMessage('500개를 넘었어. 최종 목표는 2,000개야.');
           } else if (success) {
             setMessage(`레벨 ${challengeLevel} 완료. 아래 단계도 함께 완료됐어.`);
           } else {
@@ -310,8 +310,8 @@ export default function App() {
             <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.mutedSmall}>{state.clearedLevel} / 200 완료</Text>
-            <Text style={styles.mutedSmall}>마지막 2,000</Text>
+            <Text style={styles.mutedSmall}>{state.clearedLevel} / 200단계 완료</Text>
+            <Text style={styles.mutedSmall}>최종 목표 2,000개</Text>
           </View>
 
           <View style={styles.card}>
@@ -337,8 +337,8 @@ export default function App() {
 
       {tab === 'quests' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <Text style={styles.pageTitle}>200개의{`\n`}벽</Text>
-          <Text style={styles.pageCopy}>완료한 단계는 채워지고, 다음에 고른 도전은 짙게 표시돼. 높은 단계를 깨면 그 아래도 함께 완료돼.</Text>
+          <Text style={styles.pageTitle}>200단계</Text>
+          <Text style={styles.pageCopy}>각 칸은 배밀기 목표 횟수 하나를 뜻해. 1단계부터 올라가며, 마지막 200단계의 목표가 연속 배밀기 2,000개야.</Text>
           <View style={styles.grid}>
             {Array.from({ length: 200 }, (_, i) => i + 1).map((level) => {
               const done = level <= state.clearedLevel;
@@ -487,7 +487,7 @@ export default function App() {
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>왜 2,000?</Text>
             <Text style={styles.sheetCopy}>Great Gama는 20세기 초를 대표하는 프로 레슬러야. 1911년 T. M. Alexander는 그가 약 3시간 동안 2,000회가 넘는 Dand를 하는 것을 세었다고 기록했어.</Text>
-            <Text style={styles.sheetCopy}>현대식 공인 기록이나 운동 권장량은 아니야. 이 앱은 그 숫자를 ‘마지막 벽’으로만 사용해.</Text>
+            <Text style={styles.sheetCopy}>현대식 공인 기록이나 운동 권장량은 아니야. 이 앱에서는 200단계의 최종 목표로 사용해.</Text>
             <Text style={[styles.sheetTitle, { fontSize: 22, marginVertical: 18 }]}>1년 뒤, 몇 개까지 갈 수 있을까?</Text>
             <Button label="역사적 기록 보기" secondary onPress={() => Linking.openURL(GAMA_SOURCE_URL)} />
             <View style={{ height: 9 }} />
