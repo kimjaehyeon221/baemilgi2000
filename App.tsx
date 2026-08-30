@@ -100,13 +100,13 @@ export default function App() {
           const saved = await commit(next);
           setChallengeLevel(null);
           if (!saved) return;
-          if (success && clearedLevel >= 200) setMessage('2,000. Final Quest를 완료했어.');
+          if (success && clearedLevel >= 200) setMessage('2,000. 마지막 퀘스트를 완료했어.');
           else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) {
-            setMessage('500. 여기까지 와도 충분해. 마지막은 2,000이야.');
+            setMessage('500개를 넘었어. 마지막 벽은 2,000이야.');
           } else if (success) {
-            setMessage(`LEVEL ${challengeLevel} CLEAR. 아래 레벨도 모두 완료됐어.`);
+            setMessage(`레벨 ${challengeLevel} 완료. 아래 단계도 함께 완료됐어.`);
           } else {
-            setMessage(`LEVEL ${challengeLevel} · ${actualReps}개에서 종료. 다음 기록의 기준으로 남겼어.`);
+            setMessage(`레벨 ${challengeLevel} · ${actualReps}개에서 종료. 이 기록도 남겼어.`);
           }
         }}
       />
@@ -114,7 +114,11 @@ export default function App() {
   }
 
   if (trainingLevel !== null) {
-    const currentBest = state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0;
+    const currentBest = state.sessions.reduce((best, session) => {
+      if (session.type !== 'challenge') return best;
+      return Math.max(best, session.success ? session.target : session.actualReps ?? 0);
+    }, state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0);
+
     return (
       <Training
         level={trainingLevel}
@@ -136,7 +140,7 @@ export default function App() {
             ],
           });
           setTrainingLevel(null);
-          if (saved) setMessage('훈련 완료. 준비됐다고 느껴질 때 Quest에 도전해.');
+          if (saved) setMessage('훈련을 기록했어. 준비됐을 때 다음 퀘스트에 도전해.');
         }}
       />
     );
@@ -214,7 +218,7 @@ export default function App() {
     const session = state.sessions[index];
     Alert.prompt(
       '실패 기록 수정',
-      `LEVEL ${session.level}에서 몇 개까지 성공했어?`,
+      `레벨 ${session.level}에서 몇 개까지 성공했어?`,
       [
         { text: '취소', style: 'cancel' },
         {
@@ -234,7 +238,7 @@ export default function App() {
   const editSession = (index: number) => {
     const session = state.sessions[index];
     if (session.type === 'training') {
-      Alert.alert(`LEVEL ${session.level} 훈련`, '잘못 저장한 기록이라면 삭제할 수 있어.', [
+      Alert.alert(`레벨 ${session.level} 훈련`, '잘못 저장한 기록이라면 삭제할 수 있어.', [
         { text: '취소', style: 'cancel' },
         { text: '삭제', style: 'destructive', onPress: () => deleteSession(index) },
       ]);
@@ -242,8 +246,8 @@ export default function App() {
     }
 
     Alert.alert(
-      `LEVEL ${session.level} 기록 편집`,
-      session.success ? '현재 CLEAR로 기록돼 있어.' : `현재 ${session.actualReps ?? 0}개에서 실패로 기록돼 있어.`,
+      `레벨 ${session.level} 기록 편집`,
+      session.success ? '현재 성공으로 기록돼 있어.' : `현재 ${session.actualReps ?? 0}개에서 실패로 기록돼 있어.`,
       [
         { text: '취소', style: 'cancel' },
         session.success
@@ -298,42 +302,43 @@ export default function App() {
       <Header onInfo={() => setInfoOpen(true)} />
 
       {tab === 'home' && (
-        <ScrollView contentContainerStyle={styles.page}>
-          <Text style={styles.kicker}>CURRENT</Text>
-          <Text style={styles.heroLevel}>LEVEL {state.clearedLevel}</Text>
+        <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+          <Text style={styles.kicker}>현재 기록</Text>
+          <Text style={styles.heroNumber}>{currentReps || '—'}</Text>
+          <Text style={styles.heroUnit}>연속 배밀기 · 레벨 {state.clearedLevel}</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.mutedSmall}>{state.clearedLevel} / 200 QUEST</Text>
-            <Text style={styles.mutedSmall}>현재 최고 {currentReps}</Text>
+            <Text style={styles.mutedSmall}>{state.clearedLevel} / 200 완료</Text>
+            <Text style={styles.mutedSmall}>마지막 2,000</Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.kicker}>NEXT QUEST</Text>
-            <Text style={styles.cardLevel}>LEVEL {nextLevel}</Text>
+            <Text style={styles.kicker}>다음 도전</Text>
+            <Text style={styles.cardLevel}>레벨 {nextLevel}</Text>
             <Text style={styles.cardNumber}>{nextTarget}</Text>
             <Text style={styles.cardUnit}>연속 배밀기</Text>
-            <Button label="도전하기" onPress={() => setChallengeLevel(nextLevel)} />
+            <Button label="도전 시작" onPress={() => setChallengeLevel(nextLevel)} />
             <View style={{ height: 9 }} />
-            <Button label="훈련하기" secondary onPress={() => setTrainingLevel(nextLevel)} />
+            <Button label="훈련" secondary onPress={() => setTrainingLevel(nextLevel)} />
           </View>
 
           <Pressable style={styles.linkRow} onPress={() => setTab('quests')}>
-            <Text style={styles.linkText}>200개의 Quest 보기</Text>
+            <Text style={styles.linkText}>전체 200단계 보기</Text>
             <Text style={styles.linkArrow}>→</Text>
           </Pressable>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>기록은 스스로에게 정직하게.</Text>
-            <Text style={styles.sectionBody}>완료와 실패 모두 기록해. 잘못 눌렀다면 RECORD에서 언제든 수정할 수 있어.</Text>
+            <Text style={styles.sectionBody}>성공과 실패를 그대로 남겨. 잘못 누른 기록은 기록 탭에서 언제든 고칠 수 있어.</Text>
           </View>
         </ScrollView>
       )}
 
       {tab === 'quests' && (
-        <ScrollView contentContainerStyle={styles.page}>
-          <Text style={styles.pageTitle}>200{`\n`}QUESTS</Text>
-          <Text style={styles.pageCopy}>주황색은 완료, 검정색은 다음에 고른 Quest야. 더 높은 Quest를 깨면 그 아래 레벨도 모두 완료돼.</Text>
+        <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+          <Text style={styles.pageTitle}>200개의{`\n`}벽</Text>
+          <Text style={styles.pageCopy}>완료한 단계는 채워지고, 다음에 고른 도전은 짙게 표시돼. 높은 단계를 깨면 그 아래도 함께 완료돼.</Text>
           <View style={styles.grid}>
             {Array.from({ length: 200 }, (_, i) => i + 1).map((level) => {
               const done = level <= state.clearedLevel;
@@ -363,20 +368,20 @@ export default function App() {
       )}
 
       {tab === 'records' && (
-        <ScrollView contentContainerStyle={styles.page}>
-          <Text style={styles.pageTitle}>RECORD</Text>
-          <Text style={styles.pageCopy}>성공뿐 아니라 실패 지점도 남겨. 잘못 저장한 기록은 눌러서 수정할 수 있어.</Text>
+        <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+          <Text style={styles.pageTitle}>기록</Text>
+          <Text style={styles.pageCopy}>성공뿐 아니라 멈춘 지점도 남겨. 잘못 저장한 기록은 눌러서 수정할 수 있어.</Text>
           <View style={styles.stats}>
             <Pressable style={styles.stat} onPress={editStartingRecord}>
-              <Text style={styles.statLabel}>START · EDIT</Text>
+              <Text style={styles.statLabel}>시작 · 수정</Text>
               <Text style={styles.statValue}>{state.firstBaemilgiMax ?? '—'}</Text>
             </Pressable>
             <View style={styles.stat}>
-              <Text style={styles.statLabel}>CURRENT</Text>
+              <Text style={styles.statLabel}>현재</Text>
               <Text style={styles.statValue}>{currentReps || '—'}</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statLabel}>QUEST</Text>
+              <Text style={styles.statLabel}>퀘스트</Text>
               <Text style={styles.statValue}>{state.clearedLevel}</Text>
             </View>
           </View>
@@ -390,8 +395,8 @@ export default function App() {
                 <View>
                   <Text style={styles.historyMain}>
                     {session.type === 'challenge'
-                      ? `LEVEL ${session.level} ${session.success ? 'CLEAR' : 'FAIL'}`
-                      : `LEVEL ${session.level} TRAINING`}
+                      ? `레벨 ${session.level} · ${session.success ? '성공' : '실패'}`
+                      : `레벨 ${session.level} · 훈련`}
                   </Text>
                   <Text style={styles.historySub}>{new Date(session.at).toLocaleDateString('ko-KR')}</Text>
                 </View>
@@ -415,7 +420,7 @@ export default function App() {
         {(['home', 'quests', 'records'] as const).map((name) => (
           <Pressable key={name} onPress={() => setTab(name)} style={styles.navButton}>
             <Text style={[styles.navText, tab === name && styles.navTextActive]}>
-              {name === 'home' ? 'HOME' : name === 'quests' ? 'QUEST' : 'RECORD'}
+              {name === 'home' ? '홈' : name === 'quests' ? '퀘스트' : '기록'}
             </Text>
           </Pressable>
         ))}
@@ -425,7 +430,7 @@ export default function App() {
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>배밀기 2000</Text>
-            <Text style={styles.sheetCopy}>2,000은 의학적 권장량이 아니라 20세기 초 레슬러 Great Gama의 역사적 Dand 고반복 기록에서 가져온 Final Quest야.</Text>
+            <Text style={styles.sheetCopy}>2,000은 운동 권장량이 아니라 20세기 초 레슬러 Great Gama의 역사적 Dand 고반복 기록에서 가져온 마지막 퀘스트야.</Text>
             <Text style={styles.sheetCopy}>현재 기록은 이 iPhone에 저장돼. 기기를 바꿀 때는 백업을 내보낸 뒤 새 기기에서 복원할 수 있어.</Text>
             <View style={{ gap: 9 }}>
               <Button label="전체 기록 백업" secondary onPress={exportRecords} />
@@ -453,7 +458,7 @@ export default function App() {
               autoCapitalize="none"
               autoCorrect={false}
               placeholder="백업 JSON 붙여넣기"
-              placeholderTextColor="#A79F93"
+              placeholderTextColor="#A49C90"
               style={styles.restoreInput}
             />
             <Button label="기록 복원" onPress={restoreRecords} />
@@ -483,7 +488,7 @@ export default function App() {
             <Text style={styles.sheetTitle}>왜 2,000?</Text>
             <Text style={styles.sheetCopy}>Great Gama는 20세기 초를 대표하는 프로 레슬러야. 1911년 T. M. Alexander는 그가 약 3시간 동안 2,000회가 넘는 Dand를 하는 것을 세었다고 기록했어.</Text>
             <Text style={styles.sheetCopy}>현대식 공인 기록이나 운동 권장량은 아니야. 이 앱은 그 숫자를 ‘마지막 벽’으로만 사용해.</Text>
-            <Text style={[styles.sheetTitle, { fontSize: 23, marginVertical: 18 }]}>1년 뒤, 당신은 몇 개까지 갈 수 있을까?</Text>
+            <Text style={[styles.sheetTitle, { fontSize: 22, marginVertical: 18 }]}>1년 뒤, 몇 개까지 갈 수 있을까?</Text>
             <Button label="역사적 기록 보기" secondary onPress={() => Linking.openURL(GAMA_SOURCE_URL)} />
             <View style={{ height: 9 }} />
             <Button label="닫기" onPress={() => setWhyOpen(false)} />
@@ -496,7 +501,7 @@ export default function App() {
           <View style={styles.messageCard}>
             <Text style={styles.messageText}>{message}</Text>
             <Button label="확인" onPress={() => setMessage(null)} />
-            {message?.includes('CLEAR') ? (
+            {message?.includes('완료') ? (
               <>
                 <View style={{ height: 9 }} />
                 <Button label="공유" secondary onPress={() => Share.share({ message: `${message}\n배밀기 2000` })} />
