@@ -41,14 +41,14 @@ export const styles = StyleSheet.create({
 
   choiceList: { marginTop: 38, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   choiceRow: { minHeight: 88, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
-  choiceTitle: { color: C.text, fontSize: 19, fontWeight: '750', letterSpacing: -0.5 },
+  choiceTitle: { color: C.text, fontSize: 19, fontWeight: '700', letterSpacing: -0.5 },
   choiceBody: { color: C.muted, fontSize: 13, lineHeight: 19, marginTop: 4 },
   choiceArrow: { color: C.accent, fontSize: 22, fontWeight: '500' },
 
   formList: { marginTop: 30, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   formStep: { flexDirection: 'row', gap: 15, paddingVertical: 17, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   formN: { width: 24, color: C.accent, fontSize: 14, fontFamily: labelFont, fontWeight: '700' },
-  formTitle: { color: C.text, fontSize: 15, fontWeight: '750' },
+  formTitle: { color: C.text, fontSize: 15, fontWeight: '700' },
   formBody: { color: C.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },
   note: { color: C.muted, borderLeftWidth: 2, borderColor: C.accent, paddingLeft: 12, fontSize: 12, lineHeight: 19, marginVertical: 22 },
 
@@ -68,11 +68,11 @@ export const styles = StyleSheet.create({
   button: { minHeight: 54, borderRadius: 8, backgroundColor: C.text, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   buttonSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
   buttonDanger: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#CDA8A4' },
-  buttonText: { color: '#F8F5EE', fontSize: 15, fontWeight: '750', letterSpacing: -0.2 },
+  buttonText: { color: '#F8F5EE', fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
   buttonSecondaryText: { color: C.text },
 
   header: { height: 60, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
-  brand: { color: C.text, fontSize: 17, fontWeight: '750', letterSpacing: -0.6 },
+  brand: { color: C.text, fontSize: 17, fontWeight: '700', letterSpacing: -0.6 },
   circle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   circleText: { color: C.muted, fontSize: 19, fontWeight: '700' },
 
@@ -88,13 +88,13 @@ export const styles = StyleSheet.create({
   card: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingVertical: 24, marginTop: 34 },
   cardLevel: { color: C.muted, fontSize: 13, fontWeight: '700', marginBottom: 2 },
   cardNumber: { color: C.text, fontSize: 78, lineHeight: 84, fontFamily: numberFont, fontWeight: '700', letterSpacing: -4 },
-  cardUnit: { color: C.muted, fontSize: 13, fontWeight: '650', marginTop: -2, marginBottom: 22 },
+  cardUnit: { color: C.muted, fontSize: 13, fontWeight: '600', marginTop: -2, marginBottom: 22 },
 
   linkRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   linkText: { color: C.text, fontSize: 14, fontWeight: '700' },
   linkArrow: { color: C.accent, fontSize: 21 },
   section: { marginTop: 30, paddingTop: 2 },
-  sectionTitle: { color: C.text, fontSize: 15, fontWeight: '750' },
+  sectionTitle: { color: C.text, fontSize: 15, fontWeight: '700' },
   sectionBody: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 7 },
 
   pageTitle: { color: C.text, fontSize: 38, lineHeight: 43, fontWeight: '800', letterSpacing: -1.8 },
@@ -120,7 +120,7 @@ export const styles = StyleSheet.create({
 
   nav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 72, backgroundColor: '#F2EEE5F4', borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.line, flexDirection: 'row', paddingBottom: 7 },
   navButton: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  navText: { color: C.faint, fontSize: 12, fontWeight: '650' },
+  navText: { color: C.faint, fontSize: 12, fontWeight: '600' },
   navTextActive: { color: C.text, fontWeight: '800' },
 
   workout: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 24, paddingBottom: 22 },
