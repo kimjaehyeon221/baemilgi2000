@@ -19,7 +19,7 @@ const historyFont = 'Georgia';
 
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  onboarding: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 28, paddingBottom: 22 },
+  onboarding: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 40, paddingBottom: 22 },
 
   introTop: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   introBrand: { color: C.text, fontSize: 14, fontWeight: '700', letterSpacing: -0.35 },
@@ -29,16 +29,16 @@ export const styles = StyleSheet.create({
   introTitle: { color: C.text, fontSize: 86, lineHeight: 90, fontFamily: historyFont, fontWeight: '700', letterSpacing: -5 },
   introSub: { color: C.text, fontSize: 17, lineHeight: 24, fontWeight: '700', letterSpacing: -0.35, marginTop: 2 },
   introRule: { width: 34, height: 2, backgroundColor: C.accent, marginTop: 24, marginBottom: 20 },
-  introCopy: { color: C.muted, fontSize: 14, lineHeight: 22, maxWidth: 330, marginBottom: 11 },
-  introMeta: { color: C.faint, fontSize: 11, lineHeight: 17, maxWidth: 320, marginTop: 3 },
+  introCopy: { color: C.muted, fontSize: 14, lineHeight: 22, maxWidth: 300, marginBottom: 11 },
+  introMeta: { color: C.faint, fontSize: 11, lineHeight: 17, maxWidth: 300, marginTop: 3 },
 
   setupTop: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   setupBrand: { color: C.text, fontSize: 14, fontWeight: '700', letterSpacing: -0.3 },
   setupCount: { color: C.faint, fontSize: 11, fontFamily: labelFont, fontWeight: '600', letterSpacing: 0.9 },
   setupBody: { flex: 1, justifyContent: 'flex-start', paddingTop: 54, paddingBottom: 18 },
   setupScroll: { paddingTop: 36, paddingBottom: 24 },
-  question: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1.5, maxWidth: 330 },
-  copy: { color: C.muted, fontSize: 15, lineHeight: 23, marginTop: 14, maxWidth: 326 },
+  question: { color: C.text, fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1.5, maxWidth: 300 },
+  copy: { color: C.muted, fontSize: 15, lineHeight: 23, marginTop: 14, maxWidth: 300 },
 
   choiceList: { marginTop: 34, borderTopWidth: 1, borderColor: C.line },
   choiceRow: { minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 1, borderColor: C.line },
@@ -72,12 +72,12 @@ export const styles = StyleSheet.create({
   buttonText: { color: '#FAF7F0', fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
   buttonSecondaryText: { color: C.text },
 
-  header: { height: 58, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
+  header: { height: 58, paddingHorizontal: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   brand: { color: C.text, fontSize: 16, fontWeight: '700', letterSpacing: -0.55 },
   circle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   circleText: { color: C.muted, fontSize: 18, fontWeight: '700' },
 
-  page: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 106 },
+  page: { paddingHorizontal: 28, paddingTop: 24, paddingBottom: 106 },
   heroLevel: { color: C.text, fontSize: 44, lineHeight: 50, fontWeight: '800', letterSpacing: -2, marginTop: 4 },
   heroNumber: { color: C.text, fontSize: 76, lineHeight: 82, fontFamily: metricFont, fontWeight: '700', letterSpacing: -3.8, marginTop: 2, fontVariant: ['tabular-nums'] },
   heroUnit: { color: C.muted, fontSize: 13, fontWeight: '700', marginTop: -2 },
@@ -124,7 +124,7 @@ export const styles = StyleSheet.create({
   navText: { color: C.faint, fontSize: 12, fontWeight: '600' },
   navTextActive: { color: C.accent, fontWeight: '800' },
 
-  workout: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 24, paddingBottom: 22 },
+  workout: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 28, paddingBottom: 22 },
   workoutTop: { minHeight: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
   workoutTitle: { color: C.muted, fontSize: 12, fontWeight: '700' },
   workoutGrow: { flex: 1, justifyContent: 'center', alignItems: 'center' },
