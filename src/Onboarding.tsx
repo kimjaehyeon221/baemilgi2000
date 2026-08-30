@@ -43,7 +43,11 @@ function ChoiceRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.choiceRow, pressed && { opacity: 0.58 }]}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.choiceRow, pressed && { opacity: 0.58 }]}
+    >
       <View style={{ flex: 1 }}>
         <Text style={styles.choiceTitle}>{title}</Text>
         <Text style={styles.choiceBody}>{body}</Text>
@@ -70,19 +74,19 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
           <Text style={styles.introYear}>1911</Text>
         </View>
         <View style={styles.introGrow}>
-          <Text style={styles.introEyebrow}>THE GREAT GAMA</Text>
+          <Text style={styles.introEyebrow}>GREAT GAMA</Text>
           <Text style={styles.introTitle}>2,000</Text>
           <Text style={styles.introSub}>약 3시간 동안 이어진 Dand 기록</Text>
           <View style={styles.introRule} />
           <Text style={styles.introCopy}>
-            Great Gama는 20세기 초를 대표한 프로 레슬러야. 당시 기록에는 그가 약 3시간 동안 2,000회가 넘는 Dand를 했다고 남아 있어.
+            Great Gama는 20세기 초 인도 전통 레슬링의 전설로 남은 선수야. 1911년 관찰 기록에는 약 3시간 동안 2,000회가 넘는 Dand를 했다고 적혀 있어.
           </Text>
           <Text style={styles.introCopy}>
-            이 앱은 그 숫자를 마지막 벽으로 둬. 200개의 단계 중 어디까지 갈 수 있는지, 기록으로 확인해.
+            배밀기 2000은 그 숫자를 끝점으로 삼아. 시작은 지금 가능한 횟수에서, 기록은 한 단계씩.
           </Text>
           <Text style={styles.introMeta}>2,000은 운동 권장량이 아니라 역사적 도전 기록이야.</Text>
         </View>
-        <Button label="시작하기" onPress={() => setStep('experience')} />
+        <Button label="내 기록 시작" onPress={() => setStep('experience')} />
       </SafeAreaView>
     );
   }
@@ -109,7 +113,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         <SetupTop step={2} total={4} />
         <ScrollView contentContainerStyle={styles.setupScroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.question}>이 앱에서 1회로 세는 자세</Text>
-          <Text style={styles.copy}>배밀기는 반복 수보다 동작을 같은 기준으로 세는 게 먼저야.</Text>
+          <Text style={styles.copy}>횟수보다 먼저, 매번 같은 동작을 1회로 세는 기준을 맞춰.</Text>
           <View style={styles.formList}>
             <FormStep n="1" title="엉덩이를 높여 시작" body="손을 고정하고 역 V자에 가깝게 시작." />
             <FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽히며 가슴을 손 사이로 낮게 통과." />
@@ -144,7 +148,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         <SetupTop step={3} total={4} />
         <View style={styles.setupBody}>
           <Text style={styles.question}>푸쉬업은 최대 몇 개 가능해?</Text>
-          <Text style={styles.copy}>첫 배밀기 테스트의 시작점을 잡는 참고값으로만 사용해.</Text>
+          <Text style={styles.copy}>처음 해볼 배밀기 횟수를 정할 때 참고할게.</Text>
           <View style={styles.inputRow}>
             <TextInput
               value={pushups}
@@ -152,14 +156,14 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
               keyboardType="number-pad"
               inputMode="numeric"
               placeholder="0"
-              placeholderTextColor="#A49C90"
+              placeholderTextColor="#9F978B"
               style={styles.bigInput}
               maxLength={4}
               accessibilityLabel="최대 푸쉬업 개수"
             />
             <Text style={styles.inputUnit}>개</Text>
           </View>
-          <Text style={styles.inputHint}>배밀기와 푸쉬업은 다른 동작이라 그대로 환산하지 않아.</Text>
+          <Text style={styles.inputHint}>푸쉬업과 배밀기는 다른 동작이라 1:1로 환산하지 않아.</Text>
         </View>
         <Button label="시작점 보기" onPress={goNext} />
       </KeyboardAvoidingView>
@@ -189,7 +193,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         <SetupTop step={2} total={2} />
         <View style={styles.setupBody}>
           <Text style={styles.question}>지금 최고 기록은?</Text>
-          <Text style={styles.copy}>공식 자세로 연속해서 해낸 최고 횟수를 적어줘.</Text>
+          <Text style={styles.copy}>공식 자세로 쉬지 않고 이어서 해낸 최고 횟수를 적어줘.</Text>
           <View style={styles.inputRow}>
             <TextInput
               value={baemilgi}
@@ -197,7 +201,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
               keyboardType="number-pad"
               inputMode="numeric"
               placeholder="0"
-              placeholderTextColor="#A49C90"
+              placeholderTextColor="#9F978B"
               style={styles.bigInput}
               maxLength={4}
               accessibilityLabel="배밀기 최고 기록"
@@ -230,7 +234,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     >
       <SetupTop step={4} total={4} />
       <View style={styles.setupBody}>
-        <Text style={styles.recommendLabel}>추천 시작점</Text>
+        <Text style={styles.recommendLabel}>첫 테스트</Text>
         <View style={styles.inputRow}>
           <TextInput
             value={testReps}
@@ -238,16 +242,16 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
             keyboardType="number-pad"
             inputMode="numeric"
             placeholder={String(recommendation)}
-            placeholderTextColor="#A49C90"
+            placeholderTextColor="#9F978B"
             style={styles.recommendInput}
             maxLength={4}
             accessibilityLabel="첫 배밀기 테스트 개수"
           />
           <Text style={styles.recommendUnit}>개</Text>
         </View>
-        <Text style={styles.recommendCopy}>푸쉬업 {Math.max(0, Number(pushups) || 0)}개를 참고해 잡은 첫 테스트야.</Text>
+        <Text style={styles.recommendCopy}>푸쉬업 {Math.max(0, Number(pushups) || 0)}개를 참고해 잡은 시작점이야.</Text>
         <View style={styles.recommendRule} />
-        <Text style={styles.copy}>몸 상태나 배밀기 경험에 맞게 숫자를 직접 바꿔도 돼. 첫 결과부터 앱이 다음 단계를 다시 잡아줘.</Text>
+        <Text style={styles.copy}>추천값은 정답이 아니야. 배밀기 경험과 몸 상태에 맞게 숫자를 직접 바꿔도 돼.</Text>
       </View>
       <Button
         label={`${Math.max(1, Math.min(2000, Number(testReps) || recommendation))}개로 시작`}
