@@ -30,6 +30,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   const [pushups, setPushups] = useState('');
   const [baemilgi, setBaemilgi] = useState('');
   const [recommendation, setRecommendation] = useState(10);
+  const [testReps, setTestReps] = useState('10');
 
   if (step === 'intro') {
     return (
@@ -55,11 +56,11 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   if (step === 'experience') {
     return (
       <SafeAreaView style={styles.onboarding}>
-        <View style={styles.grow}>
-          <Text style={styles.kicker}>START</Text>
-          <Text style={styles.question}>배밀기를{`\n`}해본 적 있어?</Text>
-          <Text style={styles.copy}>처음이라면 자세부터. 해봤다면 지금 기록에서 시작해.</Text>
-          <View style={{ gap: 10, marginTop: 30 }}>
+        <View style={styles.choiceGrow}>
+          <Text style={styles.choiceKicker}>START</Text>
+          <Text style={styles.choiceQuestion}>배밀기를{`\n`}해본 적 있어?</Text>
+          <Text style={styles.choiceCopy}>처음이라면 자세부터. 해봤다면 지금 기록에서 시작해.</Text>
+          <View style={styles.choiceActions}>
             <Button label="처음이야" onPress={() => setStep('form')} />
             <Button label="해봤어" secondary onPress={() => setStep('experienced')} />
           </View>
@@ -94,8 +95,10 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   if (step === 'pushup') {
     const goNext = () => {
       const value = Math.max(0, Number(pushups) || 0);
+      const nextRecommendation = recommendedTestFromPushups(value);
       Keyboard.dismiss();
-      setRecommendation(recommendedTestFromPushups(value));
+      setRecommendation(nextRecommendation);
+      setTestReps(String(nextRecommendation));
       setStep('recommend');
     };
 
@@ -167,24 +170,42 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     );
   }
 
+  const startTest = () => {
+    const reps = Math.max(1, Math.min(2000, Number(testReps) || recommendation));
+    Keyboard.dismiss();
+    onDone({
+      ...initialState,
+      onboarded: true,
+      pushupMax: Math.max(0, Number(pushups) || 0),
+      selectedLevel: levelForReps(reps),
+    });
+  };
+
   return (
-    <SafeAreaView style={styles.onboarding}>
+    <KeyboardAvoidingView
+      style={styles.onboarding}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={8}
+    >
       <View style={styles.grow}>
         <Text style={styles.kicker}>FIRST TEST</Text>
-        <Text style={styles.question}>배밀기 {recommendation}개부터{`\n`}확인해보자.</Text>
-        <Text style={styles.copy}>푸쉬업 기록으로 계산한 배밀기 실력은 아니야. 첫 탐색 지점일 뿐이야.</Text>
+        <Text style={styles.question}>첫 배밀기 테스트{`\n`}몇 개로 할까?</Text>
+        <Text style={styles.copy}>
+          푸쉬업 {Math.max(0, Number(pushups) || 0)}개 기준 추천은 {recommendation}개야. 정확한 환산식은 없어서, 몸 상태에 맞게 직접 바꿔도 돼.
+        </Text>
+        <TextInput
+          value={testReps}
+          onChangeText={(value) => setTestReps(digitsOnly(value))}
+          keyboardType="number-pad"
+          inputMode="numeric"
+          placeholder={String(recommendation)}
+          placeholderTextColor="#A79F93"
+          style={styles.bigInput}
+          maxLength={4}
+          accessibilityLabel="첫 배밀기 테스트 개수"
+        />
       </View>
-      <Button
-        label={`${recommendation}개에서 시작`}
-        onPress={() =>
-          onDone({
-            ...initialState,
-            onboarded: true,
-            pushupMax: Math.max(0, Number(pushups) || 0),
-            selectedLevel: levelForReps(recommendation),
-          })
-        }
-      />
-    </SafeAreaView>
+      <Button label={`${Math.max(1, Math.min(2000, Number(testReps) || recommendation))}개로 시작`} onPress={startTest} />
+    </KeyboardAvoidingView>
   );
 }
