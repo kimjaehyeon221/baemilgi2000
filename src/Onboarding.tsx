@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   Text,
@@ -23,6 +24,39 @@ import { Button, FormStep } from './ui';
 const digitsOnly = (value: string, maxLength = 4) =>
   value.replace(/[^0-9]/g, '').slice(0, maxLength);
 
+function SetupTop({ label }: { label: string }) {
+  return (
+    <View style={styles.setupTop}>
+      <Text style={styles.setupBrand}>배밀기 2000</Text>
+      <Text style={styles.setupLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ChoiceCard({
+  title,
+  body,
+  onPress,
+}: {
+  title: string;
+  body: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.choiceCard, pressed && styles.choiceCardPressed]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={styles.choiceCardTitle}>{title}</Text>
+        <Text style={styles.choiceCardBody}>{body}</Text>
+      </View>
+      <Text style={styles.choiceCardArrow}>→</Text>
+    </Pressable>
+  );
+}
+
 export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   const [step, setStep] = useState<
     'intro' | 'experience' | 'form' | 'pushup' | 'experienced' | 'recommend'
@@ -35,20 +69,25 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   if (step === 'intro') {
     return (
       <SafeAreaView style={styles.onboarding}>
-        <View style={styles.introGrow}>
-          <Text style={styles.kicker}>1911 · GREAT GAMA</Text>
-          <Text style={styles.introTitle}>3시간.{`\n`}2,000개.</Text>
-          <Text style={styles.introCopy}>
-            Great Gama는 20세기 초를 대표하는 전설적인 프로 레슬러야. 당시 기록에는 그가 약 3시간 동안 2,000회가 넘는 Dand를 했다고 남아 있어.
-          </Text>
-          <Text style={styles.introCopy}>
-            배밀기 2000은 그 숫자를 마지막 Quest로 둔다. 200개의 벽을 하나씩 넘어서, 1년 뒤 어디까지 갈 수 있는지 확인하는 앱이야.
-          </Text>
-          <Text style={styles.introNote}>
-            2,000은 건강 권장량이 아니라 역사적 도전 기록이야.
-          </Text>
+        <View style={styles.introTop}>
+          <Text style={styles.setupBrand}>배밀기 2000</Text>
         </View>
-        <Button label="내 기록 시작하기" onPress={() => setStep('experience')} />
+        <View style={styles.introGrow}>
+          <Text style={styles.introEyebrow}>THE GREAT GAMA · 1911</Text>
+          <Text style={styles.introNumber}>2,000</Text>
+          <Text style={styles.introSubtitle}>3시간 동안 기록된 Dand</Text>
+          <View style={styles.introRule} />
+          <Text style={styles.introCopy}>
+            Great Gama는 20세기 초 남아시아를 대표한 전설적인 레슬러야. 당시 관찰 기록에는 그가 약 3시간 동안 2,000회가 넘는 Dand를 했다고 남아 있어.
+          </Text>
+          <Text style={styles.introCopyStrong}>
+            이 앱은 그 2,000을 마지막 벽으로 두고, 거기까지 가는 길을 200개의 Quest로 나눴어.
+          </Text>
+          <Text style={styles.introFootnote}>2,000은 운동 권장량이 아니라 역사적 도전 기록이야.</Text>
+        </View>
+        <View style={styles.onboardingFooter}>
+          <Button label="200개의 Quest 시작" onPress={() => setStep('experience')} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -56,13 +95,22 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   if (step === 'experience') {
     return (
       <SafeAreaView style={styles.onboarding}>
-        <View style={styles.choiceGrow}>
-          <Text style={styles.choiceKicker}>START</Text>
-          <Text style={styles.choiceQuestion}>배밀기를{`\n`}해본 적 있어?</Text>
-          <Text style={styles.choiceCopy}>처음이라면 자세부터. 해봤다면 지금 기록에서 시작해.</Text>
-          <View style={styles.choiceActions}>
-            <Button label="처음이야" onPress={() => setStep('form')} />
-            <Button label="해봤어" secondary onPress={() => setStep('experienced')} />
+        <SetupTop label="SETUP 01" />
+        <View style={styles.stepBody}>
+          <Text style={styles.stepEyebrow}>EXPERIENCE</Text>
+          <Text style={styles.stepQuestion}>배밀기를{`\n`}해본 적 있어?</Text>
+          <Text style={styles.stepCopy}>시작점을 정하기 위한 질문이야. 둘 중 지금 상태에 가까운 쪽을 골라줘.</Text>
+          <View style={styles.choiceStack}>
+            <ChoiceCard
+              title="처음이야"
+              body="자세를 먼저 익히고 첫 테스트를 정할게."
+              onPress={() => setStep('form')}
+            />
+            <ChoiceCard
+              title="해봤어"
+              body="지금까지 해낸 최고 기록에서 바로 시작할게."
+              onPress={() => setStep('experienced')}
+            />
           </View>
         </View>
       </SafeAreaView>
@@ -72,22 +120,32 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   if (step === 'form') {
     return (
       <SafeAreaView style={styles.onboarding}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-          <Text style={styles.kicker}>OFFICIAL FORM</Text>
-          <Text style={styles.question}>이 앱에서{`\n`}1회로 세는 자세</Text>
-          <View style={{ marginTop: 20 }}>
+        <SetupTop label="SETUP 02" />
+        <ScrollView
+          style={styles.stepScroller}
+          contentContainerStyle={styles.stepScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.stepEyebrow}>FORM</Text>
+          <Text style={styles.stepQuestion}>이 움직임을{`\n`}1회로 셀게.</Text>
+          <Text style={styles.stepCopy}>속도보다 동작의 시작과 끝이 분명한지가 중요해.</Text>
+          <View style={styles.formCard}>
             <FormStep n="1" title="엉덩이를 높여 시작" body="손을 고정하고 역 V자에 가깝게 시작." />
             <FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽히며 가슴을 손 사이로 낮게 통과." />
             <FormStep n="3" title="팔을 펴고 가슴을 든다" body="앞으로 나간 뒤 팔을 펴며 상체를 들어 올림." />
             <FormStep n="4" title="팔을 편 채 뒤로" body="팔꿈치를 다시 굽히지 않고 엉덩이를 뒤·위로 보내 복귀." />
           </View>
-          <Text style={styles.note}>
-            들어온 길을 팔꿈치를 다시 굽혀 되돌아가는 Dive Bomber 방식은 이 앱의 기준이 아니야.
+          <Text style={styles.formNote}>
+            들어온 길을 팔꿈치를 다시 굽혀 되돌아가는 Dive Bomber 방식은 이 앱의 배밀기로 세지 않아.
           </Text>
-          <Button label="실제 자세 영상 보기" secondary onPress={() => Linking.openURL(FORM_VIDEO_URL)} />
-          <View style={{ height: 10 }} />
-          <Button label="이해했어" onPress={() => setStep('pushup')} />
+          <Pressable onPress={() => Linking.openURL(FORM_VIDEO_URL)} style={styles.textLinkRow}>
+            <Text style={styles.textLink}>실제 자세 영상 보기</Text>
+            <Text style={styles.textLinkArrow}>↗</Text>
+          </Pressable>
         </ScrollView>
+        <View style={styles.onboardingFooter}>
+          <Button label="다음" onPress={() => setStep('pushup')} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -108,23 +166,29 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={8}
       >
-        <View style={styles.grow}>
-          <Text style={styles.kicker}>STARTING POINT</Text>
-          <Text style={styles.question}>푸쉬업은 최대{`\n`}몇 개 가능해?</Text>
-          <Text style={styles.copy}>배밀기로 직접 환산하지 않아. 첫 배밀기 테스트 난이도 추천에만 사용해.</Text>
-          <TextInput
-            value={pushups}
-            onChangeText={(value) => setPushups(digitsOnly(value))}
-            keyboardType="number-pad"
-            inputMode="numeric"
-            placeholder="0"
-            placeholderTextColor="#A79F93"
-            style={styles.bigInput}
-            maxLength={4}
-            accessibilityLabel="최대 푸쉬업 개수"
-          />
+        <SetupTop label="SETUP 03" />
+        <View style={styles.stepBody}>
+          <Text style={styles.stepEyebrow}>BASELINE</Text>
+          <Text style={styles.stepQuestion}>푸쉬업은 최대{`\n`}몇 개 가능해?</Text>
+          <Text style={styles.stepCopy}>배밀기 실력으로 환산하는 건 아니야. 처음 해볼 테스트의 강도만 정하는 참고값이야.</Text>
+          <View style={styles.numberField}>
+            <TextInput
+              value={pushups}
+              onChangeText={(value) => setPushups(digitsOnly(value))}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              placeholder="0"
+              placeholderTextColor="#AAA196"
+              style={styles.numberInput}
+              maxLength={4}
+              accessibilityLabel="최대 푸쉬업 개수"
+            />
+            <Text style={styles.numberUnit}>개</Text>
+          </View>
         </View>
-        <Button label="추천 보기" onPress={goNext} />
+        <View style={styles.onboardingFooter}>
+          <Button label="첫 테스트 추천 보기" onPress={goNext} />
+        </View>
       </KeyboardAvoidingView>
     );
   }
@@ -149,23 +213,29 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={8}
       >
-        <View style={styles.grow}>
-          <Text style={styles.kicker}>YOUR RECORD</Text>
-          <Text style={styles.question}>배밀기 최고 기록은?</Text>
-          <Text style={styles.copy}>이미 해낸 기록은 인정해. 높은 레벨을 깨면 아래 레벨도 모두 클리어돼.</Text>
-          <TextInput
-            value={baemilgi}
-            onChangeText={(value) => setBaemilgi(digitsOnly(value))}
-            keyboardType="number-pad"
-            inputMode="numeric"
-            placeholder="0"
-            placeholderTextColor="#A79F93"
-            style={styles.bigInput}
-            maxLength={4}
-            accessibilityLabel="배밀기 최고 기록"
-          />
+        <SetupTop label="SETUP 02" />
+        <View style={styles.stepBody}>
+          <Text style={styles.stepEyebrow}>YOUR RECORD</Text>
+          <Text style={styles.stepQuestion}>배밀기 최고 기록은{`\n`}몇 개야?</Text>
+          <Text style={styles.stepCopy}>이미 해낸 기록은 그대로 인정해. 그 기록에 맞는 레벨부터 이어서 시작할게.</Text>
+          <View style={styles.numberField}>
+            <TextInput
+              value={baemilgi}
+              onChangeText={(value) => setBaemilgi(digitsOnly(value))}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              placeholder="0"
+              placeholderTextColor="#AAA196"
+              style={styles.numberInput}
+              maxLength={4}
+              accessibilityLabel="배밀기 최고 기록"
+            />
+            <Text style={styles.numberUnit}>개</Text>
+          </View>
         </View>
-        <Button label="이 기록에서 시작" onPress={startFromRecord} />
+        <View style={styles.onboardingFooter}>
+          <Button label="이 기록에서 시작" onPress={startFromRecord} />
+        </View>
       </KeyboardAvoidingView>
     );
   }
@@ -181,31 +251,44 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     });
   };
 
+  const chosen = Math.max(1, Math.min(2000, Number(testReps) || recommendation));
+
   return (
     <KeyboardAvoidingView
       style={styles.onboarding}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={8}
     >
-      <View style={styles.grow}>
-        <Text style={styles.kicker}>FIRST TEST</Text>
-        <Text style={styles.question}>첫 배밀기 테스트{`\n`}몇 개로 할까?</Text>
-        <Text style={styles.copy}>
-          푸쉬업 {Math.max(0, Number(pushups) || 0)}개 기준 추천은 {recommendation}개야. 정확한 환산식은 없어서, 몸 상태에 맞게 직접 바꿔도 돼.
+      <SetupTop label="SETUP 04" />
+      <View style={styles.stepBody}>
+        <Text style={styles.stepEyebrow}>FIRST TEST</Text>
+        <Text style={styles.stepQuestion}>첫 테스트는{`\n`}여기서 시작해.</Text>
+        <Text style={styles.stepCopy}>
+          푸쉬업 {Math.max(0, Number(pushups) || 0)}개를 참고해 잡은 시작점이야. 공식 환산값이 아니어서 직접 바꿔도 돼.
         </Text>
-        <TextInput
-          value={testReps}
-          onChangeText={(value) => setTestReps(digitsOnly(value))}
-          keyboardType="number-pad"
-          inputMode="numeric"
-          placeholder={String(recommendation)}
-          placeholderTextColor="#A79F93"
-          style={styles.bigInput}
-          maxLength={4}
-          accessibilityLabel="첫 배밀기 테스트 개수"
-        />
+        <View style={styles.recommendationCard}>
+          <Text style={styles.recommendationLabel}>추천 시작점</Text>
+          <View style={styles.recommendationValueRow}>
+            <TextInput
+              value={testReps}
+              onChangeText={(value) => setTestReps(digitsOnly(value))}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              placeholder={String(recommendation)}
+              placeholderTextColor="#AAA196"
+              style={styles.recommendationInput}
+              maxLength={4}
+              accessibilityLabel="첫 배밀기 테스트 개수"
+            />
+            <Text style={styles.recommendationUnit}>개</Text>
+          </View>
+          <Text style={styles.recommendationMeta}>추천값 {recommendation} · 탭해서 수정 가능</Text>
+        </View>
+        <Text style={styles.stepHint}>목표에 못 미쳐도 실패 지점을 기록하면 다음 훈련 기준으로 남아.</Text>
       </View>
-      <Button label={`${Math.max(1, Math.min(2000, Number(testReps) || recommendation))}개로 시작`} onPress={startTest} />
+      <View style={styles.onboardingFooter}>
+        <Button label={`${chosen}개 테스트 시작`} onPress={startTest} />
+      </View>
     </KeyboardAvoidingView>
   );
 }
