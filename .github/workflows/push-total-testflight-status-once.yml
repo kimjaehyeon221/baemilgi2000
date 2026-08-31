@@ -10,9 +10,12 @@ on:
 jobs:
   status:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      ASC_APP_ID: '6806588875'
+      ASC_BUILD_NUMBER: '9'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
     steps:
       - name: Checkout masonry release candidate
         uses: actions/checkout@v5
@@ -24,22 +27,106 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install app dependencies
-        run: npm install
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          test -n "$ASC_API_KEY_P8" || { echo "Missing APPLE_ASC_API_KEY_P8"; exit 1; }
+          test -n "$ASC_KEY_ID" || { echo "Missing APPLE_ASC_KEY_ID"; exit 1; }
+          test -n "$ASC_ISSUER_ID" || { echo "Missing APPLE_ASC_ISSUER_ID"; exit 1; }
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-          expo-cache: false
-          eas-cache: false
+      - name: Query build 9 and TestFlight groups directly
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
 
-      - name: Connect correct App Store Connect app
-        run: eas integrations:asc:connect --asc-app-id 6806588875 --json --non-interactive
+          const appId = process.env.ASC_APP_ID;
+          const buildNumber = process.env.ASC_BUILD_NUMBER;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
 
-      - name: Verify ASC integration
-        run: eas integrations:asc:status --json --non-interactive
+          const b64url = value => Buffer.from(value).toString('base64url');
+          const now = Math.floor(Date.now() / 1000);
+          const header = b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }));
+          const payload = b64url(JSON.stringify({ iss: issuerId, iat: now - 5, exp: now + 600, aud: 'appstoreconnect-v1' }));
+          const unsigned = `${header}.${payload}`;
+          const signature = crypto.sign('sha256', Buffer.from(unsigned), {
+            key: privateKey,
+            dsaEncoding: 'ieee-p1363',
+          }).toString('base64url');
+          const token = `${unsigned}.${signature}`;
 
-      - name: Read TestFlight status
-        run: eas submit:status --platform ios --profile production --json --non-interactive
+          async function asc(path) {
+            const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const text = await res.text();
+            let body;
+            try { body = JSON.parse(text); } catch { body = { raw: text }; }
+            if (!res.ok) {
+              console.error(`ASC ${res.status} ${path}`);
+              console.error(JSON.stringify(body));
+              process.exit(1);
+            }
+            return body;
+          }
+
+          const app = await asc(`/v1/apps/${appId}?fields%5Bapps%5D=name,bundleId`);
+          console.log('APP', JSON.stringify({ id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId }));
+
+          const builds = await asc(`/v1/apps/${appId}/builds?filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&include=preReleaseVersion,betaGroups&fields%5Bbuilds%5D=version,uploadedDate,expirationDate,expired,processingState,buildAudienceType,usesNonExemptEncryption,preReleaseVersion,betaGroups&fields%5BpreReleaseVersions%5D=version,platform&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled&limit=10`);
+          const build = builds.data?.[0];
+          if (!build) {
+            console.log('BUILD_NOT_VISIBLE_YET');
+            process.exit(0);
+          }
+
+          const included = builds.included || [];
+          const prerelease = included.find(x => x.type === 'preReleaseVersions');
+          const attachedGroups = included.filter(x => x.type === 'betaGroups').map(x => ({
+            id: x.id,
+            name: x.attributes?.name,
+            internal: x.attributes?.isInternalGroup,
+            allBuilds: x.attributes?.hasAccessToAllBuilds,
+            publicLinkEnabled: x.attributes?.publicLinkEnabled,
+          }));
+          console.log('BUILD', JSON.stringify({
+            id: build.id,
+            buildNumber: build.attributes.version,
+            appVersion: prerelease?.attributes?.version || null,
+            platform: prerelease?.attributes?.platform || null,
+            processingState: build.attributes.processingState,
+            expired: build.attributes.expired,
+            uploadedDate: build.attributes.uploadedDate,
+            expirationDate: build.attributes.expirationDate,
+            buildAudienceType: build.attributes.buildAudienceType,
+            attachedGroups,
+          }));
+
+          const groups = await asc(`/v1/apps/${appId}/betaGroups?fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled&limit=200`);
+          const summaries = [];
+          for (const group of groups.data || []) {
+            const testers = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType&limit=200`);
+            const states = {};
+            for (const tester of testers.data || []) {
+              const state = tester.attributes?.state || 'UNKNOWN';
+              states[state] = (states[state] || 0) + 1;
+            }
+            summaries.push({
+              id: group.id,
+              name: group.attributes.name,
+              internal: group.attributes.isInternalGroup,
+              allBuilds: group.attributes.hasAccessToAllBuilds,
+              publicLinkEnabled: group.attributes.publicLinkEnabled,
+              testerCount: (testers.data || []).length,
+              testerStates: states,
+            });
+          }
+          console.log('GROUPS', JSON.stringify(summaries));
+          NODE
