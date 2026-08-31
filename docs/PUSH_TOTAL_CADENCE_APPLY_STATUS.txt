@@ -17,12 +17,14 @@ To address all issues (including breaking changes), run:
   npm audit fix --force
 
 Run `npm audit` for details.
-/tmp/push_total_integrity_pass.js:332
-`                <>
+/tmp/push_total_integrity_pass.js:9
+  if (s === before) throw new Error(`Patch failed: ${label}`);
+                    ^
 
-SyntaxError: missing ) after argument list
-    at wrapSafe (node:internal/modules/cjs/loader:1804:18)
-    at Module._compile (node:internal/modules/cjs/loader:1846:20)
+Error: Patch failed: review status
+    at mustReplace (/tmp/push_total_integrity_pass.js:9:27)
+    at Object.<anonymous> (/tmp/push_total_integrity_pass.js:19:1)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
     at Object..js (node:internal/modules/cjs/loader:2003:10)
     at Module.load (node:internal/modules/cjs/loader:1594:32)
     at Module._load (node:internal/modules/cjs/loader:1396:12)
