@@ -20,7 +20,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.magpie221.pushtotal",
-      "buildNumber": "1",
       "backgroundColor": "#F4F2EC",
       "icon": "./assets/icon.png",
       "config": {
