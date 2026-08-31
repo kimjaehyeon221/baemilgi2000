@@ -8,25 +8,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Validate required secrets
+      - name: Validate Expo token
         env:
           EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
-          APPLE_TEAM_ID_VALUE: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           test -n "$EXPO_TOKEN_VALUE" || { echo "Missing EXPO_TOKEN"; exit 1; }
-          test -n "$APPLE_TEAM_ID_VALUE" || { echo "Missing APPLE_TEAM_ID"; exit 1; }
 
       - name: Start browser-based iPhone registration
         env:
           EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
-          APPLE_TEAM_ID_VALUE: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           PAYLOAD=$(jq -n \
             --arg appId "c28e2156-a87c-4e46-886c-48440d672a0f" \
             --arg gitRef "push-total-rc" \
             --arg fileName "push-total-register-device.yml" \
-            --arg teamId "$APPLE_TEAM_ID_VALUE" \
-            '{appId:$appId,gitRef:$gitRef,fileName:$fileName,inputs:{apple_team_identifier:$teamId}}')
+            '{appId:$appId,gitRef:$gitRef,fileName:$fileName,inputs:{}}')
 
           RESPONSE=$(curl -fsS -X POST "https://api.expo.dev/v2/workflows/dispatch" \
             -H "Authorization: Bearer $EXPO_TOKEN_VALUE" \
