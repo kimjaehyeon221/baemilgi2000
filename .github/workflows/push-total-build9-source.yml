@@ -1,0 +1,63 @@
+name: Verify PUSH TOTAL Build 9 Source
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-build9-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Read EAS build metadata
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli@latest build:list --platform ios --limit 20 --json --non-interactive > "$RUNNER_TEMP/builds.json"
+          node <<'NODE'
+          const fs=require('fs');
+          const builds=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/builds.json','utf8'));
+          const b=builds.find(x=>String(x.appBuildVersion||x.buildNumber||'')==='9') || builds.find(x=>String(x.appVersion||'')==='0.9.0');
+          const report=b?{
+            checkedAt:new Date().toISOString(),
+            found:true,
+            id:b.id||null,
+            status:b.status||null,
+            appVersion:b.appVersion||null,
+            appBuildVersion:b.appBuildVersion||null,
+            buildProfile:b.buildProfile||null,
+            distribution:b.distribution||null,
+            gitCommitHash:b.gitCommitHash||b.gitCommit?.hash||null,
+            gitCommitMessage:b.gitCommitMessage||b.gitCommit?.message||null,
+            createdAt:b.createdAt||null,
+            updatedAt:b.updatedAt||null
+          }:{checkedAt:new Date().toISOString(),found:false};
+          fs.mkdirSync('docs',{recursive:true});
+          fs.writeFileSync('docs/PUSH_TOTAL_BUILD9_SOURCE.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(report,null,2));
+          NODE
+      - name: Persist metadata
+        run: |
+          git checkout main
+          git pull --ff-only origin main
+          cp docs/PUSH_TOTAL_BUILD9_SOURCE.json "$RUNNER_TEMP/PUSH_TOTAL_BUILD9_SOURCE.json"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          cp "$RUNNER_TEMP/PUSH_TOTAL_BUILD9_SOURCE.json" docs/PUSH_TOTAL_BUILD9_SOURCE.json
+          git add docs/PUSH_TOTAL_BUILD9_SOURCE.json
+          git commit -m 'Record PUSH TOTAL build 9 source' || exit 0
+          git push origin HEAD:main
