@@ -107,10 +107,8 @@ export default function App() {
           if (success && clearedLevel >= 200) setMessage('2,000. 마지막 퀘스트를 완료했어.');
           else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) {
             setMessage('500개를 넘었어. 최종 목표는 2,000개야.');
-          } else if (success) {
-            setMessage(`레벨 ${challengeLevel} 완료. 아래 단계도 함께 완료됐어.`);
           } else {
-            setMessage(`레벨 ${challengeLevel} · ${actualReps}개에서 종료. 이 기록도 남겼어.`);
+            setMessage(null);
           }
         }}
       />
@@ -314,67 +312,72 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <Header onInfo={() => setInfoOpen(true)} />
 
       {tab === 'home' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <View style={styles.storageInline} accessibilityLiveRegion="polite">
-            <View style={[styles.storageDot, saveStatus === 'error' && styles.storageDotError]} />
-            <Text style={styles.storageInlineText}>
-              {saveStatus === 'saving' ? '저장 중' : saveStatus === 'error' ? '저장 확인 필요' : '이 iPhone에 자동 저장됨'}
-            </Text>
-            <Text style={styles.storageInlineCode}>LOCAL / ON</Text>
-          </View>
-          <View style={styles.heroStage}>
-            <View style={styles.heroTopline}>
-              <Text style={styles.heroCode}>QUEST / {String(nextLevel).padStart(3, '0')}</Text>
-              <Text style={styles.heroStatus}>● READY</Text>
+          <View style={styles.homeCanvas}>
+            <View style={styles.storageInline} accessibilityLiveRegion="polite">
+              <View style={[styles.storageDot, saveStatus === 'error' && styles.storageDotError]} />
+              <Text style={styles.storageInlineText}>
+                {saveStatus === 'saving' ? '저장 중' : saveStatus === 'error' ? '저장 확인 필요' : 'LOCAL TRAINING RECORD'}
+              </Text>
+              <Text style={styles.storageInlineCode}>DOJO / ON</Text>
             </View>
-            <Text style={styles.kicker}>NEXT TARGET</Text>
-            <Text style={styles.heroNumber}>{nextTarget}</Text>
-            <Text style={styles.heroUnit}>연속 배밀기 · 레벨 {nextLevel}</Text>
-            <Text style={styles.heroManifesto}>ONE MORE{`\n`}THAN YESTERDAY.</Text>
-          </View>
 
-          <View style={styles.primaryActions}>
-            <Button label="도전 시작" onPress={() => setChallengeLevel(nextLevel)} />
-            <Button label="훈련하기" secondary onPress={() => setTrainingLevel(nextLevel)} />
-          </View>
-
-          <View style={styles.currentPanel}>
-            <View>
-              <Text style={styles.currentLabel}>현재 최고</Text>
-              <Text style={styles.currentValue}>{hasPersonalRecord ? currentReps : '—'}<Text style={styles.currentUnit}>개</Text></Text>
+            <View style={styles.dojoMeta}>
+              <Text style={styles.dojoQuestCode}>QUEST / {String(nextLevel).padStart(3, '0')}</Text>
+              <Text style={styles.dojoMetaRight}>{state.clearedLevel} / 200 CLEARED</Text>
             </View>
-            <View style={styles.currentLevelBlock}>
-              <Text style={styles.currentLabel}>완료</Text>
-              <Text style={styles.currentLevel}>{state.clearedLevel} / 200</Text>
+
+            <View style={styles.dojoHero}>
+              <Text style={styles.dojoHeroNumber}>{nextTarget}</Text>
+              <View style={styles.dojoCurrentBestRow}>
+                <Text style={styles.dojoCurrentBestLabel}>CURRENT BEST:</Text>
+                <Text style={styles.dojoCurrentBestValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
-          </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.mutedSmall}>START / {String(state.clearedLevel).padStart(3, '0')}</Text>
-            <Text style={styles.mutedSmall}>FINISH / 200 · 2,000</Text>
-          </View>
+            <View style={styles.questBandStage}>
+              <View style={styles.questBandStitch} />
+              <View style={styles.questBand}>
+                {nearbyLevels.slice(0, 7).map((level) => {
+                  const active = level === nextLevel;
+                  const done = level <= state.clearedLevel;
+                  return (
+                    <View key={level} style={[styles.questBandItem, active && styles.questBandActive]}>
+                      {active && <View style={styles.questBandTape} />}
+                      <Text style={[
+                        styles.questBandItemText,
+                        done && styles.questBandDoneText,
+                        active && styles.questBandActiveText,
+                      ]}>{level}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
 
-          <Pressable
-            style={styles.linkRow}
-            onPress={() => setTab('quests')}
-            accessibilityRole="button"
-            accessibilityLabel="전체 200단계 보기"
-          >
-            <Text style={styles.linkText}>전체 200단계 보기</Text>
-            <Text style={styles.linkArrow}>→</Text>
-          </Pressable>
+            <View style={styles.primaryActions}>
+              <Button label="START CHALLENGE" onPress={() => setChallengeLevel(nextLevel)} />
+              <Button label="TRAINING" secondary onPress={() => setTrainingLevel(nextLevel)} />
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionCode}>FIELD NOTE / 01</Text>
-            <Text style={styles.sectionTitle}>지난 기록도 다음 퀘스트의 일부야.</Text>
-            <Text style={styles.sectionBody}>성공과 멈춘 지점을 그대로 남기고, 잘못 누른 기록은 기록 탭에서 언제든 고칠 수 있어.</Text>
+            <Pressable
+              style={styles.archiveFooter}
+              onPress={() => setTab('records')}
+              accessibilityRole="button"
+              accessibilityLabel="수련 기록 보기"
+            >
+              <View>
+                <Text style={styles.archiveFooterLabel}>DOJO TRAINING LOG</Text>
+                <Text style={styles.archiveFooterValue}>
+                  {history.length ? `${history.length} RECENT RECORDS` : 'NO RECORDS YET'}
+                </Text>
+              </View>
+              <Text style={styles.linkArrow}>→</Text>
+            </Pressable>
           </View>
         </ScrollView>
       )}
@@ -465,69 +468,82 @@ export default function App() {
 
       {tab === 'records' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <Text style={styles.pageEyebrow}>PERSONAL ARCHIVE</Text>
-          <Text style={styles.pageTitle}>RECORDS</Text>
-          <Text style={styles.pageCopy}>성공뿐 아니라 멈춘 지점도 남겨. 잘못 저장한 기록은 눌러서 수정할 수 있어.</Text>
-          <View style={styles.stats}>
-            <Pressable style={styles.stat} onPress={editStartingRecord}>
-              <Text style={styles.statLabel}>시작 · 수정</Text>
-              <Text style={styles.statValue}>{state.firstBaemilgiMax ?? '—'}</Text>
-            </Pressable>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>현재</Text>
-              <Text style={styles.statValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>퀘스트</Text>
-              <Text style={styles.statValue}>{state.clearedLevel}</Text>
-            </View>
-          </View>
+          <View style={styles.archivePanel}>
+            <Text style={styles.pageEyebrow}>PERSONAL ARCHIVE / LOCAL</Text>
+            <Text style={styles.archiveTitle}>DOJO TRAINING LOG</Text>
+            <Text style={styles.pageCopy}>영광의 목록보다 반복의 장부. 성공과 멈춘 지점을 같은 기록으로 남겨.</Text>
 
-          <View style={styles.storageCard}>
-            <View style={styles.storageCardTop}>
-              <View style={styles.storageDot} />
-              <Text style={styles.storageTitle}>이 iPhone에 저장 중</Text>
-              <Text style={styles.storageInlineCode}>NO ACCOUNT</Text>
-            </View>
-            <Text style={styles.storageCopy}>앱을 닫거나 업데이트해도 기록은 유지돼. 다만 앱 삭제나 기기 변경 전에는 백업이 필요해.</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="현재 기록 백업하기"
-              style={styles.storageAction}
-              onPress={exportRecords}
-            >
-              <Text style={styles.storageActionText}>지금 기록 백업</Text>
-              <Text style={styles.linkArrow}>→</Text>
-            </Pressable>
-          </View>
-
-          <Text style={styles.sectionTitle}>최근 기록</Text>
-          {history.length === 0 ? (
-            <Text style={styles.pageCopy}>아직 기록이 없어.</Text>
-          ) : (
-            history.map(({ session, index }) => (
-              <Pressable key={`${session.at}-${index}`} style={styles.historyRow} onPress={() => editSession(index)}>
-                <View>
-                  <Text style={styles.historyMain}>
-                    {session.type === 'challenge'
-                      ? `레벨 ${session.level} · ${session.success ? '성공' : '실패'}`
-                      : `레벨 ${session.level} · 훈련`}
-                  </Text>
-                  <Text style={styles.historySub}>{new Date(session.at).toLocaleDateString('ko-KR')}</Text>
-                </View>
-                <View>
-                  <Text style={styles.historyTarget}>
-                    {session.type === 'challenge' && !session.success
-                      ? `${session.actualReps ?? 0} / ${session.target}`
-                      : session.target}
-                  </Text>
-                  <Text style={styles.historyEdit}>편집</Text>
-                </View>
+            <View style={styles.stats}>
+              <Pressable style={styles.stat} onPress={editStartingRecord}>
+                <Text style={styles.statLabel}>START / EDIT</Text>
+                <Text style={styles.statValue}>{state.firstBaemilgiMax ?? '—'}</Text>
               </Pressable>
-            ))
-          )}
-          <View style={{ height: 22 }} />
-          <Button label="전체 기록 백업" secondary onPress={exportRecords} />
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>CURRENT BEST</Text>
+                <Text style={styles.statValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
+              </View>
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>CLEARED</Text>
+                <Text style={styles.statValue}>{state.clearedLevel}</Text>
+              </View>
+            </View>
+
+            <View style={styles.archiveTableHead}>
+              <Text style={[styles.archiveHeadText, styles.archiveDateCol]}>DATE</Text>
+              <Text style={[styles.archiveHeadText, styles.archiveCodeCol]}>CODE</Text>
+              <Text style={[styles.archiveHeadText, styles.archiveRepsCol]}>REPS</Text>
+              <Text style={[styles.archiveHeadText, styles.archiveStatusCol]}>STATUS</Text>
+            </View>
+
+            {history.length === 0 ? (
+              <View style={styles.archiveEmpty}>
+                <Text style={styles.archiveEmptyTitle}>NO RECORDS YET.</Text>
+                <Text style={styles.archiveEmptyCopy}>첫 퀘스트를 시작하면 이곳에 수련 기록이 쌓여.</Text>
+              </View>
+            ) : (
+              history.map(({ session, index }) => {
+                const stopped = session.type === 'challenge' && !session.success;
+                const reps = stopped ? (session.actualReps ?? 0) : session.target;
+                return (
+                  <Pressable key={`${session.at}-${index}`} style={styles.archiveEntry} onPress={() => editSession(index)}>
+                    <Text style={[styles.archiveCell, styles.archiveDateCol]}>
+                      {new Date(session.at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace(/\.\s?/g, '.').replace(/\.$/, '')}
+                    </Text>
+                    <Text style={[styles.archiveCell, styles.archiveCodeCol]}>
+                      {session.type === 'training' ? `D-${String(session.level).padStart(3, '0')}` : `Q-${String(session.level).padStart(3, '0')}`}
+                    </Text>
+                    <Text style={[styles.archiveReps, styles.archiveRepsCol]}>{reps}</Text>
+                    <View style={styles.archiveStatusCol}>
+                      {session.type === 'training' ? (
+                        <View style={styles.drillTag}><Text style={styles.drillTagText}>DRILL</Text></View>
+                      ) : stopped ? (
+                        <View style={styles.stoppedTag}><Text style={styles.stoppedTagText}>STOPPED</Text></View>
+                      ) : (
+                        <View style={styles.stampSmall}><Text style={styles.stampSmallText}>CLEARED</Text></View>
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
+
+            <View style={styles.archiveQuote}>
+              <Text style={styles.archiveQuoteText}>“THE ARCHIVE IS A LEDGER OF REPETITION.”</Text>
+            </View>
+
+            <View style={styles.storageCard}>
+              <View style={styles.storageCardTop}>
+                <View style={styles.storageDot} />
+                <Text style={styles.storageTitle}>LOCAL RECORD</Text>
+                <Text style={styles.storageInlineCode}>NO ACCOUNT</Text>
+              </View>
+              <Text style={styles.storageCopy}>앱 삭제나 기기 변경 전에는 백업이 필요해.</Text>
+              <Pressable style={styles.storageAction} onPress={exportRecords}>
+                <Text style={styles.storageActionText}>EXPORT ARCHIVE</Text>
+                <Text style={styles.linkArrow}>→</Text>
+              </Pressable>
+            </View>
+          </View>
         </ScrollView>
       )}
 

@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  Vibration,
 } from 'react-native';
 import { useKeepAwake } from 'expo-keep-awake';
 import { formatSeconds, targetForLevel, trainingPlan } from './core';
@@ -18,7 +19,7 @@ import { C } from './styles';
 
 const mono = 'Courier New';
 const serif = 'Georgia';
-const metric = 'Arial';
+const metric = 'Avenir Next Condensed';
 
 function FocusHeader({ code, onClose, light = false }: { code: string; onClose: () => void; light?: boolean }) {
   return (
@@ -98,6 +99,7 @@ export function Challenge({
     if (flash) return;
     setFlashValue(target);
     setFlash('cleared');
+    Vibration.vibrate(35);
     setTimeout(() => onFinish(true, seconds, target), 720);
   };
 
@@ -117,6 +119,7 @@ export function Challenge({
     Keyboard.dismiss();
     setFlashValue(reps);
     setFlash('recorded');
+    Vibration.vibrate(20);
     setTimeout(() => onFinish(false, seconds, reps), 620);
   };
 
