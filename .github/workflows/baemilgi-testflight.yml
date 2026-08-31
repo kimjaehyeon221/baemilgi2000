@@ -1,6 +1,6 @@
 name: BAEMILGI 2000 TestFlight
 
-# One-time automatic run on creation; after the first verified handoff this is switched to manual-only.
+# One-time automatic run while the first verified TestFlight handoff is established.
 on:
   push:
     branches:
@@ -74,9 +74,9 @@ jobs:
           node - <<'NODE'
           const app = require('./app.json').expo;
           const eas = require('./eas.json');
-          if (app.ios?.bundleIdentifier !== 'com.magpie221.baemilgi2000') throw new Error('Unexpected iOS bundle identifier');
-          if (app.extra?.eas?.projectId !== '40d2bec8-1e2e-49ec-81cc-3c1c6a75c1a6') throw new Error('Unexpected EAS project ID');
-          if (eas.submit?.production?.ios?.ascAppId !== '6806938654') throw new Error('Unexpected App Store Connect app ID');
+          if (app.ios?.bundleIdentifier !== 'com.baemilgi2000.ios') throw new Error('Unexpected iOS bundle identifier');
+          if (app.extra?.eas?.projectId !== '732aa481-f0bf-491f-a9c8-39f45fdc4825') throw new Error('Unexpected EAS project ID');
+          if (eas.submit?.production?.ios?.ascAppId !== '6806588875') throw new Error('Unexpected App Store Connect app ID');
           console.log(`Validated ${app.name} ${app.version} / ${app.ios.bundleIdentifier}`);
           NODE
 
