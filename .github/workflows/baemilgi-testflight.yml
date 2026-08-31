@@ -1,12 +1,7 @@
 name: BAEMILGI 2000 TestFlight
 
-# One-time automatic run while the first verified TestFlight handoff is established.
+# Manual release gate: code commits and OTA updates never create a new TestFlight binary by accident.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/baemilgi-testflight.yml'
   workflow_dispatch:
 
 concurrency:
