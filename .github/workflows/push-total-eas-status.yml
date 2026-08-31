@@ -60,7 +60,7 @@ jobs:
             echo "===== WORKFLOW $ID ====="
             curl -fsS "https://api.expo.dev/v2/workflows/runs/$ID" \
               -H "Authorization: Bearer $EXPO_TOKEN_VALUE" \
-              | jq '{id:.data.id,status:.data.status,url:.data.url,jobs:[.data.jobs[]|{key,name,type,status,buildId,submissionId,errors}]}'
+              | jq '{id:.data.id,status:.data.status,jobs:[.data.jobs[]|{key,name,type,status,buildId,submissionId,errors}]}'
           done
 
           BUILD_IDS="$INPUT_BUILD_ID"
@@ -77,27 +77,22 @@ jobs:
               continue
             fi
 
-            printf '%s\n' "$JSON" | jq '{id,status,platform,distribution,buildProfile,error,createdAt,completedAt,logFileCount:(.logFiles // [] | length)}'
-
-            LOG_URLS=$(printf '%s\n' "$JSON" | jq -r '.logFiles[]?')
-            if [ -z "$LOG_URLS" ]; then
-              echo "No logFiles returned by EAS build:view."
-              continue
-            fi
+            printf '%s\n' "$JSON" | jq '{id,status,platform,distribution,buildProfile,error,logFileCount:(.logFiles // [] | length)}'
 
             LOG_INDEX=0
-            while IFS= read -r LOG_URL; do
+            printf '%s\n' "$JSON" | jq -r '.logFiles[]?' | while IFS= read -r LOG_URL; do
               [ -z "$LOG_URL" ] && continue
               LOG_INDEX=$((LOG_INDEX + 1))
+              LOG_PATH="/tmp/eas-${BUILD_ID}-${LOG_INDEX}.log"
+              curl -fsS "$LOG_URL" -o "$LOG_PATH" || { echo "Could not read log $LOG_INDEX"; continue; }
+              echo "--- log $LOG_INDEX metadata ---"
+              file "$LOG_PATH" || true
+              wc -c "$LOG_PATH" || true
               echo "--- relevant lines from log $LOG_INDEX ---"
-              LOG_BODY=$(curl -fsS "$LOG_URL" 2>/dev/null || true)
-              if [ -z "$LOG_BODY" ]; then
-                echo "Could not read this log file."
-                continue
-              fi
-              printf '%s\n' "$LOG_BODY" \
-                | grep -Eai 'resolve build configuration|error|failed|failure|credential|certificate|provision|signing|apple|distribution' \
+              tr -d '\000' < "$LOG_PATH" \
+                | strings \
+                | grep -Eai 'resolve build configuration|error|failed|failure|credential|certificate|provision|signing|apple|distribution|non-interactive|bundle identifier' \
                 | sed -E 's#https://[^ ]+#<url redacted>#g' \
-                | tail -n 80 || true
-            done <<< "$LOG_URLS"
+                | tail -n 120 || true
+            done
           done
