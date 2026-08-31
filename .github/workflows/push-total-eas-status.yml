@@ -32,6 +32,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install project dependencies for config resolution
+        run: npm install
+
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
         with:
