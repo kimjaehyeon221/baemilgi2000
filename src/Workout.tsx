@@ -37,14 +37,14 @@ export function Challenge({
 
   const saveFailure = () => {
     if (!failedReps.trim()) {
-      Alert.alert('몇 개까지 했는지 적어줘', '0개라면 0을 입력해도 돼.');
+      Alert.alert('멈춘 횟수를 적어줘', '0개라면 0을 입력해도 돼.');
       return;
     }
     const reps = Math.max(0, Math.floor(Number(failedReps) || 0));
     if (reps >= target) {
       Alert.alert(
         '목표 횟수 이상이야',
-        `${target}개를 완료했다면 뒤로 가서 ‘완료했어’를 눌러줘. 실패 기록은 ${Math.max(0, target - 1)}개까지 저장할 수 있어.`,
+        `${target}개를 완료했다면 뒤로 가서 COMPLETE를 눌러줘. 중단 기록은 ${Math.max(0, target - 1)}개까지 저장할 수 있어.`,
       );
       return;
     }
@@ -60,14 +60,14 @@ export function Challenge({
         keyboardVerticalOffset={8}
       >
         <View style={styles.workoutTop}>
-          <Button label="뒤로" secondary onPress={() => setRecordFailure(false)} />
+          <Button label="BACK" secondary dark onPress={() => setRecordFailure(false)} />
           <Text style={styles.workoutTitle}>QUEST / {String(level).padStart(3, '0')}</Text>
           <View style={{ width: 72 }} />
         </View>
         <View style={styles.workoutGrow}>
-          <Text style={styles.kicker}>CHECKPOINT / SAVE</Text>
-          <Text style={styles.failureQuestion}>몇 개까지{`\n`}성공했어?</Text>
-          <Text style={styles.workoutHint}>목표는 {target}개였어. 실패한 지점도 다음 기록에 남겨.</Text>
+          <Text style={styles.kicker}>TRAINING RECORD</Text>
+          <Text style={styles.failureQuestion}>STOPPED AT</Text>
+          <Text style={styles.workoutHint}>목표 {target}개. 멈춘 지점도 다음 수련을 위한 기록으로 남겨.</Text>
           <View style={[styles.inputRow, { width: '100%' }]}>
             <TextInput
               value={failedReps}
@@ -75,15 +75,15 @@ export function Challenge({
               keyboardType="number-pad"
               inputMode="numeric"
               placeholder="0"
-              placeholderTextColor="#A49C90"
-              style={styles.bigInput}
+              placeholderTextColor="#747878"
+              style={[styles.bigInput, { color: '#FAF9F6' }]}
               autoFocus
-              accessibilityLabel="실패 전까지 성공한 배밀기 개수"
+              accessibilityLabel="중단 전까지 성공한 배밀기 개수"
             />
-            <Text style={styles.inputUnit}>개</Text>
+            <Text style={[styles.inputUnit, { color: '#B8C7DC' }]}>REPS</Text>
           </View>
         </View>
-        <Button label="기록 저장" onPress={saveFailure} />
+        <Button label="SAVE RECORD" dark onPress={saveFailure} />
       </KeyboardAvoidingView>
     );
   }
@@ -92,20 +92,20 @@ export function Challenge({
     <SafeAreaView style={styles.root}>
       <View style={styles.workout}>
         <View style={styles.workoutTop}>
-          <Button label="취소" secondary onPress={onCancel} />
+          <Button label="CLOSE" secondary dark onPress={onCancel} />
           <Text style={styles.workoutTitle}>QUEST / {String(level).padStart(3, '0')}</Text>
           <View style={{ width: 72 }} />
         </View>
         <View style={styles.workoutGrow}>
-          <Text style={styles.kicker}>LIVE ATTEMPT / NO. {String(level).padStart(3, '0')}</Text>
+          <Text style={styles.kicker}>ACTIVE CHALLENGE</Text>
           <Text style={styles.workoutTarget}>{target}</Text>
-          <Text style={styles.workoutUnit}>연속 배밀기</Text>
-          <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
-          <Text style={styles.workoutHint}>팔을 편 채 엉덩이를 뒤·위로 보내 돌아오면 1회. 통증이나 어지럼이 있으면 중단해.</Text>
+          <Text style={styles.workoutUnit}>TARGET · CONTINUOUS REPS</Text>
+          <Text style={styles.timer}>{formatSeconds(seconds)}  ELAPSED</Text>
+          <Text style={styles.workoutHint}>휴대폰은 목표와 시간만 보여줘. 직접 횟수를 세고, 자세가 무너지거나 불편하면 STOP HERE.</Text>
         </View>
         <View style={{ gap: 9 }}>
-          <Button label="완료했어" onPress={() => onFinish(true, seconds, target)} />
-          <Button label="여기까지" secondary onPress={() => setRecordFailure(true)} />
+          <Button label="COMPLETE" dark onPress={() => onFinish(true, seconds, target)} />
+          <Button label="STOP HERE" secondary dark onPress={() => setRecordFailure(true)} />
         </View>
       </View>
     </SafeAreaView>
@@ -158,24 +158,24 @@ export function Training({
     <SafeAreaView style={styles.root}>
       <View style={styles.workout}>
         <View style={styles.workoutTop}>
-          <Button label="취소" secondary onPress={onCancel} />
+          <Button label="CLOSE" secondary dark onPress={onCancel} />
           <Text style={styles.workoutTitle}>DRILL / {String(level).padStart(3, '0')}</Text>
           <View style={{ width: 72 }} />
         </View>
         <View style={styles.workoutGrow}>
-          <Text style={styles.kicker}>{rest ? '휴식' : `${setNumber} / ${plan.sets} 세트`}</Text>
-          <Text style={styles.workoutTarget}>{rest ? restLeft : plan.reps}</Text>
-          <Text style={styles.workoutUnit}>{rest ? '초' : '개'}</Text>
-          <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
-          <Text style={styles.workoutHint}>현재 확인된 기록을 바탕으로 만든 보조 훈련이야. 목표 횟수를 무리해서 한 세트에 따라갈 필요는 없어.</Text>
+          <Text style={styles.kicker}>{rest ? 'REST' : `SET ${setNumber} / ${plan.sets}`}</Text>
+          <Text style={styles.workoutTarget}>{rest ? String(restLeft).padStart(2, '0') : plan.reps}</Text>
+          <Text style={styles.workoutUnit}>{rest ? 'SECONDS' : 'REPS'}</Text>
+          <Text style={styles.timer}>{formatSeconds(seconds)}  SESSION</Text>
+          <Text style={styles.workoutHint}>현재 확인된 기록을 바탕으로 만든 배밀기 보조 훈련이야. 한 세트를 무리해서 끝낼 필요는 없어.</Text>
         </View>
         <Button
-          label={rest ? '휴식 건너뛰기' : setNumber >= plan.sets ? '훈련 완료' : '세트 완료'}
+          label={rest ? 'SKIP REST' : setNumber >= plan.sets ? 'COMPLETE TRAINING' : 'COMPLETE SET'}
           secondary={rest}
-          onPress={() => rest ? (setRest(false), setRestLeft(plan.rest)) : finishSet()}
+          dark
+          onPress={() => (rest ? (setRest(false), setRestLeft(plan.rest)) : finishSet())}
         />
       </View>
     </SafeAreaView>
   );
 }
-
