@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -7,6 +8,7 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  StatusBar,
   Text,
   TextInput,
   View,
@@ -25,11 +27,24 @@ import { Button, FormStep } from './ui';
 const digitsOnly = (value: string, maxLength = 4) =>
   value.replace(/[^0-9]/g, '').slice(0, maxLength);
 
-function SetupTop({ step, total }: { step: number; total: number }) {
+function SetupTop({ step, onBack }: { step: number; onBack?: () => void }) {
   return (
     <View style={styles.setupTop}>
-      <Text style={styles.setupBrand}>BAEMILGI / 2000</Text>
-      <Text style={styles.setupCount}>STEP {step} — {total}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.setupBrand}>BAEMILGI / 2000</Text>
+      </View>
+      <Text style={styles.setupCount}>SETUP / {String(step).padStart(2, '0')}</Text>
+      {onBack ? (
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="이전 단계"
+          hitSlop={6}
+          style={styles.setupBack}
+        >
+          <Text style={styles.setupBackText}>←</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -58,6 +73,14 @@ function ChoiceRow({
   );
 }
 
+const openReference = async (url: string) => {
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert('링크를 열 수 없어', '네트워크 연결을 확인한 뒤 다시 시도해줘.');
+  }
+};
+
 export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   const [step, setStep] = useState<
     'intro' | 'experience' | 'form' | 'measureIntro' | 'measureActive' | 'measureResult' | 'experienced'
@@ -71,7 +94,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         <View style={styles.onboarding}>
           <View style={styles.introTop}>
             <Text style={styles.introBrand}>BAEMILGI / 2000</Text>
-            <Text style={styles.introYear}>EST. 1911</Text>
+            <Text style={styles.introYear}>GAMA / 1911 ARCHIVE</Text>
           </View>
           <View style={styles.introGrow}>
             <View style={styles.introSignal}><Text style={styles.introSignalText}>QUEST SYSTEM / 001—200</Text></View>
@@ -97,7 +120,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     return (
       <SafeAreaView style={styles.root}>
         <View style={styles.onboarding}>
-          <SetupTop step={1} total={4} />
+          <SetupTop step={1} onBack={() => setStep('intro')} />
           <View style={styles.setupBody}>
             <Text style={styles.question}>배밀기를 해본 적 있어?</Text>
             <Text style={styles.copy}>처음이라면 자세부터 확인하고, 해봤다면 지금 최고 기록에서 시작해.</Text>
@@ -115,7 +138,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     return (
       <SafeAreaView style={styles.root}>
         <View style={styles.onboarding}>
-          <SetupTop step={2} total={4} />
+          <SetupTop step={2} onBack={() => setStep('experience')} />
           <ScrollView contentContainerStyle={styles.setupScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.question}>이 앱에서 1회로 세는 자세</Text>
             <Text style={styles.copy}>횟수보다 먼저, 매번 같은 동작을 1회로 세는 기준을 맞춰.</Text>
@@ -126,7 +149,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
               <FormStep n="4" title="팔을 편 채 뒤로" body="팔꿈치를 다시 굽히지 않고 엉덩이를 뒤·위로 보내 복귀." />
             </View>
             <Text style={styles.note}>되돌아올 때 팔꿈치를 다시 굽히는 Dive Bomber 방식은 이 앱의 기준에서 제외해.</Text>
-            <Button label="자세 영상 보기" secondary onPress={() => Linking.openURL(FORM_VIDEO_URL)} />
+            <Button label="자세 영상 보기" secondary onPress={() => openReference(FORM_VIDEO_URL)} />
             <View style={{ height: 10 }} />
             <Button label="직접 측정하러 가기" onPress={() => setStep('measureIntro')} />
           </ScrollView>
@@ -139,7 +162,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     return (
       <SafeAreaView style={styles.root}>
         <View style={styles.onboarding}>
-        <SetupTop step={3} total={4} />
+        <SetupTop step={3} onBack={() => setStep('form')} />
         <View style={styles.setupBody}>
           <Text style={styles.question}>앱이 정하지 않고,{`\n`}직접 측정해.</Text>
           <Text style={styles.copy}>목표 숫자는 보여주지 않을게. 같은 자세를 유지할 수 있는 만큼만 하고, 직접 센 횟수를 기록해.</Text>
@@ -152,7 +175,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         </View>
         <View style={{ gap: 9 }}>
           <Button label="목표 없이 측정 시작" onPress={() => setStep('measureActive')} />
-          <Button label="자세 영상 다시 보기" secondary onPress={() => Linking.openURL(FORM_VIDEO_URL)} />
+          <Button label="자세 영상 다시 보기" secondary onPress={() => openReference(FORM_VIDEO_URL)} />
         </View>
         </View>
       </SafeAreaView>
@@ -184,7 +207,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={8}
       >
-        <SetupTop step={2} total={2} />
+        <SetupTop step={2} onBack={() => setStep('experience')} />
         <View style={styles.setupBody}>
           <Text style={styles.question}>지금 최고 기록은?</Text>
           <Text style={styles.copy}>공식 자세로 쉬지 않고 이어서 해낸 최고 횟수를 적어줘.</Text>
@@ -233,7 +256,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={8}
     >
-      <SetupTop step={4} total={4} />
+      <SetupTop step={4} onBack={() => setStep('measureIntro')} />
       <View style={styles.setupBody}>
         <Text style={styles.recommendLabel}>MEASUREMENT COMPLETE</Text>
         <Text style={styles.question}>정확한 자세로{`\n`}몇 개 했어?</Text>
@@ -276,6 +299,7 @@ function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinis
 
   return (
     <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.workout}>
         <View style={styles.workoutTop}>
           <Button label="취소" secondary onPress={onCancel} />

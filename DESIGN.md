@@ -206,3 +206,16 @@ When implementing in Expo / React Native:
 ## 13. Current release intent
 
 The current redesign is a real-device validation pass. If the Gi White / Judo Blue / Black direction feels correct on iPhone, continue refining tactile details such as the Quest Band, stamp motion, haptics, and archive texture rather than returning to broad art-direction exploration.
+
+
+## 13. Release-grade interaction rules
+
+- Functional information must be true. Never copy fake `STREAK`, calories, heart rate, calibration, percentage, unrelated drills or other prototype-only metrics into production.
+- Primary controls should provide at least a 44×44pt hit region; primary workout actions target 56pt height.
+- Long-term records must remain reachable. The archive loads older entries in batches instead of silently truncating history.
+- A storage read failure must never fall through into a fresh state that can overwrite an existing archive.
+- OTA updates must never force an in-session reload. Updates may download on launch and become active on a later launch.
+- Onboarding must support going backward before committing the baseline.
+- Historical references must be labeled as historical references. Never imply that BAEMILGI 2000 was established in 1911.
+- Decorative progression bands and micro-labels must not create noisy VoiceOver output. Group meaningful metrics and label editable archive rows as actions.
+- The visual language may be technical, but important operational text should remain readable on a real iPhone. Tiny prototype labels are not production UI.

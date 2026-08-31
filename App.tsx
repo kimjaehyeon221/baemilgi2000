@@ -13,7 +13,6 @@ import {
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Updates from 'expo-updates';
 import {
   AppState,
   GAMA_SOURCE_URL,
@@ -31,7 +30,6 @@ import { Onboarding } from './src/Onboarding';
 import { Challenge, Training } from './src/Workout';
 
 export default function App() {
-  const { isUpdatePending } = Updates.useUpdates();
   const [state, setState] = useState<AppState | null>(null);
   const [tab, setTab] = useState<'home' | 'quests' | 'records'>('home');
   const [infoOpen, setInfoOpen] = useState(false);
@@ -43,18 +41,20 @@ export default function App() {
   const [trainingLevel, setTrainingLevel] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [loadError, setLoadError] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(30);
 
-  useEffect(() => {
-    if (isUpdatePending) Updates.reloadAsync().catch(() => {});
-  }, [isUpdatePending]);
 
-  useEffect(() => {
+  const loadStoredState = () => {
+    setLoadError(false);
+    setState(null);
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => setState(raw ? safeState(JSON.parse(raw)) : initialState))
-      .catch(() => {
-        Alert.alert('기록을 읽지 못했어', '기존 기록을 덮어쓰지 않도록 앱을 다시 실행해줘.');
-        setState(initialState);
-      });
+      .catch(() => setLoadError(true));
+  };
+
+  useEffect(() => {
+    loadStoredState();
   }, []);
 
   const commit = async (next: AppState) => {
@@ -71,6 +71,21 @@ export default function App() {
     }
   };
 
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.onboarding}>
+          <View style={styles.setupBody}>
+            <Text style={styles.pageEyebrow}>LOCAL RECORD / READ ERROR</Text>
+            <Text style={styles.question}>기록을 열지 못했어.</Text>
+            <Text style={styles.copy}>기존 기록을 덮어쓰지 않도록 새 기록을 시작하지 않을게. 앱을 다시 읽어본 뒤에도 계속되면 지원으로 알려줘.</Text>
+          </View>
+          <Button label="다시 시도" onPress={loadStoredState} />
+        </View>
+      </SafeAreaView>
+    );
+  }
   if (!state) return <SafeAreaView style={styles.root} />;
   if (!state.onboarded) return <Onboarding onDone={commit} />;
 
@@ -155,10 +170,18 @@ export default function App() {
     if (session.type !== 'challenge') return best;
     return Math.max(best, session.success ? session.target : session.actualReps ?? 0);
   }, Math.max(state.firstBaemilgiMax ?? 0, state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0));
-  const history = state.sessions
+  const allHistory = state.sessions
     .map((session, index) => ({ session, index }))
-    .reverse()
-    .slice(0, 30);
+    .reverse();
+  const history = allHistory.slice(0, historyLimit);
+
+  const openExternal = async (url: string, label: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(`${label}을 열 수 없어`, '네트워크 연결을 확인한 뒤 다시 시도해줘.');
+    }
+  };
 
   const nearbyStart = Math.max(1, nextLevel - 3);
   const nearbyEnd = Math.min(200, nearbyStart + 11);
@@ -239,6 +262,10 @@ export default function App() {
           text: '저장',
           onPress: (value?: string) => {
             const actualReps = Math.max(0, Math.floor(Number(value) || 0));
+            if (actualReps >= session.target) {
+              Alert.alert('목표 이상을 기록했어', `${session.target}개를 완료했다면 ‘성공으로 수정’을 선택해줘.`);
+              return;
+            }
             saveEditedSession(index, { success: false, actualReps });
           },
         },
@@ -331,7 +358,11 @@ export default function App() {
               <Text style={styles.dojoMetaRight}>{state.clearedLevel} / 200 CLEARED</Text>
             </View>
 
-            <View style={styles.dojoHero}>
+            <View
+              style={styles.dojoHero}
+              accessible
+              accessibilityLabel={`다음 목표 ${nextTarget}개. 현재 최고 기록 ${hasPersonalRecord ? `${currentReps}개` : '없음'}`}
+            >
               <Text style={styles.dojoHeroNumber}>{nextTarget}</Text>
               <View style={styles.dojoCurrentBestRow}>
                 <Text style={styles.dojoCurrentBestLabel}>CURRENT BEST:</Text>
@@ -339,7 +370,7 @@ export default function App() {
               </View>
             </View>
 
-            <View style={styles.questBandStage}>
+            <View style={styles.questBandStage} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <View style={styles.questBandStitch} />
               <View style={styles.questBand}>
                 {nearbyLevels.slice(0, 7).map((level) => {
@@ -373,7 +404,7 @@ export default function App() {
               <View>
                 <Text style={styles.archiveFooterLabel}>DOJO TRAINING LOG</Text>
                 <Text style={styles.archiveFooterValue}>
-                  {history.length ? `${history.length} RECENT RECORDS` : 'NO RECORDS YET'}
+                  {state.sessions.length ? `${state.sessions.length} TOTAL RECORDS` : 'NO RECORDS YET'}
                 </Text>
               </View>
               <Text style={styles.linkArrow}>→</Text>
@@ -474,7 +505,13 @@ export default function App() {
             <Text style={styles.pageCopy}>영광의 목록보다 반복의 장부. 성공과 멈춘 지점을 같은 기록으로 남겨.</Text>
 
             <View style={styles.stats}>
-              <Pressable style={styles.stat} onPress={editStartingRecord}>
+              <Pressable
+                style={styles.stat}
+                onPress={editStartingRecord}
+                accessibilityRole="button"
+                accessibilityLabel={`시작 기록 ${state.firstBaemilgiMax ?? '없음'}. 수정`}
+                accessibilityHint="두 번 탭하여 처음 입력한 최고 기록을 수정합니다"
+              >
                 <Text style={styles.statLabel}>START / EDIT</Text>
                 <Text style={styles.statValue}>{state.firstBaemilgiMax ?? '—'}</Text>
               </Pressable>
@@ -505,7 +542,14 @@ export default function App() {
                 const stopped = session.type === 'challenge' && !session.success;
                 const reps = stopped ? (session.actualReps ?? 0) : session.target;
                 return (
-                  <Pressable key={`${session.at}-${index}`} style={styles.archiveEntry} onPress={() => editSession(index)}>
+                  <Pressable
+                    key={`${session.at}-${index}`}
+                    style={styles.archiveEntry}
+                    onPress={() => editSession(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${session.type === 'training' ? '훈련' : '퀘스트'} 레벨 ${session.level}, ${reps}개, ${session.type === 'training' ? '훈련 완료' : stopped ? '중단 기록' : '성공 기록'}`}
+                    accessibilityHint="두 번 탭하여 기록을 편집합니다"
+                  >
                     <Text style={[styles.archiveCell, styles.archiveDateCol]}>
                       {new Date(session.at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace(/\.\s?/g, '.').replace(/\.$/, '')}
                     </Text>
@@ -526,6 +570,16 @@ export default function App() {
                 );
               })
             )}
+
+            {history.length < allHistory.length ? (
+              <View style={{ marginTop: 16 }}>
+                <Button
+                  label={`이전 기록 더 보기 · ${allHistory.length - history.length}개 남음`}
+                  secondary
+                  onPress={() => setHistoryLimit((value) => Math.min(allHistory.length, value + 30))}
+                />
+              </View>
+            ) : null}
 
             <View style={styles.archiveQuote}>
               <Text style={styles.archiveQuoteText}>“THE ARCHIVE IS A LEDGER OF REPETITION.”</Text>
@@ -554,6 +608,7 @@ export default function App() {
             onPress={() => setTab(name)}
             style={[styles.navButton, tab === name && styles.navButtonActive]}
             accessibilityRole="tab"
+            accessibilityLabel={name === 'home' ? '홈' : name === 'quests' ? '퀘스트' : '기록'}
             accessibilityState={{ selected: tab === name }}
           >
             <Text style={[styles.navText, tab === name && styles.navTextActive]}>
@@ -574,8 +629,8 @@ export default function App() {
               <Button label="백업 복원" secondary onPress={() => { setInfoOpen(false); setRestoreOpen(true); }} />
               <Button label="공식 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
               <Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} />
-              <Button label="개인정보 처리방침" secondary onPress={() => Linking.openURL(PRIVACY_URL)} />
-              <Button label="지원" secondary onPress={() => Linking.openURL(SUPPORT_URL)} />
+              <Button label="개인정보 처리방침" secondary onPress={() => openExternal(PRIVACY_URL, '개인정보 처리방침')} />
+              <Button label="지원" secondary onPress={() => openExternal(SUPPORT_URL, '지원 페이지')} />
               <Button label="기록 초기화" danger onPress={reset} />
               <Button label="닫기" onPress={() => setInfoOpen(false)} />
             </View>
@@ -597,6 +652,7 @@ export default function App() {
               placeholder="백업 JSON 붙여넣기"
               placeholderTextColor="#A49C90"
               style={styles.restoreInput}
+              accessibilityLabel="백업 JSON 입력"
             />
             <Button label="기록 복원" onPress={restoreRecords} />
             <View style={{ height: 9 }} />
@@ -626,7 +682,7 @@ export default function App() {
             <Text style={styles.sheetCopy}>Great Gama는 20세기 초를 대표하는 프로 레슬러야. 1911년 T. M. Alexander는 그가 약 3시간 동안 2,000회가 넘는 Dand를 하는 것을 세었다고 기록했어.</Text>
             <Text style={styles.sheetCopy}>현대식 공인 기록이나 운동 권장량은 아니야. 이 앱에서는 200단계의 최종 목표로 사용해.</Text>
             <Text style={[styles.sheetTitle, { fontSize: 22, marginVertical: 18 }]}>1년 뒤, 몇 개까지 갈 수 있을까?</Text>
-            <Button label="역사적 기록 보기" secondary onPress={() => Linking.openURL(GAMA_SOURCE_URL)} />
+            <Button label="역사적 기록 보기" secondary onPress={() => openExternal(GAMA_SOURCE_URL, '역사적 기록')} />
             <View style={{ height: 9 }} />
             <Button label="닫기" onPress={() => setWhyOpen(false)} />
           </View>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { C, styles } from './styles';
+import { FONT } from './typography';
 
 export function Button({
   label,
@@ -9,6 +10,7 @@ export function Button({
   danger = false,
   disabled = false,
   dark = false,
+  accessibilityHint,
 }: {
   label: string;
   onPress: () => void;
@@ -16,6 +18,7 @@ export function Button({
   danger?: boolean;
   disabled?: boolean;
   dark?: boolean;
+  accessibilityHint?: string;
 }) {
   return (
     <Pressable
@@ -31,6 +34,8 @@ export function Button({
         pressed && { opacity: 0.72, transform: [{ scale: 0.985 }] },
       ]}
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
     >
       <Text
@@ -51,42 +56,12 @@ export function Button({
 
 export function Header({ onInfo }: { onInfo: () => void }) {
   return (
-    <View
-      style={{
-        minHeight: 62,
-        paddingHorizontal: 24,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: C.gi,
-        borderBottomWidth: 1,
-        borderColor: C.line,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={{ width: 19, height: 4, backgroundColor: C.blue }} />
+    <View style={styles.header}>
+      <View style={styles.brandLockup} accessibilityRole="header">
+        <View style={{ width: 20, height: 4, backgroundColor: C.blue }} />
         <View>
-          <Text
-            style={{
-              color: C.ink,
-              fontSize: 13,
-              fontFamily: 'Courier New',
-              fontWeight: '900',
-              letterSpacing: 1.1,
-            }}
-          >
-            BAEMILGI 2000
-          </Text>
-          <Text
-            style={{
-              color: C.faint,
-              fontSize: 7,
-              fontFamily: 'Courier New',
-              fontWeight: '900',
-              letterSpacing: 1.4,
-              marginTop: 2,
-            }}
-          >
+          <Text style={styles.brand}>BAEMILGI 2000</Text>
+          <Text style={{ color: C.faint, fontSize: 10, fontFamily: FONT.data, fontWeight: '800', letterSpacing: 1, marginTop: 1 }}>
             DOJO TRAINING LOG
           </Text>
         </View>
@@ -95,30 +70,10 @@ export function Header({ onInfo }: { onInfo: () => void }) {
         onPress={onInfo}
         accessibilityRole="button"
         accessibilityLabel="정보 및 설정"
-        hitSlop={8}
-        style={({ pressed }) => ({
-          minWidth: 48,
-          minHeight: 36,
-          paddingHorizontal: 9,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 1,
-          borderStyle: 'dashed',
-          borderColor: C.line,
-          opacity: pressed ? 0.62 : 1,
-        })}
+        hitSlop={6}
+        style={({ pressed }) => [styles.circle, pressed && { opacity: 0.62, transform: [{ scale: 0.97 }] }]}
       >
-        <Text
-          style={{
-            color: C.ink,
-            fontSize: 8,
-            fontFamily: 'Courier New',
-            fontWeight: '900',
-            letterSpacing: 1,
-          }}
-        >
-          INFO
-        </Text>
+        <Text style={[styles.circleText, { fontFamily: FONT.data }]}>INFO</Text>
       </Pressable>
     </View>
   );

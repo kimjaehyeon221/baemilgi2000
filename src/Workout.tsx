@@ -8,6 +8,7 @@ import {
   Pressable,
   SafeAreaView,
   StyleSheet,
+  StatusBar,
   Text,
   TextInput,
   View,
@@ -53,7 +54,14 @@ function StampFlash({ kind, value }: { kind: 'cleared' | 'recorded'; value: numb
 
   const cleared = kind === 'cleared';
   return (
-    <View style={[S.flash, cleared ? S.flashLight : S.flashLight]} pointerEvents="none">
+    <View
+      style={[S.flash, S.flashLight]}
+      pointerEvents="none"
+      accessible
+      accessibilityLiveRegion="assertive"
+      accessibilityLabel={`${value}개, ${cleared ? '성공 기록' : '중단 기록'} 저장 중`}
+    >
+      <StatusBar barStyle="dark-content" />
       <Text style={S.flashValue}>{value}</Text>
       <Animated.View
         style={[
@@ -103,7 +111,7 @@ export function Challenge({
     setFlashValue(target);
     setFlash('cleared');
     Vibration.vibrate(35);
-    setTimeout(() => onFinish(true, seconds, target), 720);
+    setTimeout(() => onFinish(true, seconds, target), 950);
   };
 
   const saveFailure = () => {
@@ -123,7 +131,7 @@ export function Challenge({
     setFlashValue(reps);
     setFlash('recorded');
     Vibration.vibrate(20);
-    setTimeout(() => onFinish(false, seconds, reps), 620);
+    setTimeout(() => onFinish(false, seconds, reps), 850);
   };
 
   if (flash) return <StampFlash kind={flash} value={flashValue} />;
@@ -131,6 +139,7 @@ export function Challenge({
   if (recordFailure) {
     return (
       <SafeAreaView style={S.logRoot}>
+        <StatusBar barStyle="dark-content" />
         <KeyboardAvoidingView
           style={S.logPage}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -190,6 +199,7 @@ export function Challenge({
 
   return (
     <SafeAreaView style={S.activeRoot}>
+      <StatusBar barStyle="light-content" />
       <View style={S.activePage}>
         <FocusHeader code={`QUEST / ${String(level).padStart(3, '0')}`} onClose={onCancel} />
 
@@ -206,13 +216,13 @@ export function Challenge({
           <Text style={S.elapsed}>{formatSeconds(seconds)}  ELAPSED</Text>
         </View>
 
-        <Text style={S.activeHint}>직접 횟수를 세고, 자세가 무너지면 STOP HERE. 이 화면은 목표와 시간만 잡아준다.</Text>
+        <Text style={S.activeHint}>직접 세어. 자세가 무너지거나 불편하면 STOP HERE.</Text>
 
         <View style={S.activeActions}>
-          <Pressable style={({ pressed }) => [S.completeAction, pressed && S.pressed]} onPress={finishCleared}>
+          <Pressable accessibilityRole="button" accessibilityLabel="퀘스트 완료 기록" style={({ pressed }) => [S.completeAction, pressed && S.pressed]} onPress={finishCleared}>
             <Text style={S.completeActionText}>COMPLETE</Text>
           </Pressable>
-          <Pressable style={({ pressed }) => [S.stopAction, pressed && S.pressed]} onPress={() => setRecordFailure(true)}>
+          <Pressable accessibilityRole="button" accessibilityLabel="여기까지 기록" style={({ pressed }) => [S.stopAction, pressed && S.pressed]} onPress={() => setRecordFailure(true)}>
             <Text style={S.stopActionText}>STOP HERE</Text>
           </Pressable>
         </View>
@@ -265,6 +275,7 @@ export function Training({
 
   return (
     <SafeAreaView style={S.activeRoot}>
+      <StatusBar barStyle="light-content" />
       <View style={S.activePage}>
         <FocusHeader code={`DRILL / ${String(level).padStart(3, '0')}`} onClose={onCancel} />
 

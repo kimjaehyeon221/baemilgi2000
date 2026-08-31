@@ -98,7 +98,11 @@ function safeSession(raw: any): Session | null {
   const success = Boolean(raw?.success);
   const parsedActual = Number(raw?.actualReps);
   const actualReps = type === 'challenge'
-    ? (Number.isFinite(parsedActual) ? Math.max(0, Math.floor(parsedActual)) : success ? target : undefined)
+    ? success
+      ? target
+      : Number.isFinite(parsedActual)
+        ? Math.min(Math.max(0, target - 1), Math.max(0, Math.floor(parsedActual)))
+        : undefined
     : undefined;
   return { at, type, level, target, success, seconds, actualReps };
 }
@@ -124,14 +128,15 @@ export function safeState(raw: any): AppState {
     ? raw.sessions.map(safeSession).filter((item: Session | null): item is Session => item !== null)
     : [];
   const minimumSelected = clearedLevel >= 200 ? 200 : clearedLevel + 1;
-  return {
+  const candidate: AppState = {
     onboarded: Boolean(raw?.onboarded),
-    pushupMax: Number.isFinite(raw?.pushupMax) ? Math.max(0, Math.floor(raw.pushupMax)) : null,
-    firstBaemilgiMax: Number.isFinite(raw?.firstBaemilgiMax) ? Math.max(0, Math.floor(raw.firstBaemilgiMax)) : null,
+    pushupMax: Number.isFinite(raw?.pushupMax) ? Math.min(2000, Math.max(0, Math.floor(raw.pushupMax))) : null,
+    firstBaemilgiMax: Number.isFinite(raw?.firstBaemilgiMax) ? Math.min(2000, Math.max(0, Math.floor(raw.firstBaemilgiMax))) : null,
     clearedLevel,
     selectedLevel: Math.max(minimumSelected, Math.min(200, Number(raw?.selectedLevel) || 1)),
     sessions,
   };
+  return recomputeProgress(candidate);
 }
 
 export function formatSeconds(seconds: number) {
