@@ -28,6 +28,7 @@ import { styles } from './src/styles';
 import { Button, FormStep, Header } from './src/ui';
 import { Onboarding } from './src/Onboarding';
 import { Challenge, Training } from './src/Workout';
+import { BAEMILGI_MARTIAL_COPY, CHAPTER_GUIDE_COPY, TRAINING_CHAPTERS, chapterForLevel } from './src/chapters';
 
 export default function App() {
   const [state, setState] = useState<AppState | null>(null);
@@ -196,6 +197,7 @@ export default function App() {
     (_, i) => nearbyStart + i,
   );
   const milestoneLevels = [50, 100, 130, 150, 175, 200];
+  const currentChapter = chapterForLevel(nextLevel);
 
   const exportRecords = async () => {
     const payload = {
@@ -381,17 +383,18 @@ export default function App() {
       {tab === 'home' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <View style={styles.homeCanvas}>
-            <View style={styles.storageInline} accessibilityLiveRegion="polite">
-              <View style={[styles.storageDot, saveStatus === 'error' && styles.storageDotError]} />
-              <Text style={styles.storageInlineText}>
-                {saveStatus === 'saving' ? '저장 중' : saveStatus === 'error' ? '저장 확인 필요' : 'LOCAL TRAINING RECORD'}
-              </Text>
-              <Text style={styles.storageInlineCode}>DOJO / ON</Text>
-            </View>
+            {saveStatus !== 'saved' ? (
+              <View style={styles.storageInline} accessibilityLiveRegion="polite">
+                <View style={[styles.storageDot, saveStatus === 'error' && styles.storageDotError]} />
+                <Text style={styles.storageInlineText}>
+                  {saveStatus === 'saving' ? '기록 저장 중' : '저장을 확인해줘'}
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.dojoMeta}>
               <Text style={styles.dojoQuestCode}>QUEST / {String(nextLevel).padStart(3, '0')}</Text>
-              <Text style={styles.dojoMetaRight}>{state.clearedLevel} / 200 CLEARED</Text>
+              <Text style={[styles.dojoMetaRight, { color: currentChapter.id === 'white' ? '#686A68' : currentChapter.color }]}>{currentChapter.name} CHAPTER</Text>
             </View>
 
             <View
@@ -406,6 +409,11 @@ export default function App() {
               </View>
             </View>
 
+            <View style={[styles.chapterRibbon, { backgroundColor: currentChapter.color }]} accessible accessibilityLabel={`${currentChapter.name} 훈련 챕터, 퀘스트 ${currentChapter.startLevel}부터 ${currentChapter.endLevel}`}>
+              <Text style={[styles.chapterRibbonName, { color: currentChapter.textColor }]}>{currentChapter.name}</Text>
+              <Text style={[styles.chapterRibbonMeta, { color: currentChapter.textColor }]}>{currentChapter.label} · Q{String(currentChapter.startLevel).padStart(3, '0')}—{String(currentChapter.endLevel).padStart(3, '0')}</Text>
+            </View>
+
             <View style={styles.questBandStage} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <View style={styles.questBandStitch} />
               <View style={styles.questBand}>
@@ -413,7 +421,7 @@ export default function App() {
                   const active = level === nextLevel;
                   const done = level <= state.clearedLevel;
                   return (
-                    <View key={level} style={[styles.questBandItem, active && styles.questBandActive]}>
+                    <View key={level} style={[styles.questBandItem, active && styles.questBandActive, active && { borderBottomColor: currentChapter.color }]}>
                       {active && <View style={styles.questBandTape} />}
                       <Text style={[
                         styles.questBandItemText,
@@ -453,7 +461,30 @@ export default function App() {
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <Text style={styles.pageEyebrow}>ROUTE / 001—200</Text>
           <Text style={styles.pageTitle}>QUEST MAP</Text>
-          <Text style={styles.pageCopy}>200개 칸을 훑는 대신, 지금 필요한 단계와 앞으로 만날 관문만 보여줄게.</Text>
+          <Text style={styles.pageCopy}>200개를 다 펼쳐놓지 않고, 지금의 훈련 챕터와 가까운 퀘스트만 보여줘.</Text>
+
+          <Pressable
+            style={styles.chapterGuide}
+            onPress={() => Alert.alert('5색 훈련 챕터', CHAPTER_GUIDE_COPY)}
+            accessibilityRole="button"
+            accessibilityLabel="5색 훈련 챕터 안내"
+          >
+            <View style={styles.chapterGuideHeader}>
+              <Text style={styles.chapterGuideTitle}>TRAINING CHAPTERS</Text>
+              <Text style={styles.chapterGuideHint}>공식 띠 등급 아님 · 안내 →</Text>
+            </View>
+            <View style={styles.chapterSwatches}>
+              {TRAINING_CHAPTERS.map((chapter) => {
+                const active = chapter.id === currentChapter.id;
+                return (
+                  <View key={chapter.id} style={styles.chapterSwatchItem}>
+                    <View style={[styles.chapterSwatch, { backgroundColor: chapter.color }, active && styles.chapterSwatchActive]} />
+                    <Text style={[styles.chapterSwatchLabel, active && styles.chapterSwatchLabelActive]}>{chapter.name}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </Pressable>
 
           <View style={styles.questHero}>
             <Text style={[styles.kicker, styles.kickerOnAccent]}>현재 위치</Text>
@@ -684,7 +715,9 @@ export default function App() {
             <View style={{ gap: 9 }}>
               <Button label="전체 기록 백업" secondary onPress={exportRecords} />
               <Button label="백업 복원" secondary onPress={() => { setInfoOpen(false); setRestoreOpen(true); }} />
-              <Button label="공식 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
+              <Button label="배밀기와 무도" secondary onPress={() => Alert.alert('배밀기와 무도', BAEMILGI_MARTIAL_COPY)} />
+              <Button label="5색 훈련 챕터" secondary onPress={() => Alert.alert('5색 훈련 챕터', CHAPTER_GUIDE_COPY)} />
+              <Button label="배밀기 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
               <Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} />
               <Button label="개인정보 처리방침" secondary onPress={() => openExternal(PRIVACY_URL, '개인정보 처리방침')} />
               <Button label="지원" secondary onPress={() => openExternal(SUPPORT_URL, '지원 페이지')} />
@@ -721,7 +754,8 @@ export default function App() {
       <Modal visible={formOpen} transparent animationType="slide" onRequestClose={() => setFormOpen(false)}>
         <View style={styles.overlay}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>공식 배밀기 자세</Text>
+            <Text style={styles.sheetTitle}>배밀기 자세</Text>
+            <Text style={styles.sheetCopy}>힌두 푸시업이라고도 불리는 동작이야. 유도 훈련에서도 기초 체력 동작으로 쓰이지만, 아래 안내는 특정 협회의 공식 기술 규정이 아니라 안전한 동작 이해를 위한 앱 가이드야.</Text>
             <FormStep n="1" title="엉덩이를 높여 시작" body="역 V자에 가깝게." />
             <FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽혀 낮게 통과." />
             <FormStep n="3" title="팔을 펴고 가슴을 든다" body="앞으로 나간 뒤 상체를 올림." />
