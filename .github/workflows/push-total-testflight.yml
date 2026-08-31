@@ -1,0 +1,38 @@
+name: Push Total TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/push-total-testflight.yml
+
+jobs:
+  testflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PUSH TOTAL release candidate
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          expo-cache: false
+          eas-cache: false
+
+      - name: Start TestFlight pipeline on EAS
+        run: eas workflow:run .eas/workflows/push-total-testflight.yml --non-interactive
