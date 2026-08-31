@@ -1,35 +1,67 @@
 name: Push Total EAS Status
 
+# Read-only diagnostics for EAS workflow/build state. Never starts a build.
 on:
   workflow_dispatch:
     inputs:
       workflow_run_id:
-        description: EAS workflow run ID
-        required: true
+        description: EAS workflow run ID (optional)
+        required: false
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/push-total-eas-status.yml
+      build_id:
+        description: EAS build ID (optional)
+        required: false
+        type: string
 
 jobs:
   status:
     runs-on: ubuntu-latest
     steps:
-      - name: Check current PUSH TOTAL TestFlight runs
+      - name: Checkout PUSH TOTAL release candidate
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          expo-cache: false
+          eas-cache: false
+
+      - name: Inspect EAS workflow and build status
         env:
           EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
           INPUT_RUN_ID: ${{ inputs.workflow_run_id }}
+          INPUT_BUILD_ID: ${{ inputs.build_id }}
         run: |
           set -euo pipefail
-          IDS="$INPUT_RUN_ID"
-          if [ -z "$IDS" ]; then
-            IDS="01a05681-51cf-7c03-9f9f-134f4a7690b3 01a05681-99de-71ea-b92b-dcfd37f966d0"
+
+          RUN_IDS="$INPUT_RUN_ID"
+          if [ -z "$RUN_IDS" ]; then
+            RUN_IDS="01a05681-51cf-7c03-9f9f-134f4a7690b3 01a05681-99de-71ea-b92b-dcfd37f966d0"
           fi
-          for ID in $IDS; do
-            echo "===== $ID ====="
+
+          for ID in $RUN_IDS; do
+            echo "===== WORKFLOW $ID ====="
             curl -fsS "https://api.expo.dev/v2/workflows/runs/$ID" \
               -H "Authorization: Bearer $EXPO_TOKEN_VALUE" \
               | jq '{id:.data.id,status:.data.status,url:.data.url,jobs:[.data.jobs[]|{key,name,type,status,buildId,submissionId,errors}]}'
+          done
+
+          BUILD_IDS="$INPUT_BUILD_ID"
+          if [ -z "$BUILD_IDS" ]; then
+            BUILD_IDS="27ac3e8f-e7b0-416d-b771-e79f5a5bb68c 14394abe-fbc3-4466-913c-6a487b5abc12"
+          fi
+
+          for BUILD_ID in $BUILD_IDS; do
+            echo "===== BUILD $BUILD_ID ====="
+            eas build:view "$BUILD_ID" --json \
+              | jq '{id,status,platform,distribution,buildProfile,appVersion,appBuildVersion,error,artifacts,createdAt,updatedAt,completedAt}'
           done
