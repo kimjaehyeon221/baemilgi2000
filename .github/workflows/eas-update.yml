@@ -34,6 +34,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Show installed TestFlight build metadata
+        run: npx eas-cli@latest build:view ae7be0d2-131e-455e-aa68-79712a109de1 --json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
       - name: Publish production OTA update
         run: npx eas-cli@latest update --channel production --non-interactive --message "${{ github.event.head_commit.message }}"
         env:
