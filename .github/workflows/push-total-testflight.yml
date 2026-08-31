@@ -1,13 +1,9 @@
 name: Push Total TestFlight
 
 # Standard iOS test path shared with the baemilgi app: GitHub -> EAS -> TestFlight.
+# Manual-only on purpose: app code commits must never publish a TestFlight build by accident.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/push-total-testflight.yml
 
 jobs:
   testflight:
