@@ -3,6 +3,7 @@ set -euo pipefail
 
 rm -rf .tmp-core
 npx tsc src/core.ts \
+  --ignoreConfig \
   --target ES2020 \
   --module commonjs \
   --moduleResolution node \
