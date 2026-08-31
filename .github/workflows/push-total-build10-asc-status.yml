@@ -1,0 +1,78 @@
+name: Check PUSH TOTAL Build 10 Apple Status
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-build10-asc-status.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Query App Store Connect
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806938654'
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const key = process.env.ASC_API_KEY_P8;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const appId = process.env.ASC_APP_ID;
+          const b64 = v => Buffer.from(v).toString('base64url');
+          const now = Math.floor(Date.now()/1000);
+          const h = b64(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}));
+          const p = b64(JSON.stringify({iss:issuerId,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input = `${h}.${p}`;
+          const sig = crypto.sign('sha256', Buffer.from(input), {key,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const token = `${input}.${sig}`;
+          (async()=>{
+            const url = `https://api.appstoreconnect.apple.com/v1/builds?filter%5Bapp%5D=${appId}&sort=-uploadedDate&limit=10&include=preReleaseVersion`;
+            const res = await fetch(url,{headers:{Authorization:`Bearer ${token}`}});
+            const body = await res.json();
+            if(!res.ok) throw new Error(JSON.stringify(body));
+            const versions = new Map((body.included||[]).map(x=>[x.id,x]));
+            const builds=(body.data||[]).map(b=>({
+              id:b.id,
+              buildNumber:b.attributes?.version||null,
+              processingState:b.attributes?.processingState||null,
+              uploadedDate:b.attributes?.uploadedDate||null,
+              expired:Boolean(b.attributes?.expired),
+              marketingVersion:versions.get(b.relationships?.preReleaseVersion?.data?.id)?.attributes?.version||null,
+            }));
+            const target=builds.find(b=>b.buildNumber==='10')||null;
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/PUSH_TOTAL_BUILD10_APPLE_STATUS.json',JSON.stringify({checkedAt:new Date().toISOString(),target,latestBuilds:builds.slice(0,3)},null,2)+'\n');
+            console.log(JSON.stringify({target,latest:builds[0]||null},null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Persist status
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/PUSH_TOTAL_BUILD10_APPLE_STATUS.json
+          git commit -m 'Record PUSH TOTAL build 10 Apple status' || exit 0
+          git push origin HEAD:main
