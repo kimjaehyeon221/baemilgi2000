@@ -1,0 +1,92 @@
+name: Create PUSH TOTAL Internal Tester
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-create-internal-tester.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Create internal tester for PUSH TOTAL
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806938654'
+        run: |
+          node <<'NODE'
+          const fs=require('fs'); const crypto=require('crypto');
+          const key=process.env.ASC_API_KEY_P8,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,appId=process.env.ASC_APP_ID;
+          const enc=x=>Buffer.from(x).toString('base64url'); const now=Math.floor(Date.now()/1000);
+          const h=enc(JSON.stringify({alg:'ES256',kid,typ:'JWT'})),p=enc(JSON.stringify({iss,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const msg=`${h}.${p}`,sig=crypto.sign('sha256',Buffer.from(msg),{key,dsaEncoding:'ieee-p1363'}).toString('base64url'),token=`${msg}.${sig}`;
+          async function req(path,opt={}){
+            const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{...opt,headers:{Authorization:`Bearer ${token}`,...(opt.body?{'Content-Type':'application/json'}:{})}});
+            const text=await r.text(); let body=null; if(text){try{body=JSON.parse(text)}catch{body={raw:text.slice(0,300)}}}
+            return {ok:r.ok,status:r.status,body};
+          }
+          (async()=>{
+            let report={checkedAt:new Date().toISOString()};
+            try{
+              const [usersR,groupsR,buildsR]=await Promise.all([
+                req('/v1/users?limit=200&include=visibleApps&limit%5BvisibleApps%5D=50'),
+                req(`/v1/betaGroups?filter%5Bapp%5D=${appId}&limit=200`),
+                req(`/v1/builds?filter%5Bapp%5D=${appId}&sort=-uploadedDate&limit=20`)
+              ]);
+              if(!usersR.ok||!groupsR.ok||!buildsR.ok) throw new Error('Failed prerequisite App Store Connect reads');
+              const eligibleRoles=new Set(['ACCOUNT_HOLDER','ADMIN','APP_MANAGER','DEVELOPER','MARKETING']);
+              const users=(usersR.body.data||[]).filter(u=>(u.attributes?.roles||[]).some(r=>eligibleRoles.has(r))&&(u.attributes?.allAppsVisible||(u.relationships?.visibleApps?.data||[]).some(a=>a.id===appId)));
+              const groups=(groupsR.body.data||[]).filter(g=>g.attributes?.isInternalGroup);
+              const latest=buildsR.body.data?.[0]||null;
+              if(users.length!==1) throw new Error(`Expected one eligible ASC user, found ${users.length}`);
+              if(groups.length!==1) throw new Error(`Expected one internal group, found ${groups.length}`);
+              if(!latest||latest.attributes?.processingState!=='VALID') throw new Error('Latest build is not VALID');
+              const user=users[0],group=groups[0];
+
+              const body={data:{type:'betaTesters',attributes:{email:user.attributes.username,firstName:user.attributes.firstName||undefined,lastName:user.attributes.lastName||undefined},relationships:{betaGroups:{data:[{type:'betaGroups',id:group.id}]}}}};
+              Object.keys(body.data.attributes).forEach(k=>body.data.attributes[k]===undefined&&delete body.data.attributes[k]);
+              const createR=await req('/v1/betaTesters',{method:'POST',body:JSON.stringify(body)});
+
+              const groupTestersR=await req(`/v1/betaGroups/${group.id}/betaTesters?limit=200`);
+              const appTestersR=await req(`/v1/betaTesters?filter%5Bapps%5D=${appId}&limit=200`);
+              const testerCount=groupTestersR.ok?(groupTestersR.body.data||[]).length:null;
+              const appTesterCount=appTestersR.ok?(appTestersR.body.data||[]).length:null;
+              const ready=latest.attributes?.processingState==='VALID'&&testerCount>0;
+              report={
+                checkedAt:new Date().toISOString(),
+                action:'CREATE_INTERNAL_TESTER',
+                createHttpStatus:createR.status,
+                createResult:createR.ok?'CREATED':'FAILED',
+                createErrors:createR.ok?null:(createR.body?.errors||[]).map(e=>({status:e.status,code:e.code,title:e.title,detail:e.detail})),
+                latestBuild:{buildNumber:latest.attributes?.version||null,processingState:latest.attributes?.processingState||null,expired:Boolean(latest.attributes?.expired)},
+                internalGroup:{name:group.attributes?.name||null,hasAccessToAllBuilds:Boolean(group.attributes?.hasAccessToAllBuilds),testerCount},
+                targetAppBetaTesterCount:appTesterCount,
+                diagnosis:ready?'READY_FOR_INTERNAL_TESTING':'NOT_READY'
+              };
+            }catch(e){report={checkedAt:new Date().toISOString(),action:'CREATE_INTERNAL_TESTER',diagnosis:'WORKFLOW_DIAGNOSTIC_ERROR',error:String(e.message||e)};}
+            fs.mkdirSync('docs',{recursive:true}); fs.writeFileSync('docs/PUSH_TOTAL_INTERNAL_TESTER_CREATE.json',JSON.stringify(report,null,2)+'\n'); console.log(JSON.stringify(report,null,2));
+          })();
+          NODE
+      - name: Persist result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/PUSH_TOTAL_INTERNAL_TESTER_CREATE.json
+          git commit -m 'Record PUSH TOTAL internal tester creation result' || exit 0
+          git push origin HEAD:main
