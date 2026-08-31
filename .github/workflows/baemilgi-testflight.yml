@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - baemilgi-app
     paths:
       - '.release/testflight-build.txt'
 
@@ -28,7 +28,7 @@ jobs:
       - name: Checkout BAEMILGI release candidate
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: baemilgi-app
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -89,4 +89,4 @@ jobs:
           eas-cache: false
 
       - name: Build production binary and submit to TestFlight
-        run: eas build --platform ios --profile production --auto-submit --non-interactive
+        run: eas build --platform ios --profile production --auto-submit --non-interactive --clear-cache
