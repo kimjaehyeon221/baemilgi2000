@@ -1,0 +1,66 @@
+name: PUSH TOTAL TestFlight Status Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-testflight-status-once.yml
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Checkout masonry release candidate
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install app dependencies
+        run: npm install
+
+      - name: Prepare local App Store Connect credentials
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${EXPO_ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Inject local ASC status credentials
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+          config.submit ??= {};
+          config.submit.production ??= {};
+          config.submit.production.ios ??= {};
+          Object.assign(config.submit.production.ios, {
+            ascApiKeyPath: process.env.EXPO_ASC_API_KEY_PATH,
+            ascApiKeyIssuerId: process.env.EXPO_ASC_ISSUER_ID,
+            ascApiKeyId: process.env.EXPO_ASC_KEY_ID,
+          });
+          fs.writeFileSync('eas.json', `${JSON.stringify(config, null, 2)}\n`);
+          NODE
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          expo-cache: false
+          eas-cache: false
+
+      - name: Read App Store and TestFlight status
+        run: eas submit:status --platform ios --profile production --json --non-interactive
