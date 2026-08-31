@@ -5,8 +5,8 @@ rm -rf .tmp-core
 npx tsc src/core.ts \
   --ignoreConfig \
   --target ES2020 \
-  --module commonjs \
-  --moduleResolution node \
+  --module nodenext \
+  --moduleResolution nodenext \
   --outDir .tmp-core \
   --skipLibCheck \
   --esModuleInterop \
