@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import * as KeepAwake from 'expo-keep-awake';
+import { useAudioPlayer } from 'expo-audio';
 import { DeviceMotion } from 'expo-sensors';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -213,6 +214,7 @@ function BottomNav({ active, onNavigate }: { active: 'home' | 'wall' | 'history'
 }
 
 export default function App() {
+  const startSignalPlayer = useAudioPlayer(require('./assets/start.wav'));
   const [state, setState] = useState<PersistedState>(initialState);
   const [loaded, setLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>('home');
@@ -479,6 +481,14 @@ export default function App() {
     setElapsed(0);
     setSessionStatus('running');
 
+    void (async () => {
+      try {
+        await startSignalPlayer.seekTo(0);
+        startSignalPlayer.play();
+      } catch {
+        // Haptic remains the fallback start signal if audio is unavailable.
+      }
+    })();
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
     subscriptionRef.current = DeviceMotion.addListener(processMotion);
     maxTimerRef.current = setTimeout(() => finishSessionRef.current(true), MAX_SESSION_MS);
@@ -685,7 +695,7 @@ export default function App() {
                 <Text style={styles.sessionKicker}>GET INTO POSITION</Text>
                 <Text style={styles.countdownNumber}>{countdown}</Text>
                 <Text style={styles.sessionTitle}>10초 안에 자세를 잡으세요.</Text>
-                <Text style={styles.sessionBody}>카운트가 끝나면 강한 진동이 옵니다. 그때부터 첫 푸쉬업을 시작하세요.</Text>
+                <Text style={styles.sessionBody}>카운트가 끝나면 짧은 시작음과 강한 진동이 옵니다. 그때부터 첫 푸쉬업을 시작하세요.</Text>
               </>
             ) : sessionStatus === 'running' ? (
               <>
