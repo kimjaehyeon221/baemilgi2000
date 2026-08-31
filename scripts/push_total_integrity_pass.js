@@ -1,6 +1,7 @@
 const fs = require('fs');
 
 let s = fs.readFileSync('App.tsx', 'utf8');
+const original = s;
 
 function mustReplace(search, replacement, label) {
   const before = s;
@@ -336,7 +337,7 @@ mustReplace(
                       <Text style={styles.entryAmount}>{formatNumber(entry.amount)}</Text>
                       <Text style={styles.entryTime}>
                         {entry.date} · {new Date(entry.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · {entry.source === 'pocket' ? 'POCKET' : 'LEGACY'}
-                        {entry.source === 'pocket' && Number.isFinite(entry.detectedAmount) && entry.detectedAmount !== entry.amount ? ` · SENSOR ${entry.detectedAmount}` : ''}
+                        {entry.source === 'pocket' && Number.isFinite(entry.detectedAmount) && entry.detectedAmount !== entry.amount ? \` · SENSOR ${entry.detectedAmount}\` : ''}
                       </Text>
                     </View>
                   </View>
