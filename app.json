@@ -1,23 +1,23 @@
 {
   "expo": {
-    "name": "PUSH TOTAL SENSOR",
+    "name": "PUSH TOTAL",
     "slug": "push-total",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#F4F3EE",
+    "backgroundColor": "#F4F2EC",
     "scheme": "pushtotal",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F4F3EE"
+      "backgroundColor": "#F4F2EC"
     },
     "plugins": [
       [
         "expo-sensors",
         {
-          "motionPermission": "푸쉬업 반복 움직임을 감지하기 위해 동작 센서를 사용합니다."
+          "motionPermission": "주머니 속 움직임으로 푸쉬업 횟수를 자동으로 세기 위해 동작 센서를 사용합니다."
         }
       ]
     ],
@@ -25,14 +25,14 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.magpie221.pushtotal",
       "buildNumber": "1",
-      "backgroundColor": "#F4F3EE",
+      "backgroundColor": "#F4F2EC",
       "icon": "./assets/icon.png",
       "config": {
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMotionUsageDescription": "푸쉬업 반복 움직임을 감지하기 위해 동작 센서를 사용합니다."
+        "NSMotionUsageDescription": "주머니 속 움직임으로 푸쉬업 횟수를 자동으로 세기 위해 동작 센서를 사용합니다."
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
