@@ -39,7 +39,7 @@ jobs:
 
       # TestFlight 1.0.0 (6) is the current iPhone QA binary.
       # Keep UI/JS OTA updates on its embedded runtime during this design-test cycle.
-      # This pass validates the locked four-role native typography system.
+      # This pass validates typography + Stitch seam/fold/stroke visual rhythm.
       # Remove this pin and return to fingerprint policy after the next native/TestFlight build.
       - name: Target current iPhone QA runtime
         run: |
