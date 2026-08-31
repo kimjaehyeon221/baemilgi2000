@@ -1,4 +1,3 @@
-# One-time trigger: upload iOS build 1.0.0 (6)
 name: EAS OTA Update
 
 on:
@@ -37,10 +36,5 @@ jobs:
 
       - name: Publish production OTA update
         run: npx eas-cli@latest update --channel production --non-interactive --message "${{ github.event.head_commit.message }}"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Submit iOS build 1.0.0 (6) to App Store Connect
-        run: npx eas-cli@latest submit --platform ios --id ae7be0d2-131e-455e-aa68-79712a109de1 --non-interactive --wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
