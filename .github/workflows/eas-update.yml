@@ -34,8 +34,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript validation
-        run: npx tsc --noEmit
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-ci
 
       # TestFlight 1.0.0 (6) is the current iPhone QA binary.
       # Keep UI/JS OTA updates on its embedded runtime during this design-test cycle.
