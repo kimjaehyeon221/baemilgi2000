@@ -1,0 +1,41 @@
+name: Apply Save Retry Hardening
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/harden_save_retries.py'
+      - '.github/workflows/apply-save-retries.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Harden save/retry flows
+        run: python3 scripts/harden_save_retries.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-save-retry-qa
+      - name: Commit save retry hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add App.tsx src/Workout.tsx DESIGN.md RELEASE_QA.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Harden BAEMILGI save retry flows"
+            git push origin main
+          fi
