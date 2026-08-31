@@ -376,9 +376,19 @@ export default function App() {
       date: localDateKey(now),
       createdAt: now.toISOString(),
     };
+    const previousBrickCount = Math.floor(lifetimeTotal / BRICK_REPS);
+    const nextBrickCount = Math.floor((lifetimeTotal + entry.amount) / BRICK_REPS);
+    const newlyBuiltBricks = Math.max(0, nextBrickCount - previousBrickCount);
+
     setState((current) => ({ ...current, entries: [...current.entries, entry] }));
     animateTotal();
-    showToast(`+${formatNumber(amount)} RECORDED`);
+    if (newlyBuiltBricks === 1) {
+      showToast(`BRICK #${formatNumber(nextBrickCount)} BUILT · +${formatNumber(entry.amount)}`);
+    } else if (newlyBuiltBricks > 1) {
+      showToast(`${formatNumber(newlyBuiltBricks)} BRICKS BUILT · +${formatNumber(entry.amount)}`);
+    } else {
+      showToast(`+${formatNumber(entry.amount)} RECORDED`);
+    }
   };
 
   const finishSession = (automatic = false) => {
@@ -739,7 +749,7 @@ export default function App() {
                 </View>
                 <Animated.Text style={[styles.sessionCount, { transform: [{ scale: repScale }] }]}>{sessionCount}</Animated.Text>
                 <Text style={styles.sessionMetric}>CURRENT SET</Text>
-                <Text style={styles.sessionBody}>멈춘 뒤 7초 동안 반복 움직임이 없으면 확인 화면으로 넘어갑니다.</Text>
+                <Text style={styles.sessionBody}>멈춘 뒤 4초 동안 반복 움직임이 없으면 확인 화면으로 넘어갑니다.</Text>
               </>
             ) : (
               <>
@@ -800,6 +810,18 @@ export default function App() {
           <View style={styles.wallFrame}>
             <BrickWall filledBricks={brickCount} />
           </View>
+
+          <View style={styles.currentBrickCard}>
+            <View style={styles.currentBrickHeader}>
+              <Text style={styles.currentBrickLabel}>BRICK {String(brickCount + 1).padStart(3, '0')} · IN PROGRESS</Text>
+              <Text style={styles.currentBrickValue}>{brickProgress} / {BRICK_REPS}</Text>
+            </View>
+            <View style={styles.currentBrickTrack}>
+              <View style={[styles.currentBrickFill, { width: `${brickProgress}%` }]} />
+            </View>
+            <Text style={styles.currentBrickFoot}>{formatNumber(toNextBrick)} PUSHES TO LOCK THE NEXT BRICK</Text>
+          </View>
+
           {brickCount > 160 && <Text style={styles.wallNote}>최근 160개 벽돌을 표시합니다. 전체 벽돌 수는 위 숫자에 반영되어 있어요.</Text>}
           <Text style={styles.wallLegend}>1 BRICK = 100 PUSHES · 빈 칸은 다음에 쌓일 자리입니다.</Text>
         </ScrollView>
@@ -1185,4 +1207,13 @@ const styles = StyleSheet.create({
   // Toast
   toast: { position: 'absolute', top: 12, alignSelf: 'center', minHeight: 40, paddingHorizontal: 15, backgroundColor: INK, borderBottomWidth: 3, borderColor: BRICK, alignItems: 'center', justifyContent: 'center' },
   toastText: { color: BG, fontSize: 10, fontWeight: '900', letterSpacing: 1.0 },
+
+  // Current brick / milestone feedback
+  currentBrickCard: { marginTop: 12, backgroundColor: INK, borderWidth: 2, borderColor: INK, padding: 14 },
+  currentBrickHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  currentBrickLabel: { color: '#A7A39D', fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
+  currentBrickValue: { color: BG, fontSize: 12, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  currentBrickTrack: { marginTop: 12, height: 12, backgroundColor: '#34322F', overflow: 'hidden' },
+  currentBrickFill: { height: '100%', backgroundColor: BRICK },
+  currentBrickFoot: { marginTop: 9, color: BRICK_LIGHT, fontSize: 9, fontWeight: '900', letterSpacing: 1.0 },
 });
