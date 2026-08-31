@@ -3,6 +3,7 @@ import {
   Alert,
   Animated,
   Easing,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -106,14 +107,14 @@ const FORM_FRAMES = [
   },
 ] as const;
 
+const FORM_IMAGES = [
+  require('../assets/onboarding-start.jpg'),
+  require('../assets/onboarding-drive.jpg'),
+  require('../assets/onboarding-return.jpg'),
+] as const;
+
 function MotionSketch({ frame }: { frame: number }) {
   const reveal = useRef(new Animated.Value(0)).current;
-  const poses = [
-    { torso: '-18deg', torsoX: -8, torsoY: -16, headX: 79, headY: -12, arm: '51deg', armX: 37, armY: 20, leg: '137deg', legX: -47, legY: 21 },
-    { torso: '9deg', torsoX: 8, torsoY: 0, headX: 88, headY: 17, arm: '69deg', armX: 46, armY: 29, leg: '157deg', legX: -43, legY: 18 },
-    { torso: '-7deg', torsoX: 2, torsoY: -4, headX: 91, headY: -1, arm: '43deg', armX: 48, armY: 24, leg: '150deg', legX: -45, legY: 21 },
-  ] as const;
-  const pose = poses[frame];
 
   useEffect(() => {
     reveal.setValue(0);
@@ -131,12 +132,8 @@ function MotionSketch({ frame }: { frame: number }) {
     <View style={O.motionStage} accessible accessibilityLabel={FORM_FRAMES[frame].title}>
       <Text style={O.motionCount}>0{frame + 1}</Text>
       <View style={O.motionGround} />
-      <Animated.View style={[O.pose, { opacity: reveal, transform: [{ translateX: shift }] }]}>
-        <View style={[O.motionBody, { transform: [{ translateX: pose.torsoX }, { translateY: pose.torsoY }, { rotate: pose.torso }] }]} />
-        <View style={[O.motionHead, { transform: [{ translateX: pose.headX }, { translateY: pose.headY }] }]} />
-        <View style={[O.motionLimb, { transform: [{ translateX: pose.armX }, { translateY: pose.armY }, { rotate: pose.arm }] }]} />
-        <View style={[O.motionLimb, { transform: [{ translateX: pose.legX }, { translateY: pose.legY }, { rotate: pose.leg }] }]} />
-        <View style={O.motionJoint} />
+      <Animated.View style={[O.poseImageWrap, { opacity: reveal, transform: [{ translateX: shift }] }]}>
+        <Image source={FORM_IMAGES[frame]} style={O.poseImage} resizeMode="contain" />
       </Animated.View>
       <View style={O.motionArrow}><Text style={O.motionArrowText}>FLOW →</Text></View>
     </View>
@@ -448,7 +445,6 @@ function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinis
   );
 }
 
-
 const O = StyleSheet.create({
   launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   launchBrand: { color: '#121212', fontFamily: 'Menlo', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
@@ -472,14 +468,16 @@ const O = StyleSheet.create({
   guideProgressItemActive: { backgroundColor: '#1B365D' },
   guideCode: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginBottom: 9 },
   motionStage: { height: 218, marginTop: 18, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', backgroundColor: '#F0EEE8' },
-  motionCount: { position: 'absolute', left: 18, top: 15, color: '#C8C4BB', fontFamily: 'Avenir Next', fontSize: 34, lineHeight: 40, fontWeight: '800' },
+  motionCount: { position: 'absolute', left: 18, top: 15, color: '#C8C4BB', fontFamily: 'Avenir Next', fontSize: 34, lineHeight: 40, fontWeight: '800', zIndex: 2 },
   motionGround: { position: 'absolute', left: 26, right: 26, bottom: 38, height: 2, backgroundColor: '#C8C4BB' },
+  poseImageWrap: { width: '100%', height: 186, alignItems: 'center', justifyContent: 'center' },
+  poseImage: { width: '96%', height: 180 },
   pose: { width: 210, height: 108, alignItems: 'center', justifyContent: 'center' },
   motionBody: { position: 'absolute', width: 142, height: 14, borderRadius: 7, backgroundColor: '#1B365D' },
   motionHead: { position: 'absolute', left: 91, top: 38, width: 27, height: 27, borderRadius: 14, backgroundColor: '#1B365D' },
   motionLimb: { position: 'absolute', left: 72, top: 45, width: 69, height: 10, borderRadius: 5, backgroundColor: '#1B365D' },
   motionJoint: { position: 'absolute', left: 96, top: 49, width: 13, height: 13, borderRadius: 7, backgroundColor: '#B22222' },
-  motionArrow: { position: 'absolute', right: 18, top: 16 },
+  motionArrow: { position: 'absolute', right: 18, top: 16, zIndex: 2 },
   motionArrowText: { color: '#B22222', fontFamily: 'Menlo', fontSize: 10, letterSpacing: 1, fontWeight: '900' },
   guideNote: { color: '#686A68', fontSize: 12, lineHeight: 19, marginTop: 15 },
   guideActions: { gap: 9 },
@@ -490,4 +488,3 @@ const O = StyleSheet.create({
   measurePreviewRule: { width: 48, height: 3, backgroundColor: '#1B365D', marginVertical: 18 },
   measurePreviewCopy: { color: '#A8ADAE', fontSize: 11, lineHeight: 18, textAlign: 'center' },
 });
-
