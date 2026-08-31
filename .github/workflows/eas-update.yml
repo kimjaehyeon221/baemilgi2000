@@ -42,7 +42,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-          app.expo.runtimeVersion = 'ea71c3db70d60cdfe0ebd633322eaaa05d1e7287';
+          app.expo.runtimeVersion = 'ea71c3e10e66915f06d625ac29bfb39b6a6d7b8d';
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
           NODE
 
