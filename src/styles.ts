@@ -19,14 +19,14 @@ const historyFont = 'Georgia';
 
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  onboarding: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 52, paddingBottom: 22 },
+  onboarding: { flex: 1, backgroundColor: C.bg, paddingHorizontal: 28, paddingBottom: 22 },
 
   introTop: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   introBrand: { color: C.text, fontSize: 14, fontWeight: '700', letterSpacing: -0.35 },
   introYear: { color: C.muted, fontSize: 11, fontFamily: labelFont, letterSpacing: 1.2 },
   introGrow: { flex: 1, justifyContent: 'flex-start', alignItems: 'flex-start', paddingTop: 58, paddingBottom: 18 },
   introEyebrow: { color: C.accent, fontSize: 10, fontFamily: labelFont, fontWeight: '700', letterSpacing: 1.8, marginBottom: 10 },
-  introTitle: { color: C.text, fontSize: 82, lineHeight: 86, fontFamily: historyFont, fontWeight: '700', letterSpacing: -4.5 },
+  introTitle: { color: C.text, fontSize: 72, lineHeight: 78, fontFamily: historyFont, fontWeight: '700', letterSpacing: -3.8 },
   introSub: { color: C.text, fontSize: 17, lineHeight: 24, fontWeight: '700', letterSpacing: -0.35, marginTop: 2 },
   introRule: { width: 34, height: 2, backgroundColor: C.accent, marginTop: 24, marginBottom: 20 },
   introCopy: { color: C.muted, fontSize: 14, lineHeight: 22, maxWidth: 298, marginBottom: 11 },
@@ -66,7 +66,7 @@ export const styles = StyleSheet.create({
   kicker: { color: C.accent, fontSize: 10, fontFamily: labelFont, fontWeight: '700', letterSpacing: 1.25, marginBottom: 8 },
   title: { color: C.text, fontSize: 48, lineHeight: 52, fontWeight: '800', letterSpacing: -2.2 },
 
-  button: { minHeight: 52, borderRadius: 4, backgroundColor: C.selected, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  button: { minHeight: 58, borderRadius: 8, backgroundColor: C.selected, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
   buttonSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
   buttonDanger: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#CDA8A4' },
   buttonText: { color: '#FAF7F0', fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
@@ -79,12 +79,20 @@ export const styles = StyleSheet.create({
 
   page: { paddingHorizontal: 28, paddingTop: 24, paddingBottom: 106 },
   heroLevel: { color: C.text, fontSize: 44, lineHeight: 50, fontWeight: '800', letterSpacing: -2, marginTop: 4 },
-  heroNumber: { color: C.text, fontSize: 76, lineHeight: 82, fontFamily: metricFont, fontWeight: '700', letterSpacing: -3.8, marginTop: 2, fontVariant: ['tabular-nums'] },
+  heroNumber: { color: C.text, fontSize: 88, lineHeight: 94, fontFamily: metricFont, fontWeight: '700', letterSpacing: -4.4, marginTop: 2, fontVariant: ['tabular-nums'] },
   heroUnit: { color: C.muted, fontSize: 13, fontWeight: '700', marginTop: -2 },
   progressTrack: { height: 3, backgroundColor: '#DDD6CB', marginTop: 22, overflow: 'hidden' },
   progressFill: { height: 3, backgroundColor: C.accent },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 9 },
   mutedSmall: { color: C.muted, fontSize: 11, fontWeight: '600' },
+
+  primaryActions: { gap: 10, marginTop: 28 },
+  currentPanel: { minHeight: 98, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, marginTop: 32, paddingVertical: 16 },
+  currentLabel: { color: C.muted, fontSize: 11, fontFamily: labelFont, fontWeight: '700', letterSpacing: 0.55 },
+  currentValue: { color: C.text, fontSize: 34, lineHeight: 40, fontFamily: metricFont, fontWeight: '700', marginTop: 2, fontVariant: ['tabular-nums'] },
+  currentUnit: { color: C.muted, fontSize: 14, fontWeight: '700' },
+  currentLevelBlock: { alignItems: 'flex-end' },
+  currentLevel: { color: C.text, fontSize: 20, fontFamily: metricFont, fontWeight: '700', marginTop: 5, fontVariant: ['tabular-nums'] },
 
   card: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingVertical: 22, marginTop: 30 },
   cardLevel: { color: C.muted, fontSize: 12, fontWeight: '700', marginBottom: 1 },
@@ -100,13 +108,17 @@ export const styles = StyleSheet.create({
 
   pageTitle: { color: C.text, fontSize: 36, lineHeight: 41, fontWeight: '800', letterSpacing: -1.6 },
   pageCopy: { color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 9, marginBottom: 22 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  cell: { width: '18.55%', aspectRatio: 0.92, borderWidth: 1, borderColor: C.line, backgroundColor: 'transparent', borderRadius: 2, padding: 7, justifyContent: 'space-between' },
+  questSection: { marginTop: 10, marginBottom: 24 },
+  questHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: C.line, paddingBottom: 9, marginBottom: 10 },
+  questTitle: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.5 },
+  questRange: { color: C.muted, fontSize: 11, fontFamily: labelFont, fontWeight: '700' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  cell: { width: '23.2%', minHeight: 64, borderWidth: 1, borderColor: C.line, backgroundColor: 'transparent', borderRadius: 6, padding: 8, justifyContent: 'space-between' },
   cellDone: { backgroundColor: C.accent, borderColor: C.accent },
   cellSelected: { backgroundColor: C.selected, borderColor: C.selected },
   cellLandmark: { borderWidth: 2, borderColor: '#8D6F61' },
-  cellLevel: { color: C.text, fontSize: 11, fontFamily: labelFont, fontWeight: '700' },
-  cellReps: { color: C.muted, fontSize: 9, fontFamily: labelFont, fontWeight: '600' },
+  cellLevel: { color: C.text, fontSize: 12, fontFamily: labelFont, fontWeight: '700' },
+  cellReps: { color: C.muted, fontSize: 10, lineHeight: 13, fontFamily: labelFont, fontWeight: '600' },
   cellTextInverse: { color: '#FBF8F1' },
 
   stats: { flexDirection: 'row', marginTop: 8, marginBottom: 30, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
@@ -120,7 +132,8 @@ export const styles = StyleSheet.create({
   historyEdit: { color: C.accent, fontSize: 11, fontWeight: '700', marginTop: 4, textAlign: 'right' },
 
   nav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70, backgroundColor: '#F5F1E8F4', borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.line, flexDirection: 'row', paddingBottom: 7 },
-  navButton: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  navButton: { flex: 1, alignItems: 'center', justifyContent: 'center', marginHorizontal: 6, marginVertical: 9, borderRadius: 12 },
+  navButtonActive: { backgroundColor: C.accentSoft },
   navText: { color: C.faint, fontSize: 12, fontWeight: '600' },
   navTextActive: { color: C.accent, fontWeight: '800' },
 
@@ -136,7 +149,7 @@ export const styles = StyleSheet.create({
 
   overlay: { flex: 1, backgroundColor: '#00000052', justifyContent: 'flex-end' },
   centerOverlay: { flex: 1, backgroundColor: '#00000052', justifyContent: 'center', padding: 22 },
-  sheet: { backgroundColor: C.panel, borderTopLeftRadius: 8, borderTopRightRadius: 8, padding: 22, maxHeight: '90%' },
+  sheet: { backgroundColor: C.panel, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 22, maxHeight: '90%' },
   sheetTitle: { color: C.text, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -1.1 },
   sheetCopy: { color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 10, marginBottom: 14 },
   restoreInput: { minHeight: 150, color: C.text, backgroundColor: C.bg, borderWidth: 1, borderColor: C.line, borderRadius: 4, padding: 12, fontSize: 12, lineHeight: 18, textAlignVertical: 'top', marginVertical: 12 },
