@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/push-total-submit-latest.yml'
+  workflow_dispatch:
 
 jobs:
   submit:
@@ -35,10 +36,30 @@ jobs:
           ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
         run: |
           test -n "$ASC_API_KEY_P8" || { echo "Missing APPLE_ASC_API_KEY_P8"; exit 1; }
+          test -n "$EXPO_ASC_KEY_ID" || { echo "Missing APPLE_ASC_KEY_ID"; exit 1; }
+          test -n "$EXPO_ASC_ISSUER_ID" || { echo "Missing APPLE_ASC_ISSUER_ID"; exit 1; }
           KEY_PATH="$RUNNER_TEMP/AuthKey_${EXPO_ASC_KEY_ID}.p8"
           printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
           echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Pin PUSH TOTAL App Store Connect target and local API key
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'eas.json';
+          const eas = JSON.parse(fs.readFileSync(path, 'utf8'));
+          eas.submit ||= {};
+          eas.submit.production ||= {};
+          eas.submit.production.ios ||= {};
+          Object.assign(eas.submit.production.ios, {
+            ascAppId: '6806938654',
+            ascApiKeyPath: process.env.EXPO_ASC_API_KEY_PATH,
+            ascApiKeyIssuerId: process.env.EXPO_ASC_ISSUER_ID,
+            ascApiKeyId: process.env.EXPO_ASC_KEY_ID,
+          });
+          fs.writeFileSync(path, JSON.stringify(eas, null, 2) + '\n');
+          NODE
 
       - name: Install EAS CLI
         run: npm install -g eas-cli@latest
@@ -46,4 +67,4 @@ jobs:
       - name: Submit latest PUSH TOTAL iOS build to TestFlight
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas submit --platform ios --latest --non-interactive --wait
+        run: eas submit --platform ios --latest --profile production --non-interactive --wait
