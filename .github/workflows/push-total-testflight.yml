@@ -1,7 +1,7 @@
 name: Push Total TestFlight
 
-# Standard iOS test/release path: GitHub -> EAS production build -> TestFlight.
-# Manual-only: code commits must never publish a TestFlight build by accident.
+# Standard reusable iOS path: GitHub -> EAS production build -> TestFlight.
+# Manual-only: code commits never publish a TestFlight build by accident.
 on:
   workflow_dispatch:
 
@@ -9,6 +9,11 @@ jobs:
   testflight:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      EXPO_APPLE_TEAM_TYPE: ${{ secrets.APPLE_TEAM_TYPE }}
     steps:
       - name: Checkout PUSH TOTAL release candidate
         uses: actions/checkout@v5
@@ -19,6 +24,27 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Validate iOS CI secrets
+        env:
+          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          test -n "$EXPO_TOKEN_VALUE" || { echo "Missing EXPO_TOKEN"; exit 1; }
+          test -n "$ASC_API_KEY_P8" || { echo "Missing APPLE_ASC_API_KEY_P8"; exit 1; }
+          test -n "$EXPO_ASC_KEY_ID" || { echo "Missing APPLE_ASC_KEY_ID"; exit 1; }
+          test -n "$EXPO_ASC_ISSUER_ID" || { echo "Missing APPLE_ASC_ISSUER_ID"; exit 1; }
+          test -n "$EXPO_APPLE_TEAM_ID" || { echo "Missing APPLE_TEAM_ID"; exit 1; }
+          test -n "$EXPO_APPLE_TEAM_TYPE" || { echo "Missing APPLE_TEAM_TYPE"; exit 1; }
+
+      - name: Prepare temporary App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${EXPO_ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: npm install
