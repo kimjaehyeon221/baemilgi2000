@@ -48,7 +48,7 @@ jobs:
       - name: Resolve TestFlight build 7 runtime
         run: |
           npx eas-cli@latest build:view 38107f7b-7791-4e31-90a3-30d9b6c89be4 --json > build7.json
-          RUNTIME=$(jq -r '.runtimeVersion // empty' build7.json)
+          RUNTIME=$(jq -r '.runtime.version // empty' build7.json)
           test -n "$RUNTIME" || { echo "Could not resolve build 7 runtime"; cat build7.json; exit 1; }
           echo "BAEMILGI_RUNTIME=$RUNTIME" >> "$GITHUB_ENV"
           echo "Resolved build 7 runtime: $RUNTIME"
