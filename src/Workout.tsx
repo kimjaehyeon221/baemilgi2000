@@ -61,11 +61,11 @@ export function Challenge({
       >
         <View style={styles.workoutTop}>
           <Button label="뒤로" secondary onPress={() => setRecordFailure(false)} />
-          <Text style={styles.workoutTitle}>레벨 {level}</Text>
+          <Text style={styles.workoutTitle}>QUEST / {String(level).padStart(3, '0')}</Text>
           <View style={{ width: 72 }} />
         </View>
         <View style={styles.workoutGrow}>
-          <Text style={styles.kicker}>실패 기록</Text>
+          <Text style={styles.kicker}>CHECKPOINT / SAVE</Text>
           <Text style={styles.failureQuestion}>몇 개까지{`\n`}성공했어?</Text>
           <Text style={styles.workoutHint}>목표는 {target}개였어. 실패한 지점도 다음 기록에 남겨.</Text>
           <View style={[styles.inputRow, { width: '100%' }]}>
@@ -93,11 +93,11 @@ export function Challenge({
       <View style={styles.workout}>
         <View style={styles.workoutTop}>
           <Button label="취소" secondary onPress={onCancel} />
-          <Text style={styles.workoutTitle}>레벨 {level}</Text>
+          <Text style={styles.workoutTitle}>QUEST / {String(level).padStart(3, '0')}</Text>
           <View style={{ width: 72 }} />
         </View>
         <View style={styles.workoutGrow}>
-          <Text style={styles.kicker}>이번 도전</Text>
+          <Text style={styles.kicker}>LIVE ATTEMPT / NO. {String(level).padStart(3, '0')}</Text>
           <Text style={styles.workoutTarget}>{target}</Text>
           <Text style={styles.workoutUnit}>연속 배밀기</Text>
           <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
@@ -159,7 +159,7 @@ export function Training({
       <View style={styles.workout}>
         <View style={styles.workoutTop}>
           <Button label="취소" secondary onPress={onCancel} />
-          <Text style={styles.workoutTitle}>레벨 {level} · 훈련</Text>
+          <Text style={styles.workoutTitle}>DRILL / {String(level).padStart(3, '0')}</Text>
           <View style={{ width: 72 }} />
         </View>
         <View style={styles.workoutGrow}>

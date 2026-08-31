@@ -306,14 +306,21 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       <Header onInfo={() => setInfoOpen(true)} />
 
       {tab === 'home' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <Text style={styles.kicker}>다음 퀘스트</Text>
-          <Text style={styles.heroNumber}>{nextTarget}</Text>
-          <Text style={styles.heroUnit}>연속 배밀기 · 레벨 {nextLevel}</Text>
+          <View style={styles.heroStage}>
+            <View style={styles.heroTopline}>
+              <Text style={styles.heroCode}>QUEST / {String(nextLevel).padStart(3, '0')}</Text>
+              <Text style={styles.heroStatus}>● READY</Text>
+            </View>
+            <Text style={styles.kicker}>NEXT TARGET</Text>
+            <Text style={styles.heroNumber}>{nextTarget}</Text>
+            <Text style={styles.heroUnit}>연속 배밀기 · 레벨 {nextLevel}</Text>
+            <Text style={styles.heroManifesto}>ONE MORE{`\n`}THAN YESTERDAY.</Text>
+          </View>
 
           <View style={styles.primaryActions}>
             <Button label="도전 시작" onPress={() => setChallengeLevel(nextLevel)} />
@@ -335,8 +342,8 @@ export default function App() {
             <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.mutedSmall}>다음 관문까지 한 단계씩</Text>
-            <Text style={styles.mutedSmall}>최종 목표 2,000개</Text>
+            <Text style={styles.mutedSmall}>START / {String(state.clearedLevel).padStart(3, '0')}</Text>
+            <Text style={styles.mutedSmall}>FINISH / 200 · 2,000</Text>
           </View>
 
           <Pressable
@@ -350,6 +357,7 @@ export default function App() {
           </Pressable>
 
           <View style={styles.section}>
+            <Text style={styles.sectionCode}>FIELD NOTE / 01</Text>
             <Text style={styles.sectionTitle}>지난 기록도 다음 퀘스트의 일부야.</Text>
             <Text style={styles.sectionBody}>성공과 멈춘 지점을 그대로 남기고, 잘못 누른 기록은 기록 탭에서 언제든 고칠 수 있어.</Text>
           </View>
@@ -358,11 +366,12 @@ export default function App() {
 
       {tab === 'quests' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <Text style={styles.pageTitle}>200단계</Text>
+          <Text style={styles.pageEyebrow}>ROUTE / 001—200</Text>
+          <Text style={styles.pageTitle}>QUEST MAP</Text>
           <Text style={styles.pageCopy}>200개 칸을 훑는 대신, 지금 필요한 단계와 앞으로 만날 관문만 보여줄게.</Text>
 
           <View style={styles.questHero}>
-            <Text style={styles.kicker}>현재 위치</Text>
+            <Text style={[styles.kicker, styles.kickerOnAccent]}>현재 위치</Text>
             <View style={styles.questHeroRow}>
               <View>
                 <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>
@@ -441,7 +450,8 @@ export default function App() {
 
       {tab === 'records' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <Text style={styles.pageTitle}>기록</Text>
+          <Text style={styles.pageEyebrow}>PERSONAL ARCHIVE</Text>
+          <Text style={styles.pageTitle}>RECORDS</Text>
           <Text style={styles.pageCopy}>성공뿐 아니라 멈춘 지점도 남겨. 잘못 저장한 기록은 눌러서 수정할 수 있어.</Text>
           <View style={styles.stats}>
             <Pressable style={styles.stat} onPress={editStartingRecord}>
@@ -498,7 +508,7 @@ export default function App() {
             accessibilityState={{ selected: tab === name }}
           >
             <Text style={[styles.navText, tab === name && styles.navTextActive]}>
-              {name === 'home' ? '홈' : name === 'quests' ? '퀘스트' : '기록'}
+              {name === 'home' ? '01  홈' : name === 'quests' ? '02  퀘스트' : '03  기록'}
             </Text>
           </Pressable>
         ))}

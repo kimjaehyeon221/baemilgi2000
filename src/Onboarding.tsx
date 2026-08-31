@@ -27,8 +27,8 @@ const digitsOnly = (value: string, maxLength = 4) =>
 function SetupTop({ step, total }: { step: number; total: number }) {
   return (
     <View style={styles.setupTop}>
-      <Text style={styles.setupBrand}>배밀기 2000</Text>
-      <Text style={styles.setupCount}>{step} / {total}</Text>
+      <Text style={styles.setupBrand}>BAEMILGI / 2000</Text>
+      <Text style={styles.setupCount}>STEP {step} — {total}</Text>
     </View>
   );
 }
@@ -71,11 +71,12 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
       <SafeAreaView style={styles.root}>
         <View style={styles.onboarding}>
           <View style={styles.introTop}>
-            <Text style={styles.introBrand}>배밀기 2000</Text>
-            <Text style={styles.introYear}>1911</Text>
+            <Text style={styles.introBrand}>BAEMILGI / 2000</Text>
+            <Text style={styles.introYear}>EST. 1911</Text>
           </View>
           <View style={styles.introGrow}>
-            <Text style={styles.introEyebrow}>GREAT GAMA</Text>
+            <View style={styles.introSignal}><Text style={styles.introSignalText}>QUEST SYSTEM / 001—200</Text></View>
+            <Text style={styles.introEyebrow}>GREAT GAMA ARCHIVE</Text>
             <Text style={styles.introTitle}>2,000</Text>
             <Text style={styles.introSub}>오늘 가능한 횟수에서, 한 단계씩.</Text>
             <View style={styles.introRule} />
