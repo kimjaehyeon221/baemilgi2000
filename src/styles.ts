@@ -240,8 +240,8 @@ export const styles = StyleSheet.create({
   archiveEntry: { minHeight: 72, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: C.line, position: 'relative' },
   archiveDateCol: { width: '23%' },
   archiveCodeCol: { width: '20%' },
-  archiveRepsCol: { width: '18%', textAlign: 'right' },
-  archiveStatusCol: { width: '39%', alignItems: 'flex-end' },
+  archiveRepsCol: { width: '19%', textAlign: 'right', paddingRight: 6 },
+  archiveStatusCol: { width: '38%', alignItems: 'flex-end', textAlign: 'right', paddingLeft: 6 },
   archiveCell: { color: C.ink, fontFamily: labelFont, fontSize: 11, fontWeight: '800' },
   archiveReps: { color: C.ink, fontFamily: metricFont, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
   stampSmall: { borderWidth: 2, borderColor: C.stamp, paddingHorizontal: 7, paddingVertical: 4, transform: [{ rotate: '-2deg' }] },
@@ -257,3 +257,4 @@ export const styles = StyleSheet.create({
   archiveQuoteText: { color: C.ink, fontFamily: displayFont, fontSize: 13, lineHeight: 20, fontStyle: 'italic', opacity: 0.78 },
 
 });
+
