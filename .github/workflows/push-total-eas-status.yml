@@ -1,17 +1,8 @@
 name: Push Total EAS Status
 
-# Read-only diagnostics for EAS workflow/build state. Never starts a build.
+# Read-only diagnostics for EAS/Apple integration state. Never starts a build.
 on:
   workflow_dispatch:
-    inputs:
-      workflow_run_id:
-        description: EAS workflow run ID (optional)
-        required: false
-        type: string
-      build_id:
-        description: EAS build ID (optional)
-        required: false
-        type: string
   push:
     branches:
       - main
@@ -32,7 +23,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install project dependencies for config resolution
+      - name: Install project dependencies
         run: npm install
 
       - name: Setup Expo and EAS
@@ -43,44 +34,13 @@ jobs:
           expo-cache: false
           eas-cache: false
 
-      - name: Inspect EAS build log encoding
-        env:
-          INPUT_BUILD_ID: ${{ inputs.build_id }}
+      - name: Inspect App Store Connect integration
         run: |
-          set -u
-          BUILD_IDS="$INPUT_BUILD_ID"
-          if [ -z "$BUILD_IDS" ]; then
-            BUILD_IDS="27ac3e8f-e7b0-416d-b771-e79f5a5bb68c 14394abe-fbc3-4466-913c-6a487b5abc12"
-          fi
-
-          for BUILD_ID in $BUILD_IDS; do
-            echo "===== BUILD $BUILD_ID ====="
-            RAW=$(eas build:view "$BUILD_ID" --json 2>&1 || true)
-            JSON=$(printf '%s\n' "$RAW" | sed -n '/^{/,$p')
-            if [ -z "$JSON" ] || ! printf '%s\n' "$JSON" | jq -e . >/dev/null 2>&1; then
-              echo "Could not parse EAS build metadata."
-              continue
-            fi
-            printf '%s\n' "$JSON" | jq '{id,status,error,logFileCount:(.logFiles // [] | length)}'
-
-            LOG_INDEX=0
-            printf '%s\n' "$JSON" | jq -r '.logFiles[]?' | while IFS= read -r LOG_URL; do
-              [ -z "$LOG_URL" ] && continue
-              LOG_INDEX=$((LOG_INDEX + 1))
-              LOG_PATH="/tmp/eas-${BUILD_ID}-${LOG_INDEX}.log"
-              curl -fsS "$LOG_URL" -o "$LOG_PATH" || { echo "Could not read log $LOG_INDEX"; continue; }
-              echo "--- log $LOG_INDEX format ---"
-              file "$LOG_PATH" || true
-              wc -c "$LOG_PATH" || true
-              echo "--- first 96 bytes (hex only) ---"
-              xxd -l 96 "$LOG_PATH" || true
-              echo "--- ASCII strings sample ---"
-              strings -a -n 4 "$LOG_PATH" \
-                | sed -E 's#https://[^ ]+#<url redacted>#g' \
-                | head -n 80 || true
-              echo "--- UTF-16LE strings sample ---"
-              strings -a -el -n 4 "$LOG_PATH" \
-                | sed -E 's#https://[^ ]+#<url redacted>#g' \
-                | head -n 80 || true
-            done
-          done
+          set +e
+          echo "===== ASC INTEGRATION ====="
+          eas integrations:asc:status --json --non-interactive
+          echo "===== TESTFLIGHT / STORE STATUS ====="
+          eas submit:status --platform ios --profile production --json --non-interactive
+          echo "===== PROJECT CONFIG ====="
+          eas config --platform ios --profile production --json --non-interactive \
+            | jq '{projectId:.projectId,accountName:.accountName,buildProfile:.buildProfile,submitProfile:.submitProfile}'
