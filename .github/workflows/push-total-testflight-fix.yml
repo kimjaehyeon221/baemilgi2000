@@ -37,14 +37,11 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const crypto = require('crypto');
-
           const key = process.env.ASC_API_KEY_P8;
           const keyId = process.env.ASC_KEY_ID;
           const issuerId = process.env.ASC_ISSUER_ID;
           const appId = process.env.ASC_APP_ID;
-          if (!key || !keyId || !issuerId || !appId) throw new Error('Missing App Store Connect credentials or app id');
-
-          const b64url = (value) => Buffer.from(value).toString('base64url');
+          const b64url = value => Buffer.from(value).toString('base64url');
           const now = Math.floor(Date.now() / 1000);
           const header = b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }));
           const payload = b64url(JSON.stringify({ iss: issuerId, iat: now, exp: now + 1200, aud: 'appstoreconnect-v1' }));
@@ -64,7 +61,7 @@ jobs:
             const text = await res.text();
             let body = null;
             if (text) {
-              try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 500) }; }
+              try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 300) }; }
             }
             if (!res.ok) {
               const err = new Error(`ASC ${res.status} ${path}`);
@@ -75,112 +72,85 @@ jobs:
             return body;
           }
 
-          (async () => {
-            const [app, builds, groups, testers, users] = await Promise.all([
-              request(`/v1/apps/${appId}`),
-              request(`/v1/builds?filter%5Bapp%5D=${appId}&sort=-uploadedDate&limit=20&include=preReleaseVersion`),
-              request(`/v1/betaGroups?filter%5Bapp%5D=${appId}&limit=200`),
-              request(`/v1/betaTesters?limit=200`),
-              request(`/v1/users?limit=200&include=visibleApps&limit%5BvisibleApps%5D=50`)
-            ]);
-
-            const latest = builds.data?.[0];
-            if (!latest || latest.attributes?.processingState !== 'VALID') throw new Error('Latest PUSH TOTAL build is not VALID');
-
-            const groupDetails = [];
-            for (const group of groups.data || []) {
-              if (!group.attributes?.isInternalGroup) continue;
-              const groupBuilds = await request(`/v1/betaGroups/${group.id}/builds?limit=200`);
-              const hasLatest = Boolean(group.attributes?.hasAccessToAllBuilds) || (groupBuilds.data || []).some(b => b.id === latest.id);
-              if (hasLatest) groupDetails.push(group);
-            }
-            if (groupDetails.length !== 1) throw new Error(`Expected exactly one internal group with latest build, found ${groupDetails.length}`);
-            const targetGroup = groupDetails[0];
-
-            const eligibleRoles = new Set(['ACCOUNT_HOLDER', 'ADMIN', 'APP_MANAGER', 'DEVELOPER', 'MARKETING']);
-            const eligibleUsers = (users.data || []).filter(user => {
-              const roles = user.attributes?.roles || [];
-              const roleEligible = roles.some(role => eligibleRoles.has(role));
-              const appVisible = Boolean(user.attributes?.allAppsVisible) ||
-                (user.relationships?.visibleApps?.data || []).some(app => app.id === appId);
-              return roleEligible && appVisible;
-            });
-            const testerByEmail = new Map((testers.data || [])
-              .filter(t => t.attributes?.email)
-              .map(t => [String(t.attributes.email).trim().toLowerCase(), t]));
-            const matches = eligibleUsers
-              .map(user => ({ user, tester: testerByEmail.get(String(user.attributes?.username || '').trim().toLowerCase()) }))
-              .filter(x => x.tester);
-            if (matches.length !== 1) throw new Error(`Expected exactly one eligible App Store Connect user with matching beta tester, found ${matches.length}`);
-
-            const tester = matches[0].tester;
-            const before = await request(`/v1/betaGroups/${targetGroup.id}/betaTesters?limit=200`);
-            const alreadyAssigned = (before.data || []).some(t => t.id === tester.id);
-            let assignmentResult = 'ALREADY_ASSIGNED';
-
-            if (!alreadyAssigned) {
-              await request(`/v1/betaGroups/${targetGroup.id}/relationships/betaTesters`, {
-                method: 'POST',
-                body: JSON.stringify({ data: [{ type: 'betaTesters', id: tester.id }] })
-              });
-              assignmentResult = 'ASSIGNED';
-            }
-
-            const after = await request(`/v1/betaGroups/${targetGroup.id}/betaTesters?limit=200`);
-            const verified = (after.data || []).some(t => t.id === tester.id);
-            if (!verified) throw new Error('Tester assignment was not visible after App Store Connect mutation');
-
-            const included = new Map((builds.included || []).map(x => [x.id, x]));
-            let marketingVersion = null;
-            if (latest.relationships?.preReleaseVersion?.data?.id) {
-              marketingVersion = included.get(latest.relationships.preReleaseVersion.data.id)?.attributes?.version || null;
-            }
-
-            const report = {
-              checkedAt: new Date().toISOString(),
-              app: {
-                id: app.data?.id || appId,
-                name: app.data?.attributes?.name || null,
-                bundleId: app.data?.attributes?.bundleId || null,
-                sku: app.data?.attributes?.sku || null
-              },
-              latestBuild: {
-                id: latest.id,
-                buildNumber: latest.attributes?.version || null,
-                marketingVersion,
-                processingState: latest.attributes?.processingState || null,
-                uploadedDate: latest.attributes?.uploadedDate || null,
-                expired: Boolean(latest.attributes?.expired)
-              },
-              betaTesterCountOnAccount: testers.data?.length || 0,
-              appStoreConnectUserCount: users.data?.length || 0,
-              eligibleInternalUserCount: eligibleUsers.length,
-              eligibleUserWithExistingTesterCount: matches.length,
-              groups: [{
-                id: targetGroup.id,
-                name: targetGroup.attributes?.name || null,
-                isInternalGroup: true,
-                hasAccessToAllBuilds: Boolean(targetGroup.attributes?.hasAccessToAllBuilds),
-                publicLinkEnabled: Boolean(targetGroup.attributes?.publicLinkEnabled),
-                buildCount: null,
-                testerCount: after.data?.length || 0,
-                latestBuildAssigned: true
-              }],
-              assignmentResult,
-              diagnosis: 'READY_FOR_INTERNAL_TESTING'
-            };
-
+          function writeReport(report) {
             fs.mkdirSync('docs', { recursive: true });
             fs.writeFileSync('docs/PUSH_TOTAL_TESTFLIGHT_STATUS.json', JSON.stringify(report, null, 2) + '\n');
-            console.log(JSON.stringify({ assignmentResult, diagnosis: report.diagnosis, build: report.latestBuild, testerCount: report.groups[0].testerCount }, null, 2));
-          })().catch(err => {
-            console.error(err.message);
-            if (err.status) console.error(JSON.stringify({ status: err.status, errors: err.body?.errors?.map(e => ({ status: e.status, code: e.code, title: e.title, detail: e.detail })) || null }, null, 2));
-            process.exit(1);
-          });
+          }
+
+          (async () => {
+            try {
+              const [app, builds, groups, testers, users] = await Promise.all([
+                request(`/v1/apps/${appId}`),
+                request(`/v1/builds?filter%5Bapp%5D=${appId}&sort=-uploadedDate&limit=20&include=preReleaseVersion`),
+                request(`/v1/betaGroups?filter%5Bapp%5D=${appId}&limit=200`),
+                request(`/v1/betaTesters?limit=200`),
+                request(`/v1/users?limit=200&include=visibleApps&limit%5BvisibleApps%5D=50`)
+              ]);
+
+              const latest = builds.data?.[0];
+              if (!latest || latest.attributes?.processingState !== 'VALID') throw new Error('Latest PUSH TOTAL build is not VALID');
+
+              const internalGroups = [];
+              for (const group of groups.data || []) {
+                if (!group.attributes?.isInternalGroup) continue;
+                const groupBuilds = await request(`/v1/betaGroups/${group.id}/builds?limit=200`);
+                if (group.attributes?.hasAccessToAllBuilds || (groupBuilds.data || []).some(b => b.id === latest.id)) internalGroups.push(group);
+              }
+              if (internalGroups.length !== 1) throw new Error(`Expected exactly one internal group with latest build, found ${internalGroups.length}`);
+              const targetGroup = internalGroups[0];
+
+              const eligibleRoles = new Set(['ACCOUNT_HOLDER', 'ADMIN', 'APP_MANAGER', 'DEVELOPER', 'MARKETING']);
+              const eligibleUsers = (users.data || []).filter(user => {
+                const roleEligible = (user.attributes?.roles || []).some(role => eligibleRoles.has(role));
+                const appVisible = Boolean(user.attributes?.allAppsVisible) || (user.relationships?.visibleApps?.data || []).some(app => app.id === appId);
+                return roleEligible && appVisible;
+              });
+              const testerByEmail = new Map((testers.data || []).filter(t => t.attributes?.email).map(t => [String(t.attributes.email).trim().toLowerCase(), t]));
+              const matches = eligibleUsers.map(user => ({ user, tester: testerByEmail.get(String(user.attributes?.username || '').trim().toLowerCase()) })).filter(x => x.tester);
+              if (matches.length !== 1) throw new Error(`Expected exactly one eligible App Store Connect user with matching beta tester, found ${matches.length}`);
+
+              const tester = matches[0].tester;
+              const before = await request(`/v1/betaGroups/${targetGroup.id}/betaTesters?limit=200`);
+              let assignmentResult = 'ALREADY_ASSIGNED';
+              if (!(before.data || []).some(t => t.id === tester.id)) {
+                await request(`/v1/betaGroups/${targetGroup.id}/relationships/betaTesters`, {
+                  method: 'POST',
+                  body: JSON.stringify({ data: [{ type: 'betaTesters', id: tester.id }] })
+                });
+                assignmentResult = 'ASSIGNED';
+              }
+              const after = await request(`/v1/betaGroups/${targetGroup.id}/betaTesters?limit=200`);
+              if (!(after.data || []).some(t => t.id === tester.id)) throw new Error('Tester assignment not visible after mutation');
+
+              const included = new Map((builds.included || []).map(x => [x.id, x]));
+              const marketingVersion = latest.relationships?.preReleaseVersion?.data?.id ? included.get(latest.relationships.preReleaseVersion.data.id)?.attributes?.version || null : null;
+              writeReport({
+                checkedAt: new Date().toISOString(),
+                app: { id: app.data?.id || appId, name: app.data?.attributes?.name || null, bundleId: app.data?.attributes?.bundleId || null, sku: app.data?.attributes?.sku || null },
+                latestBuild: { id: latest.id, buildNumber: latest.attributes?.version || null, marketingVersion, processingState: latest.attributes?.processingState || null, uploadedDate: latest.attributes?.uploadedDate || null, expired: Boolean(latest.attributes?.expired) },
+                betaTesterCountOnAccount: testers.data?.length || 0,
+                appStoreConnectUserCount: users.data?.length || 0,
+                eligibleInternalUserCount: eligibleUsers.length,
+                eligibleUserWithExistingTesterCount: matches.length,
+                groups: [{ id: targetGroup.id, name: targetGroup.attributes?.name || null, isInternalGroup: true, hasAccessToAllBuilds: Boolean(targetGroup.attributes?.hasAccessToAllBuilds), publicLinkEnabled: Boolean(targetGroup.attributes?.publicLinkEnabled), testerCount: after.data?.length || 0, latestBuildAssigned: true }],
+                assignmentResult,
+                diagnosis: 'READY_FOR_INTERNAL_TESTING'
+              });
+            } catch (err) {
+              writeReport({
+                checkedAt: new Date().toISOString(),
+                diagnosis: 'ASSIGNMENT_FAILED',
+                assignmentError: {
+                  message: err.message,
+                  httpStatus: err.status || null,
+                  errors: err.body?.errors?.map(e => ({ status: e.status, code: e.code, title: e.title, detail: e.detail })) || null
+                }
+              });
+            }
+          })();
           NODE
 
-      - name: Persist verified TestFlight status
+      - name: Persist TestFlight result
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
@@ -188,6 +158,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No status changes.'
           else
-            git commit -m 'Verify PUSH TOTAL internal TestFlight access'
+            git commit -m 'Record PUSH TOTAL TestFlight assignment result'
             git push origin HEAD:main
           fi
