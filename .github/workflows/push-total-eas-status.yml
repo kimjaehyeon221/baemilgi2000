@@ -1,0 +1,35 @@
+name: Push Total EAS Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: EAS workflow run ID
+        required: true
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/push-total-eas-status.yml
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check current PUSH TOTAL TestFlight runs
+        env:
+          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
+          INPUT_RUN_ID: ${{ inputs.workflow_run_id }}
+        run: |
+          set -euo pipefail
+          IDS="$INPUT_RUN_ID"
+          if [ -z "$IDS" ]; then
+            IDS="01a05681-51cf-7c03-9f9f-134f4a7690b3 01a05681-99de-71ea-b92b-dcfd37f966d0"
+          fi
+          for ID in $IDS; do
+            echo "===== $ID ====="
+            curl -fsS "https://api.expo.dev/v2/workflows/runs/$ID" \
+              -H "Authorization: Bearer $EXPO_TOKEN_VALUE" \
+              | jq '{id:.data.id,status:.data.status,url:.data.url,jobs:[.data.jobs[]|{key,name,type,status,buildId,submissionId,errors}]}'
+          done
