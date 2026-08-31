@@ -32,7 +32,7 @@ function FocusHeader({ code, onClose, light = false }: { code: string; onClose: 
         <View style={S.blueStitch} />
         <Text style={[S.code, light && S.codeLight]}>{code}</Text>
       </View>
-      <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="닫기">
+      <Pressable onPress={onClose} hitSlop={6} accessibilityRole="button" accessibilityLabel="닫기" style={S.closeHit}>
         <Text style={[S.close, light && S.closeLight]}>×</Text>
       </Pressable>
     </View>
@@ -294,9 +294,11 @@ export function Training({
           <Text style={S.trainingSession}>{formatSeconds(seconds)}  SESSION</Text>
         </View>
 
-        <Text style={S.activeHint}>현재 기록에 맞춘 배밀기 보조 훈련. 한 세트를 무리해서 끝내는 것보다 반복 가능한 리듬을 유지해.</Text>
+        <Text style={S.activeHint}>반복 가능한 리듬을 유지해. 쉬는 동안 호흡을 정리해.</Text>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={rest ? '휴식 건너뛰기' : setNumber >= plan.sets ? '훈련 완료 기록' : `${setNumber}세트 완료`}
           style={({ pressed }) => [rest ? S.stopAction : S.completeAction, pressed && S.pressed]}
           onPress={() => (rest ? (setRest(false), setRestLeft(plan.rest)) : finishSet())}
         >
@@ -312,12 +314,13 @@ export function Training({
 const S = StyleSheet.create({
   activeRoot: { flex: 1, backgroundColor: '#121212' },
   activePage: { flex: 1, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#121212' },
-  focusHeader: { height: 62, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  focusHeader: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   focusHeaderLight: { borderBottomWidth: 1, borderBottomColor: '#C8C4BB' },
   codeLockup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   blueStitch: { width: 18, height: 3, backgroundColor: '#1B365D' },
-  code: { color: '#A8ADAE', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  code: { color: '#A8ADAE', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
   codeLight: { color: '#1B365D' },
+  closeHit: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   close: { fontFamily: body, color: '#A8ADAE', fontSize: 34, lineHeight: 36, fontWeight: '300' },
   closeLight: { color: '#121212' },
 
@@ -326,8 +329,8 @@ const S = StyleSheet.create({
   matDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#5D6263' },
   targetCenter: { alignItems: 'center' },
   target: { color: '#FAF9F6', fontFamily: metric, fontSize: 116, lineHeight: 124, fontWeight: '900', letterSpacing: -7, fontVariant: ['tabular-nums'] },
-  targetLabel: { color: '#8B9091', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 2.2, marginTop: 8 },
-  elapsed: { position: 'absolute', bottom: 16, right: 16, color: '#7E98BA', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
+  targetLabel: { color: '#8B9091', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 2.2, marginTop: 8 },
+  elapsed: { position: 'absolute', bottom: 16, right: 16, color: '#A9B9CF', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
   activeHint: { fontFamily: body, color: '#8D9192', fontSize: 12, lineHeight: 18, marginTop: 16, marginHorizontal: 4 },
   activeActions: { gap: 12, marginTop: 16 },
   completeAction: { minHeight: 56, backgroundColor: '#FAF9F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FAF9F6' },
@@ -342,21 +345,21 @@ const S = StyleSheet.create({
   ledgerBlueTop: { position: 'absolute', left: 0, right: 0, top: 0, height: 5, backgroundColor: '#1B365D' },
   ledgerHeadingRow: { marginTop: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 14, borderBottomWidth: 2, borderBottomColor: '#121212' },
   ledgerTitle: { color: '#121212', fontFamily: serif, fontSize: 30, lineHeight: 35, fontWeight: '900' },
-  ledgerCode: { color: '#686A68', fontFamily: mono, fontSize: 8, fontWeight: '900', letterSpacing: 1.1, marginTop: 5 },
+  ledgerCode: { color: '#686A68', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1.1, marginTop: 5 },
   ledgerMark: { fontFamily: body, color: '#1B365D', fontSize: 18 },
   dashedRule: { height: 1, borderTopWidth: 1, borderStyle: 'dashed', borderColor: '#C8C4BB', marginTop: 22 },
   ledgerPrompt: { color: '#686A68', fontFamily: serif, fontStyle: 'italic', fontSize: 13, lineHeight: 20, paddingLeft: 14, borderLeftWidth: 2, borderLeftColor: '#1B365D', marginTop: 20, marginBottom: 28 },
   ledgerRows: { borderTopWidth: 2, borderTopColor: '#121212' },
   ledgerRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderStyle: 'dashed', borderBottomColor: '#C8C4BB' },
-  ledgerLabel: { color: '#686A68', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  ledgerLabel: { color: '#686A68', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   ledgerValue: { color: '#121212', fontFamily: metric, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] },
   stopInputWrap: { minWidth: 92, alignItems: 'flex-end', borderBottomWidth: 2, borderBottomColor: '#1B365D' },
   stopInput: { minWidth: 92, color: '#121212', fontFamily: metric, fontSize: 44, lineHeight: 50, fontWeight: '900', textAlign: 'right', paddingVertical: 4, fontVariant: ['tabular-nums'] },
   logActions: { gap: 12, marginTop: 16 },
   stitchedAction: { minHeight: 56, borderWidth: 2, borderStyle: 'dashed', borderColor: '#121212', alignItems: 'center', justifyContent: 'center' },
-  stitchedActionText: { color: '#121212', fontFamily: headline, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
+  stitchedActionText: { color: '#121212', fontFamily: headline, fontSize: 12, fontWeight: '900', letterSpacing: 1.1 },
   returnAction: { minHeight: 52, borderWidth: 1, borderColor: '#C8C4BB', alignItems: 'center', justifyContent: 'center' },
-  returnActionText: { color: '#686A68', fontFamily: headline, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  returnActionText: { color: '#686A68', fontFamily: headline, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
 
   flash: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF9F6', paddingHorizontal: 24 },
   flashLight: { backgroundColor: '#FAF9F6' },
@@ -365,15 +368,15 @@ const S = StyleSheet.create({
   stampText: { color: '#B22222', fontFamily: serif, fontSize: 25, fontWeight: '900', letterSpacing: 3 },
   recordStamp: { borderWidth: 2, borderColor: '#1B365D' },
   recordStampText: { color: '#1B365D', fontFamily: mono, fontSize: 17, letterSpacing: 2 },
-  flashMeta: { color: '#686A68', fontFamily: mono, fontSize: 9, fontWeight: '900', letterSpacing: 1.4, marginTop: 24 },
+  flashMeta: { color: '#686A68', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.4, marginTop: 24 },
 
   trainingBand: { minHeight: 64, marginTop: 16, borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#1B365D', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
-  trainingBandLabel: { color: '#D5DBE2', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  trainingBandLabel: { color: '#D5DBE2', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
   trainingBandMarks: { flexDirection: 'row', gap: 5 },
   trainingMark: { width: 10, height: 22, borderWidth: 1, borderColor: '#53595B' },
   trainingMarkDone: { backgroundColor: '#1B365D', borderColor: '#1B365D' },
   trainingMat: { flex: 1, minHeight: 330, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   trainingNumber: { color: '#FAF9F6', fontFamily: metric, fontSize: 112, lineHeight: 120, fontWeight: '900', letterSpacing: -6, fontVariant: ['tabular-nums'] },
   trainingUnit: { color: '#8B9091', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 2, marginTop: 6 },
-  trainingSession: { position: 'absolute', bottom: 14, right: 2, color: '#7E98BA', fontFamily: mono, fontSize: 9, fontWeight: '900', letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
+  trainingSession: { position: 'absolute', bottom: 14, right: 2, color: '#A9B9CF', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
 });

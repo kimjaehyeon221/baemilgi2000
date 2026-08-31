@@ -298,7 +298,7 @@ function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinis
   }, []);
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={[styles.root, { backgroundColor: '#121212' }]}>
       <StatusBar barStyle="light-content" />
       <View style={styles.workout}>
         <View style={styles.workoutTop}>
