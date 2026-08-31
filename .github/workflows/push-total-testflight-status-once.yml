@@ -41,7 +41,7 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Inspect account holder and existing beta tester state
+      - name: Assign account holder directly to build 9
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -49,48 +49,83 @@ jobs:
 
           async function main() {
             const appId = process.env.ASC_APP_ID;
+            const buildNumber = process.env.ASC_BUILD_NUMBER;
+            const expectedBundleId = process.env.ASC_EXPECTED_BUNDLE_ID;
             const keyId = process.env.ASC_KEY_ID;
             const issuerId = process.env.ASC_ISSUER_ID;
             const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+
             const b64url = value => Buffer.from(value).toString('base64url');
             const now = Math.floor(Date.now() / 1000);
             const unsigned = `${b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }))}.${b64url(JSON.stringify({ iss: issuerId, iat: now - 5, exp: now + 600, aud: 'appstoreconnect-v1' }))}`;
             const signature = crypto.sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
             const token = `${unsigned}.${signature}`;
 
-            async function asc(path) {
-              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, { headers: { Authorization: `Bearer ${token}` } });
+            async function asc(path, options = {}) {
+              const method = options.method || 'GET';
+              const headers = { Authorization: `Bearer ${token}` };
+              if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+                method,
+                headers,
+                body: options.body === undefined ? undefined : JSON.stringify(options.body),
+              });
               const text = await res.text();
-              let body;
-              try { body = JSON.parse(text); } catch { body = { raw: text }; }
-              if (!res.ok) throw new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`);
+              let body = null;
+              if (text) {
+                try { body = JSON.parse(text); } catch { body = { raw: text }; }
+              }
+              if (!res.ok) throw new Error(`ASC ${res.status} ${method} ${path}\n${JSON.stringify(body)}`);
               return body;
             }
 
             const app = await asc(`/v1/apps/${appId}?fields%5Bapps%5D=name,bundleId`);
-            console.log('APP', JSON.stringify({ id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId }));
+            const appSummary = { id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId };
+            console.log('APP', JSON.stringify(appSummary));
+            if (appSummary.bundleId !== expectedBundleId) throw new Error(`Bundle ID mismatch: expected ${expectedBundleId}, got ${appSummary.bundleId}`);
 
-            const users = await asc(`/v1/users?fields%5Busers%5D=username,firstName,lastName,roles,allAppsVisible&limit=200`);
+            const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&fields%5Bbuilds%5D=version,processingState,expired&limit=10`);
+            const build = builds.data?.[0];
+            if (!build) throw new Error('PUSH TOTAL build 9 is not visible');
+            if (build.attributes.processingState !== 'VALID' || build.attributes.expired) {
+              throw new Error(`PUSH TOTAL build 9 is not valid: ${build.attributes.processingState}`);
+            }
+            console.log('BUILD_VALID', JSON.stringify({ id: build.id, version: build.attributes.version }));
+
+            const users = await asc(`/v1/users?fields%5Busers%5D=username,roles,allAppsVisible&limit=200`);
             const holders = (users.data || []).filter(u => (u.attributes?.roles || []).includes('ACCOUNT_HOLDER'));
             if (holders.length !== 1) throw new Error(`Expected one Account Holder, found ${holders.length}`);
             const holder = holders[0];
-            console.log('ACCOUNT_HOLDER', JSON.stringify({ id: holder.id, roles: holder.attributes.roles, allAppsVisible: holder.attributes.allAppsVisible }));
+            if (!holder.attributes?.allAppsVisible) throw new Error('Account Holder does not have access to all apps');
+            console.log('ACCOUNT_HOLDER_FOUND');
 
-            const testers = await asc(`/v1/betaTesters?filter%5Bemail%5D=${encodeURIComponent(holder.attributes.username)}&include=apps,betaGroups,builds&fields%5BbetaTesters%5D=state,inviteType,email,apps,betaGroups,builds&fields%5Bapps%5D=name,bundleId&fields%5BbetaGroups%5D=name,isInternalGroup&fields%5Bbuilds%5D=version,processingState&limit=10`);
-            console.log('TESTER_COUNT', (testers.data || []).length);
-            for (const tester of testers.data || []) {
-              const rel = tester.relationships || {};
-              const ids = type => (rel[type]?.data || []).map(x => x.id);
-              const included = testers.included || [];
-              const byId = new Map(included.map(x => [x.id, x]));
-              const apps = ids('apps').map(id => byId.get(id)).filter(Boolean).map(x => ({ id: x.id, name: x.attributes?.name, bundleId: x.attributes?.bundleId }));
-              const groups = ids('betaGroups').map(id => byId.get(id)).filter(Boolean).map(x => ({ id: x.id, name: x.attributes?.name, internal: x.attributes?.isInternalGroup }));
-              const builds = ids('builds').map(id => byId.get(id)).filter(Boolean).map(x => ({ id: x.id, version: x.attributes?.version, processingState: x.attributes?.processingState }));
-              console.log('TESTER', JSON.stringify({ id: tester.id, state: tester.attributes?.state, inviteType: tester.attributes?.inviteType, apps, groups, builds }));
+            const testers = await asc(`/v1/betaTesters?filter%5Bemail%5D=${encodeURIComponent(holder.attributes.username)}&fields%5BbetaTesters%5D=state,inviteType,email&limit=10`);
+            const tester = testers.data?.[0];
+            if (!tester) throw new Error('Existing beta tester for Account Holder not found');
+            console.log('BETA_TESTER_FOUND', JSON.stringify({ id: tester.id, state: tester.attributes?.state || null, inviteType: tester.attributes?.inviteType || null }));
+
+            const current = await asc(`/v1/builds/${build.id}/individualTesters?fields%5BbetaTesters%5D=state,inviteType&limit=200`);
+            const alreadyAssigned = (current.data || []).some(t => t.id === tester.id);
+            if (!alreadyAssigned) {
+              await asc(`/v1/builds/${build.id}/relationships/individualTesters`, {
+                method: 'POST',
+                body: { data: [{ type: 'betaTesters', id: tester.id }] },
+              });
+              console.log('INDIVIDUAL_TESTER_ASSIGN_REQUEST_ACCEPTED');
+            } else {
+              console.log('INDIVIDUAL_TESTER_ALREADY_ASSIGNED');
             }
 
-            const targetGroup = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&filter%5Bname%5D=${encodeURIComponent('Team (Expo)')}&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds&limit=10`);
-            console.log('TARGET_GROUP', JSON.stringify((targetGroup.data || []).map(g => ({ id: g.id, ...g.attributes }))));
+            const after = await asc(`/v1/builds/${build.id}/individualTesters?fields%5BbetaTesters%5D=state,inviteType&limit=200`);
+            const assigned = (after.data || []).find(t => t.id === tester.id);
+            if (!assigned) throw new Error('Account Holder beta tester is still not assigned to build 9');
+            console.log('TESTFLIGHT_READY', JSON.stringify({
+              buildId: build.id,
+              buildNumber: build.attributes.version,
+              testerCount: (after.data || []).length,
+              testerState: assigned.attributes?.state || null,
+              inviteType: assigned.attributes?.inviteType || null,
+            }));
           }
 
           main().catch(error => {
