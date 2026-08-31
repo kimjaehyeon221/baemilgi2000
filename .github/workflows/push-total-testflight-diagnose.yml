@@ -59,9 +59,7 @@ jobs:
             const text = await res.text();
             let body;
             try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 500) }; }
-            if (!res.ok) {
-              throw new Error(`ASC ${res.status} ${path}: ${JSON.stringify(body)}`);
-            }
+            if (!res.ok) throw new Error(`ASC ${res.status} ${path}: ${JSON.stringify(body)}`);
             return body;
           }
 
@@ -70,12 +68,13 @@ jobs:
             const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&sort=-uploadedDate&limit=20&include=preReleaseVersion`);
             const groups = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&limit=200`);
             const testers = await asc(`/v1/betaTesters?limit=200`);
+            const users = await asc(`/v1/users?limit=200&include=visibleApps&limit%5BvisibleApps%5D=50`);
 
-            const included = new Map((builds.included || []).map(x => [x.id, x]));
+            const includedBuilds = new Map((builds.included || []).map(x => [x.id, x]));
             const latest = builds.data?.[0] || null;
             let latestMarketingVersion = null;
             if (latest?.relationships?.preReleaseVersion?.data?.id) {
-              latestMarketingVersion = included.get(latest.relationships.preReleaseVersion.data.id)?.attributes?.version || null;
+              latestMarketingVersion = includedBuilds.get(latest.relationships.preReleaseVersion.data.id)?.attributes?.version || null;
             }
 
             const groupSummaries = [];
@@ -96,6 +95,22 @@ jobs:
               });
             }
 
+            const eligibleRoles = new Set(['ACCOUNT_HOLDER', 'ADMIN', 'APP_MANAGER', 'DEVELOPER', 'MARKETING']);
+            const eligibleUsers = (users.data || []).filter(user => {
+              const roles = user.attributes?.roles || [];
+              const roleEligible = roles.some(role => eligibleRoles.has(role));
+              const appVisible = Boolean(user.attributes?.allAppsVisible) ||
+                (user.relationships?.visibleApps?.data || []).some(app => app.id === appId);
+              return roleEligible && appVisible;
+            });
+
+            const testerByEmail = new Map((testers.data || [])
+              .filter(t => t.attributes?.email)
+              .map(t => [String(t.attributes.email).trim().toLowerCase(), t]));
+            const eligibleUserTesterMatches = eligibleUsers
+              .map(user => ({ user, tester: testerByEmail.get(String(user.attributes?.username || '').trim().toLowerCase()) }))
+              .filter(x => x.tester);
+
             let diagnosis = 'UNKNOWN';
             if (!latest) diagnosis = 'NO_BUILD';
             else if (latest.attributes?.processingState !== 'VALID') diagnosis = 'BUILD_NOT_VALID';
@@ -104,8 +119,11 @@ jobs:
               const assigned = internal.filter(g => g.latestBuildAssigned || g.hasAccessToAllBuilds);
               if (internal.length === 0) diagnosis = 'NO_INTERNAL_GROUP';
               else if (assigned.length === 0) diagnosis = 'BUILD_NOT_ASSIGNED_TO_INTERNAL_GROUP';
-              else if (!assigned.some(g => g.testerCount > 0)) diagnosis = 'NO_TESTERS_IN_ASSIGNED_INTERNAL_GROUP';
-              else diagnosis = 'READY_FOR_INTERNAL_TESTING';
+              else if (!assigned.some(g => g.testerCount > 0)) {
+                if (eligibleUserTesterMatches.length === 1) diagnosis = 'SAFE_TO_ASSIGN_MATCHED_INTERNAL_TESTER';
+                else if (eligibleUsers.length === 1 && eligibleUserTesterMatches.length === 0) diagnosis = 'ELIGIBLE_INTERNAL_USER_NEEDS_TESTER_RECORD';
+                else diagnosis = 'NO_TESTERS_IN_ASSIGNED_INTERNAL_GROUP';
+              } else diagnosis = 'READY_FOR_INTERNAL_TESTING';
             }
 
             const report = {
@@ -125,13 +143,22 @@ jobs:
                 expired: Boolean(latest.attributes?.expired)
               } : null,
               betaTesterCountOnAccount: testers.data?.length || 0,
+              appStoreConnectUserCount: users.data?.length || 0,
+              eligibleInternalUserCount: eligibleUsers.length,
+              eligibleUserWithExistingTesterCount: eligibleUserTesterMatches.length,
               groups: groupSummaries,
               diagnosis
             };
 
             fs.mkdirSync('docs', { recursive: true });
             fs.writeFileSync('docs/PUSH_TOTAL_TESTFLIGHT_STATUS.json', JSON.stringify(report, null, 2) + '\n');
-            console.log(JSON.stringify({ diagnosis, latestBuild: report.latestBuild, groups: groupSummaries.map(g => ({ name: g.name, internal: g.isInternalGroup, builds: g.buildCount, testers: g.testerCount, latest: g.latestBuildAssigned })) }, null, 2));
+            console.log(JSON.stringify({
+              diagnosis,
+              latestBuild: report.latestBuild,
+              eligibleInternalUserCount: report.eligibleInternalUserCount,
+              eligibleUserWithExistingTesterCount: report.eligibleUserWithExistingTesterCount,
+              groups: groupSummaries.map(g => ({ name: g.name, internal: g.isInternalGroup, builds: g.buildCount, testers: g.testerCount, latest: g.latestBuildAssigned }))
+            }, null, 2));
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
 
