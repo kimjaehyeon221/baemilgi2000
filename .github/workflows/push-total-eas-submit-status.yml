@@ -26,34 +26,34 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install app dependencies
+        run: npm install
+
       - name: Query recent submissions
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           npx eas-cli@latest submit:list --platform ios --limit 5 --json --non-interactive > /tmp/submissions.json
-          node <<'NODE'
-          const fs=require('fs');
-          const list=JSON.parse(fs.readFileSync('/tmp/submissions.json','utf8'));
-          const rows=Array.isArray(list)?list:(list.data||list.submissions||[]);
-          const sanitized=rows.map(s=>({id:s.id||null,status:s.status||null,buildId:s.build?.id||s.buildId||null,createdAt:s.createdAt||null,updatedAt:s.updatedAt||null}));
-          fs.mkdirSync('docs',{recursive:true});
-          fs.writeFileSync('docs/PUSH_TOTAL_EAS_SUBMISSIONS.json',JSON.stringify({checkedAt:new Date().toISOString(),submissions:sanitized},null,2)+'\n');
-          console.log(JSON.stringify(sanitized,null,2));
-          NODE
+          cat /tmp/submissions.json
 
       - name: Persist sanitized status on main
         run: |
+          cp /tmp/submissions.json /tmp/raw-submissions.json
           git fetch origin main
           git checkout -B main origin/main
-          cp /tmp/submissions.json /tmp/raw-submissions.json
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          # Regenerate sanitized file after switching branches.
           node <<'NODE'
           const fs=require('fs');
           const list=JSON.parse(fs.readFileSync('/tmp/raw-submissions.json','utf8'));
           const rows=Array.isArray(list)?list:(list.data||list.submissions||[]);
-          const sanitized=rows.map(s=>({id:s.id||null,status:s.status||null,buildId:s.build?.id||s.buildId||null,createdAt:s.createdAt||null,updatedAt:s.updatedAt||null}));
+          const sanitized=rows.map(s=>({
+            id:s.id||null,
+            status:s.status||null,
+            buildId:s.build?.id||s.buildId||s.build?.buildId||null,
+            createdAt:s.createdAt||null,
+            updatedAt:s.updatedAt||null,
+          }));
           fs.mkdirSync('docs',{recursive:true});
           fs.writeFileSync('docs/PUSH_TOTAL_EAS_SUBMISSIONS.json',JSON.stringify({checkedAt:new Date().toISOString(),submissions:sanitized},null,2)+'\n');
           NODE
