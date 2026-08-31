@@ -6,6 +6,7 @@ on:
       - push-total-rc
     paths:
       - .github/workflows/push-total-testflight-status-once.yml
+  workflow_dispatch:
 
 jobs:
   status:
