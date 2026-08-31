@@ -54,11 +54,15 @@
 
 ### 지원 URL
 
-공개 지원 페이지 배포 후 입력한다.
+https://baemilgi2000-upendjh-6028s-projects.vercel.app/support.html
 
 ### 마케팅 URL
 
 선택 사항. 1.0에서는 비워 둔다.
+
+### 개인정보 처리방침 URL
+
+https://baemilgi2000-upendjh-6028s-projects.vercel.app/privacy.html
 
 ### 저작권
 
@@ -106,7 +110,7 @@
 
 ### 문의
 
-공개 지원 페이지에 표시할 연락 이메일을 확정한 뒤 입력합니다.
+문의: kjh967221@gmail.com
 
 ## 지원 페이지 초안
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -291,9 +291,12 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
 function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinish: () => void }) {
   useKeepAwake();
   const [seconds, setSeconds] = useState(0);
+  const startedAtRef = useRef(Date.now());
 
   useEffect(() => {
-    const id = setInterval(() => setSeconds((value) => value + 1), 1000);
+    const sync = () => setSeconds(Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000)));
+    sync();
+    const id = setInterval(sync, 500);
     return () => clearInterval(id);
   }, []);
 

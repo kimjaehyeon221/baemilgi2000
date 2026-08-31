@@ -200,7 +200,7 @@ export default function App() {
   const exportRecords = async () => {
     const payload = {
       app: '배밀기 2000',
-      formatVersion: 2,
+      formatVersion: 3,
       exportedAt: new Date().toISOString(),
       state,
     };
@@ -214,7 +214,32 @@ export default function App() {
   const restoreRecords = async () => {
     try {
       const parsed = JSON.parse(restoreText.trim());
-      const candidate = parsed?.state ?? parsed;
+      const wrapped = Boolean(
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed) &&
+        Object.prototype.hasOwnProperty.call(parsed, 'state'),
+      );
+
+      if (wrapped) {
+        if (parsed.app !== '배밀기 2000') throw new Error('wrong app backup');
+        const formatVersion = Number(parsed.formatVersion);
+        if (!Number.isInteger(formatVersion) || formatVersion < 1 || formatVersion > 3) {
+          throw new Error('unsupported backup version');
+        }
+      }
+
+      const candidate = wrapped ? parsed.state : parsed;
+      if (
+        !candidate ||
+        typeof candidate !== 'object' ||
+        Array.isArray(candidate) ||
+        candidate.onboarded !== true ||
+        !Array.isArray(candidate.sessions)
+      ) {
+        throw new Error('invalid backup shape');
+      }
+
       const restored = safeState(candidate);
       if (!restored.onboarded) throw new Error('invalid backup');
       Alert.alert('이 백업으로 교체할까?', '현재 이 iPhone의 기록은 백업 내용으로 교체돼.', [
@@ -335,9 +360,14 @@ export default function App() {
         text: '삭제',
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.removeItem(STORAGE_KEY);
-          setInfoOpen(false);
-          setState(initialState);
+          try {
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            setInfoOpen(false);
+            setSaveStatus('saved');
+            setState(initialState);
+          } catch {
+            Alert.alert('기록을 지우지 못했어', '기존 기록을 유지했어. 저장 공간을 확인한 뒤 다시 시도해줘.');
+          }
         },
       },
     ],

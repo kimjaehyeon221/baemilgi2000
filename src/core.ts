@@ -22,9 +22,9 @@ export type AppState = {
 
 export const STORAGE_KEY = 'baemilgi2000-ios-v1';
 export const FORM_VIDEO_URL = 'https://www.youtube.com/watch?v=8zuZ_Ybe8nc';
-export const GAMA_SOURCE_URL = 'https://commons.wikimedia.org/wiki/File:Dand,_Dund,_Hindu_push-up,_Figures_1_and_2.jpg';
-export const PRIVACY_URL = 'https://baemilgi2000-upendjh-6028s-projects.vercel.app/privacy';
-export const SUPPORT_URL = 'https://baemilgi2000-upendjh-6028s-projects.vercel.app/support';
+export const GAMA_SOURCE_URL = 'https://simplexstrong.com/2020/03/what-makes-the-oriental-strong-the-indian-dands-1911/';
+export const PRIVACY_URL = 'https://baemilgi2000-upendjh-6028s-projects.vercel.app/privacy.html';
+export const SUPPORT_URL = 'https://baemilgi2000-upendjh-6028s-projects.vercel.app/support.html';
 
 export const initialState: AppState = {
   onboarded: false,
