@@ -1,0 +1,92 @@
+name: PUSH TOTAL Build 10 TestFlight Handoff
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-build10-submit.yml'
+  workflow_dispatch:
+
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BUILD_ID: '7c1b5a19-b4df-457a-9866-e605a2d0de86'
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+    steps:
+      - name: Checkout PUSH TOTAL RC
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Wait for exact EAS build 10
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          for i in $(seq 1 70); do
+            npx eas-cli@latest build:view "$BUILD_ID" --json > /tmp/push-total-build10.json
+            STATUS=$(node -e "const b=require('/tmp/push-total-build10.json'); console.log(b.status || '')")
+            BUILD_NUMBER=$(node -e "const b=require('/tmp/push-total-build10.json'); console.log(b.appBuildVersion || b.buildNumber || '')")
+            echo "Attempt $i: status=$STATUS build=$BUILD_NUMBER"
+            if [ "$BUILD_NUMBER" != "10" ]; then
+              echo "Unexpected build number: $BUILD_NUMBER"
+              cat /tmp/push-total-build10.json
+              exit 1
+            fi
+            if [ "$STATUS" = "FINISHED" ]; then
+              cat /tmp/push-total-build10.json
+              exit 0
+            fi
+            if [ "$STATUS" = "ERRORED" ] || [ "$STATUS" = "CANCELED" ]; then
+              cat /tmp/push-total-build10.json
+              exit 1
+            fi
+            sleep 30
+          done
+          echo 'Timed out waiting for Build 10.'
+          exit 1
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          test -n "$ASC_API_KEY_P8" || { echo 'Missing APPLE_ASC_API_KEY_P8'; exit 1; }
+          test -n "$EXPO_ASC_KEY_ID" || { echo 'Missing APPLE_ASC_KEY_ID'; exit 1; }
+          test -n "$EXPO_ASC_ISSUER_ID" || { echo 'Missing APPLE_ASC_ISSUER_ID'; exit 1; }
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${EXPO_ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Pin PUSH TOTAL App Store target
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const eas = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+          eas.submit ||= {};
+          eas.submit.production ||= {};
+          eas.submit.production.ios ||= {};
+          Object.assign(eas.submit.production.ios, {
+            ascAppId: '6806938654',
+            ascApiKeyPath: process.env.EXPO_ASC_API_KEY_PATH,
+            ascApiKeyIssuerId: process.env.EXPO_ASC_ISSUER_ID,
+            ascApiKeyId: process.env.EXPO_ASC_KEY_ID,
+          });
+          fs.writeFileSync('eas.json', JSON.stringify(eas, null, 2) + '\n');
+          NODE
+
+      - name: Submit exact Build 10 to TestFlight
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli@latest submit --platform ios --id "$BUILD_ID" --profile production --non-interactive --wait
