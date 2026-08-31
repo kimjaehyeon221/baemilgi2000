@@ -12,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      ASC_APP_ID: '6806588875'
+      ASC_APP_ID: '6806938654'
       ASC_BUILD_NUMBER: '9'
+      ASC_EXPECTED_BUNDLE_ID: 'com.magpie221.pushtotal'
       ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
     steps:
@@ -39,7 +40,7 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Query build 9 and TestFlight groups directly
+      - name: Query PUSH TOTAL build 9 directly
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -48,6 +49,7 @@ jobs:
           async function main() {
             const appId = process.env.ASC_APP_ID;
             const buildNumber = process.env.ASC_BUILD_NUMBER;
+            const expectedBundleId = process.env.ASC_EXPECTED_BUNDLE_ID;
             const keyId = process.env.ASC_KEY_ID;
             const issuerId = process.env.ASC_ISSUER_ID;
             const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
@@ -57,27 +59,22 @@ jobs:
             const header = b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }));
             const payload = b64url(JSON.stringify({ iss: issuerId, iat: now - 5, exp: now + 600, aud: 'appstoreconnect-v1' }));
             const unsigned = `${header}.${payload}`;
-            const signature = crypto.sign('sha256', Buffer.from(unsigned), {
-              key: privateKey,
-              dsaEncoding: 'ieee-p1363',
-            }).toString('base64url');
+            const signature = crypto.sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
             const token = `${unsigned}.${signature}`;
 
             async function asc(path) {
-              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, { headers: { Authorization: `Bearer ${token}` } });
               const text = await res.text();
               let body;
               try { body = JSON.parse(text); } catch { body = { raw: text }; }
-              if (!res.ok) {
-                throw new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`);
-              }
+              if (!res.ok) throw new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`);
               return body;
             }
 
             const app = await asc(`/v1/apps/${appId}?fields%5Bapps%5D=name,bundleId`);
-            console.log('APP', JSON.stringify({ id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId }));
+            const appSummary = { id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId };
+            console.log('APP', JSON.stringify(appSummary));
+            if (appSummary.bundleId !== expectedBundleId) throw new Error(`Bundle ID mismatch: expected ${expectedBundleId}, got ${appSummary.bundleId}`);
 
             const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&include=preReleaseVersion,betaGroups&fields%5Bbuilds%5D=version,uploadedDate,expirationDate,expired,processingState,buildAudienceType,usesNonExemptEncryption,preReleaseVersion,betaGroups&fields%5BpreReleaseVersions%5D=version,platform&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled&limit=10`);
             const build = builds.data?.[0];
@@ -105,6 +102,7 @@ jobs:
               uploadedDate: build.attributes.uploadedDate,
               expirationDate: build.attributes.expirationDate,
               buildAudienceType: build.attributes.buildAudienceType,
+              usesNonExemptEncryption: build.attributes.usesNonExemptEncryption,
               attachedGroups,
             }));
 
