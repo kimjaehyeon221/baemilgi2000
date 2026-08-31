@@ -1,243 +1,190 @@
-# BAEMILGI 2000 — Product & Design Direction
+# BAEMILGI 2000 — Final Product & Design System
 
-## 1. Product identity
+## Product identity
 
-BAEMILGI 2000 is not a generic fitness tracker. It is a progressive Baemilgi / Dand conditioning app whose identity is rooted in the material culture of judo and jiu-jitsu training.
+BAEMILGI 2000 is a progressive Baemilgi / Dand conditioning app. It is not a generic fitness tracker and it is not an official judo or Brazilian jiu-jitsu rank system.
 
-The product loop is:
+Core loop:
 
 CURRENT BEST → NEXT QUEST → CHALLENGE → CLEAR or STOP → RECORD → CONTINUE TRAINING
 
-The user starts from their current maximum continuous repetitions and progresses through 200 quests toward the symbolic endpoint of 2,000.
+The user starts from a baseline and progresses sequentially through 200 quests toward the symbolic endpoint of 2,000. A stopped attempt remains useful training data and belongs in the archive.
 
-A stopped attempt is not treated as meaningless failure. The stopping point is useful training data and becomes part of the permanent record.
+The product should feel like:
 
-## 2. Brand principle
+> A quiet digital training object that belongs inside a dojo.
 
-The app should feel like:
+## Martial-arts context
 
-> A digital training object that belongs inside a dojo.
+Baemilgi is also commonly described as the Hindu push-up. Korean judo home-training material has used the movement as conditioning. BAEMILGI 2000 borrows the material and record culture of martial arts — gi cloth, belts, tatami focus, repetition and training logs — without claiming to be an official federation programme.
 
-The brand should communicate repetition, discipline, accumulated practice, tactile training materials, and quiet toughness.
+Avoid martial-arts clichés: samurai, swords, dragons, anime, random kanji, cages, trophies, flames and fighter photography.
 
-Avoid generic gym / HIIT / CrossFit / futuristic performance-dashboard aesthetics.
+## Core palette
 
-Avoid martial-arts clichés such as samurai, swords, dragons, anime, meaningless kanji, MMA cages, flames, trophies, or aggressive fighter imagery.
+- **Gi White / Ecru:** `#FAF9F6` — everyday canvas, archive, results
+- **Judo Blue:** `#1B365D` — structural accent, seams, selected state
+- **Black:** `#121212` — Challenge / Training focus state
+- **Muted Stamp Red:** `#B22222` — CLEARED archival stamp only
 
-## 3. Material language
+Red is not a general accent. The interface should stay calm enough that the CLEARED stamp remains meaningful.
 
-The UI should borrow from the physical construction and color of martial-arts training equipment rather than literally illustrating uniforms on every screen.
+## Five training chapters
 
-### Core colors
+The existing five quest ranges use an app-specific belt-colour chapter language inspired by the representative adult Brazilian jiu-jitsu belt sequence:
 
-- **Gi White / Ecru:** `#FAF9F6`
-- **Judo Blue:** `#1B365D`
-- **Black / Active Surface:** `#121212`
-- **Muted Stamp Red:** `#B22222`
+1. **WHITE / FOUNDATION** — Quest 001–100
+2. **BLUE / RHYTHM** — Quest 101–130
+3. **PURPLE / VOLUME** — Quest 131–150
+4. **BROWN / ENDURANCE** — Quest 151–175
+5. **BLACK / 2000** — Quest 176–200
 
-Roles:
+These are **BAEMILGI TRAINING CHAPTERS**, not real judo/BJJ ranks, promotions, certificates or skill claims. Judo belt systems differ by federation and country, so the UI must never imply that completing a chapter awards a martial-arts belt.
 
-- Gi White = everyday state, records, archive, calm interface
-- Judo Blue = structure, selection, belt/seam detail, controlled emphasis
-- Black = focused challenge/training state
-- Stamp Red = verified/cleared archival mark only
+Chapter colour is a quiet structural accent. It may appear on the Home chapter ribbon, current progression marker, small metadata and chapter guide. It must not recolour the whole app or turn progression into XP/rarity gamification.
 
-No fluorescent lime or neon performance accent.
+See `docs/TRAINING_CHAPTERS.md` for the research rationale.
 
-## 4. Gi construction as interface geometry
+## Final visual rule: remove the boxes
 
-Translate gi construction into UI primitives:
+The release UI uses **space first, lines second, containers last**.
 
-- reinforced seams → dividers
-- stitching → dashed or subtle textile borders
-- cloth labels → metadata containers
-- folded fabric proportions → layout structure
-- belt proportions → long horizontal actions / progression objects
-- ink and stamps → archived training records
+- Large target numbers sit directly in open space.
+- Do not put hero numbers inside bordered cards.
+- Do not clip hero typography with `overflow: hidden`.
+- Prefer whitespace and a 1pt hairline to a full rectangle.
+- Dashed stitching is a rare material detail, not the default separator.
+- Primary buttons can be solid bands; secondary actions should feel lighter and more open.
+- Archive rows are ledger lines, not cards.
+- Navigation uses a restrained active indicator, not filled tab boxes.
 
-The user should feel the physical construction before consciously noticing it.
+The user should first notice the target and action, and only later notice the gi/belt references.
 
-## 5. Quest Band / belt-inspired progression
+## Typography
 
-The 200-quest journey may be represented through a belt-like textile object.
+The final release uses only two type families:
 
-The Quest Band can accumulate:
+- **Avenir Next** — brand, hero numbers, headings, buttons, body copy, archive titles and results.
+- **Menlo** — QUEST codes, dates, set counters, compact metadata and status labels only.
 
-- stitched marks
-- wrapped dark segments / stripe-like marks
-- end-tab details
-- subtle textile changes
-- chapter color changes when appropriate
+Do not add Georgia, Avenir Next Condensed or an unassigned system/default face. Visual distinction should come mainly from scale, weight, spacing and role — not from adding more fonts.
 
-Important: this is an app-specific training object. It must **not** claim to represent the user's official judo or jiu-jitsu rank.
-
-Do not label quest milestones as real belt ranks. Belt colors and stripe/wrap language are visual inspiration, not certification.
-
-## 6. Screen-state system
-
-### Home / Result / Archive — GI & INK
-
-- primarily Gi White
-- black ink typography
-- restrained Judo Blue structural accents
-- textile/seam/belt language
-- archive marks and stamps where meaningful
-
-The hero on Home is the next target number, not the brand name or dashboard chrome.
-
-### Active Challenge / Active Training — TATAMI / BLACK GI MODE
-
-- near-black background
-- warm white typography
-- restrained Judo Blue
-- almost no decoration
-- one dominant number per screen
-
-Starting a challenge should feel like stepping onto the mat: a clear transition from ordinary state into focused effort.
-
-### Archive — DOJO TRAINING LOG
-
-- Gi White / paper-textile feel
-- dates, quest numbers, attempts, cleared/stopped status
-- restrained stamps
-- tactile ledger / training-log composition
-
-The archive should become more meaningful and visually richer after months or years of use.
-
-## 7. Challenge behavior
-
-The app does **not** automatically count reps.
-
-During Challenge:
-
-- the large number is the **TARGET**
-- elapsed time is secondary
-- actions are **COMPLETE** and **STOP HERE**
-
-Do not invent sensor counting, heart rate, calories, rep speed, or other fake metrics.
-
-## 8. Success and stopped-at feedback
-
-### Cleared
-
-The signature feedback is a restrained physical record-stamp interaction:
-
-142 → CLEARED → muted-red `CLEARED` stamp lands with a short, heavy tactile feeling.
-
-No confetti, trophy, or exaggerated game celebration.
-
-### Stopped
-
-Do not show a punitive red `FAILED` state.
-
-Use an objective record state such as:
-
-TARGET 142
-STOPPED AT 137
-RECORDED.
-
-The design should communicate that the attempt matters and belongs in the training history.
-
-## 9. Training state
-
-Training should remain visually focused and use one dominant number at a time.
-
-Example:
-
-SET 3 / 5
-25 REPS
-COMPLETE SET
-
-Then the same layout transforms into:
-
-REST
-00:45
-SKIP REST
-
-Do not add unrelated exercises, heavy-bag work, sparring categories, or other features invented by design tools.
-
-## 10. Typography and hierarchy
-
-The Stitch master uses four deliberate roles, and the app must preserve those roles consistently across every screen:
-
-- **Display metric** — Stitch `Anton` → iOS QA build `Avenir Next Condensed`: hero targets, reps, timers when dominant, large numeric inputs.
-- **UI / action** — Stitch `Hanken Grotesk` → iOS QA build `Avenir Next`: body copy, buttons, navigation, ordinary interface headings.
-- **Data / metadata** — Stitch `JetBrains Mono` → iOS QA build `Menlo`: QUEST codes, dates, labels, statuses, set counters, archive columns.
-- **Archival** — Stitch `Source Serif 4` → iOS QA build `Georgia`: training-log titles, recorded-result headlines, restrained editorial moments.
-
-Do not introduce an unassigned system/default font inside designed screens. A text element must belong to one of these four roles. Do not use the condensed display face for buttons or body copy, and do not use the archival serif for active workout metrics.
+Hero numbers use generous line height and restrained negative tracking so digits never look vertically clipped.
 
 Rule: **one dominant number per active screen.**
 
-### 10.1 Spacing and stroke lock
+## Spacing and strokes
 
-The mobile implementation follows the Stitch rhythm rather than screen-by-screen arbitrary spacing:
+- mobile edge: 16pt
+- major separation: about 32pt
+- ordinary separator: 1pt hairline
+- reinforced structural line: 2pt only where semantically useful
+- primary workout action: 56pt minimum height
+- interactive target: at least 44×44pt hit area
 
-- **Seam:** 16pt — default mobile edge and small vertical unit
-- **Fold:** 32pt — major section separation / entry into a focused canvas
-- **Stitch:** 2pt — reinforced active/structural line
-- **Hairline:** 1pt — ledger rules, ordinary separators
-- **Primary action height:** 56pt
+Avoid arbitrary dense micro-spacing and repeated outlines.
 
-Prefer multiples of 8/16/32. Do not introduce one-off 18/22/27/31pt layout gaps unless a visual correction has a specific reason. Home, Quest, Archive, Challenge, Training and onboarding should feel cut from the same gi pattern.
+## Home
 
+Priority within roughly two seconds:
 
-## 11. UX principles
+1. current Quest code
+2. next target number
+3. current best
+4. current training chapter
+5. nearby progression
+6. START CHALLENGE
+7. TRAINING
+8. archive entry point
 
-- User should understand the next action within roughly two seconds.
-- Home prioritizes next target, current best, Challenge, and Training.
-- Do not expose all 200 quests as dense clutter on Home.
-- Failure/stopping points remain editable and valuable.
-- Existing local records and progression logic must survive visual redesigns.
-- Avoid adding features merely because a generated design contains them.
+The app name is supporting chrome, not the hero.
 
-## 12. Implementation rule
+Normal storage state stays silent. Only saving/error states surface storage feedback.
 
-Stitch output is a visual specification, not a production codebase.
+## Quest map
 
-When implementing in Expo / React Native:
+The Quest screen explains the five training chapters and shows the current neighbourhood plus meaningful future milestones. It does not dump 200 dense boxes onto the user.
 
-1. preserve existing app logic and stored user data,
-2. translate useful colors, spacing, hierarchy, states, and motion cues,
-3. remove web-only behavior such as hover states and desktop navigation,
-4. remove generated fake content/features,
-5. test on a real iPhone before considering the visual direction final.
+Future quests are previews. The release progression is sequential: baseline chooses the starting point, then the active Challenge is `clearedLevel + 1`. Completed quests may be reopened as Training.
 
-## 13. Current release intent
+## Challenge / Training
 
-The current redesign is a real-device validation pass. If the Gi White / Judo Blue / Black direction feels correct on iPhone, continue refining tactile details such as the Quest Band, stamp motion, haptics, and archive texture rather than returning to broad art-direction exploration.
+Entering a workout should feel like stepping onto the mat:
 
+- near-black background
+- warm white number
+- minimal Judo Blue structure
+- no decorative card around the number
+- no fake sensor counting
+- no heart rate, calories, speed or unrelated metrics
 
-## 13. Release-grade interaction rules
+Challenge displays the **TARGET**, not a live rep count. The user counts manually.
 
-- Functional information must be true. Never copy fake `STREAK`, calories, heart rate, calibration, percentage, unrelated drills or other prototype-only metrics into production.
-- Primary controls should provide at least a 44×44pt hit region; primary workout actions target 56pt height.
-- Long-term records must remain reachable. The archive loads older entries in batches instead of silently truncating history.
-- A storage read failure must never fall through into a fresh state that can overwrite an existing archive.
-- OTA updates must never force an in-session reload. Updates may download on launch and become active on a later launch.
-- Onboarding must support going backward before committing the baseline.
-- Historical references must be labeled as historical references. Never imply that BAEMILGI 2000 was established in 1911.
-- Decorative progression bands and micro-labels must not create noisy VoiceOver output. Group meaningful metrics and label editable archive rows as actions.
-- The visual language may be technical, but important operational text should remain readable on a real iPhone. Tiny prototype labels are not production UI.
+Actions:
+- `COMPLETE`
+- `STOP HERE`
 
+Training uses one dominant number and transforms between REPS and REST without introducing a second dashboard.
 
-### Sequential progression lock
+## Result language
 
-The release build uses sequential quests. The user's baseline/current max determines the starting point, and after that the only active challenge is `clearedLevel + 1` (or 200 after completion). Future quest cells and milestone rows are previews, not shortcuts. Completed levels may be reopened as training.
+### Cleared
 
-Why: the product promise is a durable training path, not a level picker. Skilled users already skip irrelevant early stages through the onboarding baseline, so arbitrary future-jump controls add inconsistency without meaningful utility.
+Target number → restrained muted-red `CLEARED` stamp → short heavy haptic.
 
+No confetti, trophy or exaggerated level-up animation.
 
-### Interruption-safe timers
+### Stopped
 
-Challenge elapsed time, Training elapsed time, and rest countdowns are derived from wall-clock timestamps rather than assuming JavaScript executes once per second. If iOS suspends the app during an incoming call, lock screen, app switch, or background interval, the next foreground tick reconciles to real elapsed time. The STOP HERE edit sheet intentionally pauses challenge elapsed time; returning to the quest resumes from that frozen value.
+Never show punitive `FAILED`.
 
+Use an objective record state:
 
-### Persistence is part of the workout flow
+TARGET 142
+STOPPED AT 137
+RECORDED
 
-A completed physical effort is not considered finished in the UI until its local record is safely persisted. Challenge keeps the stamped result in memory and exposes `SAVE AGAIN` if local storage fails. Training stays on the final set if its completion record fails. Rapid taps are guarded so a physical double-tap cannot create duplicate attempts, skip sets, or immediately skip a newly-entered rest state.
+The stopped result is a training record, not a shame state.
 
+## Archive
 
-### Training records describe the training
+The archive is a ledger of repetition:
 
-Archive data must describe what the user actually did. A Training row stores and renders its prescribed `sets × repsPerSet` and rest duration; the quest target remains a level reference, not a false claim about performed reps. Legacy training rows created before this metadata existed show a neutral dash for volume rather than fabricating data. Reopening a lower completed quest also caps the training plan at that quest target so an advanced global best cannot create nonsensical volume for an easier drill.
+- date
+- quest/drill code
+- actual performance
+- status
+
+Rows use open ledger spacing and hairlines rather than cards. CLEARED may retain a small stamp treatment; other statuses should remain quieter.
+
+Training records show actual `sets × repsPerSet`, not the quest target. Legacy records without detailed volume display a neutral dash rather than fabricated data.
+
+## Release-grade UX rules
+
+- Existing local data must survive visual redesigns.
+- A storage read failure must never create a fresh state that can overwrite an archive.
+- A physical effort is not finished in the UI until its record is persisted; failed saves expose retry.
+- Rapid taps must not duplicate attempts or skip sets/rest.
+- Timers use wall-clock timestamps so calls, lock screen and background suspension reconcile correctly.
+- OTA updates must not force an in-session reload.
+- Long histories remain reachable in batches.
+- Onboarding supports back navigation before committing the baseline.
+- Reduce Motion removes the spring/bounce part of stamp feedback.
+- Giant numbers may cap Dynamic Type scaling to protect layout; ordinary readable text should remain accessible.
+- Historical 2,000-Dand references are historical context, not an exercise prescription.
+- Functional information must be true. Never import fake prototype metrics or exercises from design tools.
+
+## Implementation rule
+
+Stitch is a visual specification, not the production codebase. Expo / React Native remains the source of truth.
+
+For every visual change:
+
+1. preserve product logic and stored data,
+2. follow this design system,
+3. run core invariants,
+4. run TypeScript validation,
+5. validate the iOS bundle,
+6. inspect on a real iPhone before release.
+
+The next design decisions should be driven by real-device screenshots, not by generating another broad art direction.
