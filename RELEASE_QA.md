@@ -4,6 +4,12 @@ This checklist treats BAEMILGI 2000 as a real iOS product, not a design prototyp
 
 ## P0 — Block release if any fail
 
+- [ ] Reopening an easier completed quest for Training caps the plan base at that quest target.
+
+- [ ] Old Training records without set metadata render a neutral dash instead of inventing a training volume.
+
+- [ ] New Training archive rows show the actual set structure (for example 4×42), not the quest target.
+
 - [ ] A local save failure on final Training set keeps the user on the final set so completion can be retried.
 
 - [ ] A local save failure keeps the completed Challenge result on screen and offers SAVE AGAIN.

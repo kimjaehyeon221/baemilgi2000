@@ -318,7 +318,7 @@ export function Training({
   level: number;
   currentBest: number;
   onCancel: () => void;
-  onFinish: (seconds: number) => Promise<boolean> | boolean;
+  onFinish: (seconds: number, plan: { sets: number; reps: number; rest: number }) => Promise<boolean> | boolean;
 }) {
   useKeepAwake();
   const plan = trainingPlan(currentBest, targetForLevel(level));
@@ -386,7 +386,7 @@ export function Training({
     }
 
     if (setNumber >= plan.sets) {
-      const saved = await onFinish(currentSessionSeconds());
+      const saved = await onFinish(currentSessionSeconds(), plan);
       if (!saved) actionLockedRef.current = false;
       return;
     }

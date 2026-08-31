@@ -142,7 +142,7 @@ export default function App() {
         level={trainingLevel}
         currentBest={currentBest}
         onCancel={() => setTrainingLevel(null)}
-        onFinish={async (seconds) => {
+        onFinish={async (seconds, plan) => {
           const saved = await commit({
             ...state,
             sessions: [
@@ -154,6 +154,9 @@ export default function App() {
                 target: targetForLevel(trainingLevel),
                 success: true,
                 seconds,
+                trainingSets: plan.sets,
+                trainingRepsPerSet: plan.reps,
+                trainingRestSeconds: plan.rest,
               },
             ],
           });
@@ -554,15 +557,24 @@ export default function App() {
               </View>
             ) : (
               history.map(({ session, index }) => {
+                const training = session.type === 'training';
                 const stopped = session.type === 'challenge' && !session.success;
                 const reps = stopped ? (session.actualReps ?? 0) : session.target;
+                const trainingSummary = training && session.trainingSets && session.trainingRepsPerSet
+                  ? `${session.trainingSets}×${session.trainingRepsPerSet}`
+                  : '—';
+                const accessiblePerformance = training
+                  ? session.trainingSets && session.trainingRepsPerSet
+                    ? `${session.trainingSets}세트, 세트당 ${session.trainingRepsPerSet}개`
+                    : '이전 버전 훈련 기록, 세트 상세 없음'
+                  : `${reps}개`;
                 return (
                   <Pressable
                     key={`${session.at}-${index}`}
                     style={styles.archiveEntry}
                     onPress={() => editSession(index)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${session.type === 'training' ? '훈련' : '퀘스트'} 레벨 ${session.level}, ${reps}개, ${session.type === 'training' ? '훈련 완료' : stopped ? '중단 기록' : '성공 기록'}`}
+                    accessibilityLabel={`${training ? '훈련' : '퀘스트'} 레벨 ${session.level}, ${accessiblePerformance}, ${training ? '훈련 완료' : stopped ? '중단 기록' : '성공 기록'}`}
                     accessibilityHint="두 번 탭하여 기록을 편집합니다"
                   >
                     <Text style={[styles.archiveCell, styles.archiveDateCol]}>
@@ -571,7 +583,7 @@ export default function App() {
                     <Text style={[styles.archiveCell, styles.archiveCodeCol]}>
                       {session.type === 'training' ? `D-${String(session.level).padStart(3, '0')}` : `Q-${String(session.level).padStart(3, '0')}`}
                     </Text>
-                    <Text style={[styles.archiveReps, styles.archiveRepsCol]}>{reps}</Text>
+                    <Text style={[styles.archiveReps, styles.archiveRepsCol]}>{training ? trainingSummary : reps}</Text>
                     <View style={styles.archiveStatusCol}>
                       {session.type === 'training' ? (
                         <View style={styles.drillTag}><Text style={styles.drillTagText}>DRILL</Text></View>

@@ -236,3 +236,8 @@ Challenge elapsed time, Training elapsed time, and rest countdowns are derived f
 ### Persistence is part of the workout flow
 
 A completed physical effort is not considered finished in the UI until its local record is safely persisted. Challenge keeps the stamped result in memory and exposes `SAVE AGAIN` if local storage fails. Training stays on the final set if its completion record fails. Rapid taps are guarded so a physical double-tap cannot create duplicate attempts, skip sets, or immediately skip a newly-entered rest state.
+
+
+### Training records describe the training
+
+Archive data must describe what the user actually did. A Training row stores and renders its prescribed `sets × repsPerSet` and rest duration; the quest target remains a level reference, not a false claim about performed reps. Legacy training rows created before this metadata existed show a neutral dash for volume rather than fabricating data. Reopening a lower completed quest also caps the training plan at that quest target so an advanced global best cannot create nonsensical volume for an easier drill.

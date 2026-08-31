@@ -6,6 +6,9 @@ export type Session = {
   success: boolean;
   seconds: number;
   actualReps?: number;
+  trainingSets?: number;
+  trainingRepsPerSet?: number;
+  trainingRestSeconds?: number;
 };
 
 export type AppState = {
@@ -80,7 +83,9 @@ export function levelForReps(reps: number) {
 }
 
 export function trainingPlan(currentBest: number, target: number) {
-  const base = Math.max(1, currentBest || Math.min(target, 10));
+  // Reopening an easier completed quest for training must not inherit a much higher global best.
+  const candidate = currentBest > 0 ? currentBest : Math.min(target, 10);
+  const base = Math.max(1, Math.min(candidate, target));
   if (base <= 10) return { sets: 3, reps: Math.max(2, Math.ceil(base * .6)), rest: 90 };
   if (base <= 50) return { sets: 4, reps: Math.max(5, Math.ceil(base * .45)), rest: 90 };
   if (base <= 100) return { sets: 4, reps: Math.ceil(base * .4), rest: 90 };
@@ -104,7 +109,27 @@ function safeSession(raw: any): Session | null {
         ? Math.min(Math.max(0, target - 1), Math.max(0, Math.floor(parsedActual)))
         : undefined
     : undefined;
-  return { at, type, level, target, success, seconds, actualReps };
+  const trainingSets = type === 'training' && Number.isFinite(Number(raw?.trainingSets))
+    ? Math.max(1, Math.min(20, Math.floor(Number(raw.trainingSets))))
+    : undefined;
+  const trainingRepsPerSet = type === 'training' && Number.isFinite(Number(raw?.trainingRepsPerSet))
+    ? Math.max(1, Math.min(2000, Math.floor(Number(raw.trainingRepsPerSet))))
+    : undefined;
+  const trainingRestSeconds = type === 'training' && Number.isFinite(Number(raw?.trainingRestSeconds))
+    ? Math.max(0, Math.min(3600, Math.floor(Number(raw.trainingRestSeconds))))
+    : undefined;
+  return {
+    at,
+    type,
+    level,
+    target,
+    success,
+    seconds,
+    actualReps,
+    trainingSets,
+    trainingRepsPerSet,
+    trainingRestSeconds,
+  };
 }
 
 export function recomputeProgress(raw: AppState): AppState {
