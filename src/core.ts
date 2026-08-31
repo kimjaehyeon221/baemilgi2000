@@ -79,21 +79,6 @@ export function levelForReps(reps: number) {
   return best;
 }
 
-export function recommendedTestFromPushups(p: number) {
-  const pushups = Math.max(0, Math.floor(p));
-  if (pushups <= 5) return 3;
-  if (pushups <= 15) return 5;
-  if (pushups <= 30) return 10;
-  if (pushups <= 50) return 15;
-  if (pushups <= 75) return 20;
-  if (pushups <= 100) return 30;
-
-  // There is no validated push-up → Dand conversion. For very high push-up
-  // counts, scale the first test instead of capping everyone at 30. Keep the
-  // first unfamiliar-movement test conservative and let the user override it.
-  return Math.min(100, Math.max(35, Math.round((pushups / 3) / 5) * 5));
-}
-
 export function trainingPlan(currentBest: number, target: number) {
   const base = Math.max(1, currentBest || Math.min(target, 10));
   if (base <= 10) return { sets: 3, reps: Math.max(2, Math.ceil(base * .6)), rest: 90 };
@@ -154,4 +139,3 @@ export function formatSeconds(seconds: number) {
   const s = (seconds % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
-
