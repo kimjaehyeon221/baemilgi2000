@@ -34,7 +34,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Target installed TestFlight runtime
+      # TestFlight 1.0.0 (6) is the current iPhone QA binary.
+      # Keep UI/JS OTA updates on its embedded runtime during this design-test cycle.
+      # Remove this pin and return to fingerprint policy after the next native/TestFlight build.
+      - name: Target current iPhone QA runtime
         run: |
           node - <<'NODE'
           const fs = require('fs');
