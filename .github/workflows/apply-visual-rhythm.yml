@@ -1,0 +1,32 @@
+name: Apply Visual Rhythm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/normalize_visual_rhythm.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Normalize visual rhythm
+        run: python3 scripts/normalize_visual_rhythm.py
+      - name: Commit visual rhythm refinement
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/styles.ts src/Workout.tsx DESIGN.md
+          git commit -m "Normalize BAEMILGI visual rhythm"
+          git push
