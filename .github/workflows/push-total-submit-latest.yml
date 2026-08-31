@@ -1,0 +1,46 @@
+name: Push Total Submit Latest
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-submit-latest.yml'
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      EXPO_APPLE_TEAM_TYPE: ${{ secrets.APPLE_TEAM_TYPE }}
+    steps:
+      - name: Checkout PUSH TOTAL release candidate
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          test -n "$ASC_API_KEY_P8" || { echo "Missing APPLE_ASC_API_KEY_P8"; exit 1; }
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${EXPO_ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Submit latest PUSH TOTAL iOS build to TestFlight
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit --platform ios --latest --non-interactive --wait
