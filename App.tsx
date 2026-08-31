@@ -154,6 +154,14 @@ export default function App() {
     .reverse()
     .slice(0, 30);
 
+  const questGroups = [
+    { title: '기초', range: '1–50개', start: 1, end: 50 },
+    { title: '리듬', range: '51–100개', start: 51, end: 100 },
+    { title: '지구력', range: '100–250개', start: 101, end: 130 },
+    { title: '고반복', range: '250–500개', start: 131, end: 150 },
+    { title: '전설', range: '500–2,000개', start: 151, end: 200 },
+  ];
+
   const exportRecords = async () => {
     const payload = {
       app: '배밀기 2000',
@@ -303,34 +311,47 @@ export default function App() {
 
       {tab === 'home' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-          <Text style={styles.kicker}>현재 기록</Text>
-          <Text style={styles.heroNumber}>{currentReps || '—'}</Text>
-          <Text style={styles.heroUnit}>연속 배밀기 · 레벨 {state.clearedLevel}</Text>
+          <Text style={styles.kicker}>다음 퀘스트</Text>
+          <Text style={styles.heroNumber}>{nextTarget}</Text>
+          <Text style={styles.heroUnit}>연속 배밀기 · 레벨 {nextLevel}</Text>
+
+          <View style={styles.primaryActions}>
+            <Button label="도전 시작" onPress={() => setChallengeLevel(nextLevel)} />
+            <Button label="훈련하기" secondary onPress={() => setTrainingLevel(nextLevel)} />
+          </View>
+
+          <View style={styles.currentPanel}>
+            <View>
+              <Text style={styles.currentLabel}>현재 최고</Text>
+              <Text style={styles.currentValue}>{currentReps || '—'}<Text style={styles.currentUnit}>개</Text></Text>
+            </View>
+            <View style={styles.currentLevelBlock}>
+              <Text style={styles.currentLabel}>완료</Text>
+              <Text style={styles.currentLevel}>{state.clearedLevel} / 200</Text>
+            </View>
+          </View>
+
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.mutedSmall}>{state.clearedLevel} / 200단계 완료</Text>
+            <Text style={styles.mutedSmall}>다음 관문까지 한 단계씩</Text>
             <Text style={styles.mutedSmall}>최종 목표 2,000개</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.kicker}>다음 도전</Text>
-            <Text style={styles.cardLevel}>레벨 {nextLevel}</Text>
-            <Text style={styles.cardNumber}>{nextTarget}</Text>
-            <Text style={styles.cardUnit}>연속 배밀기</Text>
-            <Button label="도전 시작" onPress={() => setChallengeLevel(nextLevel)} />
-            <View style={{ height: 9 }} />
-            <Button label="훈련" secondary onPress={() => setTrainingLevel(nextLevel)} />
-          </View>
-
-          <Pressable style={styles.linkRow} onPress={() => setTab('quests')}>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => setTab('quests')}
+            accessibilityRole="button"
+            accessibilityLabel="전체 200단계 보기"
+          >
             <Text style={styles.linkText}>전체 200단계 보기</Text>
             <Text style={styles.linkArrow}>→</Text>
           </Pressable>
+
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>기록은 스스로에게 정직하게.</Text>
-            <Text style={styles.sectionBody}>성공과 실패를 그대로 남겨. 잘못 누른 기록은 기록 탭에서 언제든 고칠 수 있어.</Text>
+            <Text style={styles.sectionTitle}>지난 기록도 다음 퀘스트의 일부야.</Text>
+            <Text style={styles.sectionBody}>성공과 멈춘 지점을 그대로 남기고, 잘못 누른 기록은 기록 탭에서 언제든 고칠 수 있어.</Text>
           </View>
         </ScrollView>
       )}
@@ -338,32 +359,43 @@ export default function App() {
       {tab === 'quests' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <Text style={styles.pageTitle}>200단계</Text>
-          <Text style={styles.pageCopy}>각 칸은 배밀기 목표 횟수 하나를 뜻해. 1단계부터 올라가며, 마지막 200단계의 목표가 연속 배밀기 2,000개야.</Text>
-          <View style={styles.grid}>
-            {Array.from({ length: 200 }, (_, i) => i + 1).map((level) => {
-              const done = level <= state.clearedLevel;
-              const selected = level === state.selectedLevel && !done;
-              const reps = targetForLevel(level);
-              const landmark = [50, 100, 250, 500, 1000, 2000].includes(reps);
-              const inverse = done || selected;
-              return (
-                <Pressable
-                  key={level}
-                  onPress={async () => {
-                    if (done) setTrainingLevel(level);
-                    else {
-                      await commit({ ...state, selectedLevel: level });
-                      setTab('home');
-                    }
-                  }}
-                  style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected, landmark && styles.cellLandmark]}
-                >
-                  <Text style={[styles.cellLevel, inverse && styles.cellTextInverse]}>{done ? `✓ ${level}` : level}</Text>
-                  <Text style={[styles.cellReps, inverse && styles.cellTextInverse]}>{reps}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Text style={styles.pageCopy}>현재 위치부터 다음 관문까지 확인해. 완료한 단계는 다시 눌러 훈련할 수 있어.</Text>
+          {questGroups.map((group) => (
+            <View key={group.title} style={styles.questSection}>
+              <View style={styles.questHeading}>
+                <Text style={styles.questTitle}>{group.title}</Text>
+                <Text style={styles.questRange}>{group.range}</Text>
+              </View>
+              <View style={styles.grid}>
+                {Array.from({ length: group.end - group.start + 1 }, (_, i) => group.start + i).map((level) => {
+                  const done = level <= state.clearedLevel;
+                  const selected = level === state.selectedLevel && !done;
+                  const reps = targetForLevel(level);
+                  const landmark = [50, 100, 250, 500, 1000, 2000].includes(reps);
+                  const inverse = done || selected;
+                  return (
+                    <Pressable
+                      key={level}
+                      accessibilityRole="button"
+                      accessibilityLabel={`레벨 ${level}, 목표 ${reps}개${done ? ', 완료' : selected ? ', 현재 선택' : ''}`}
+                      accessibilityState={{ selected }}
+                      onPress={async () => {
+                        if (done) setTrainingLevel(level);
+                        else {
+                          await commit({ ...state, selectedLevel: level });
+                          setTab('home');
+                        }
+                      }}
+                      style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected, landmark && styles.cellLandmark]}
+                    >
+                      <Text style={[styles.cellLevel, inverse && styles.cellTextInverse]}>{done ? `✓ ${level}` : level}</Text>
+                      <Text style={[styles.cellReps, inverse && styles.cellTextInverse]}>{landmark ? `관문 · ${reps}` : `${reps}개`}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </ScrollView>
       )}
 
@@ -418,7 +450,13 @@ export default function App() {
 
       <View style={styles.nav}>
         {(['home', 'quests', 'records'] as const).map((name) => (
-          <Pressable key={name} onPress={() => setTab(name)} style={styles.navButton}>
+          <Pressable
+            key={name}
+            onPress={() => setTab(name)}
+            style={[styles.navButton, tab === name && styles.navButtonActive]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === name }}
+          >
             <Text style={[styles.navText, tab === name && styles.navTextActive]}>
               {name === 'home' ? '홈' : name === 'quests' ? '퀘스트' : '기록'}
             </Text>
