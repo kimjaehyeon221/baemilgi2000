@@ -89,22 +89,24 @@ export function Challenge({
   }
 
   return (
-    <SafeAreaView style={styles.workout}>
-      <View style={styles.workoutTop}>
-        <Button label="취소" secondary onPress={onCancel} />
-        <Text style={styles.workoutTitle}>레벨 {level}</Text>
-        <View style={{ width: 72 }} />
-      </View>
-      <View style={styles.workoutGrow}>
-        <Text style={styles.kicker}>이번 도전</Text>
-        <Text style={styles.workoutTarget}>{target}</Text>
-        <Text style={styles.workoutUnit}>연속 배밀기</Text>
-        <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
-        <Text style={styles.workoutHint}>팔을 편 채 엉덩이를 뒤·위로 보내 돌아오면 1회. 통증이나 어지럼이 있으면 중단해.</Text>
-      </View>
-      <View style={{ gap: 9 }}>
-        <Button label="완료했어" onPress={() => onFinish(true, seconds, target)} />
-        <Button label="여기까지" secondary onPress={() => setRecordFailure(true)} />
+    <SafeAreaView style={styles.root}>
+      <View style={styles.workout}>
+        <View style={styles.workoutTop}>
+          <Button label="취소" secondary onPress={onCancel} />
+          <Text style={styles.workoutTitle}>레벨 {level}</Text>
+          <View style={{ width: 72 }} />
+        </View>
+        <View style={styles.workoutGrow}>
+          <Text style={styles.kicker}>이번 도전</Text>
+          <Text style={styles.workoutTarget}>{target}</Text>
+          <Text style={styles.workoutUnit}>연속 배밀기</Text>
+          <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
+          <Text style={styles.workoutHint}>팔을 편 채 엉덩이를 뒤·위로 보내 돌아오면 1회. 통증이나 어지럼이 있으면 중단해.</Text>
+        </View>
+        <View style={{ gap: 9 }}>
+          <Button label="완료했어" onPress={() => onFinish(true, seconds, target)} />
+          <Button label="여기까지" secondary onPress={() => setRecordFailure(true)} />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -153,24 +155,27 @@ export function Training({
   };
 
   return (
-    <SafeAreaView style={styles.workout}>
-      <View style={styles.workoutTop}>
-        <Button label="취소" secondary onPress={onCancel} />
-        <Text style={styles.workoutTitle}>레벨 {level} · 훈련</Text>
-        <View style={{ width: 72 }} />
+    <SafeAreaView style={styles.root}>
+      <View style={styles.workout}>
+        <View style={styles.workoutTop}>
+          <Button label="취소" secondary onPress={onCancel} />
+          <Text style={styles.workoutTitle}>레벨 {level} · 훈련</Text>
+          <View style={{ width: 72 }} />
+        </View>
+        <View style={styles.workoutGrow}>
+          <Text style={styles.kicker}>{rest ? '휴식' : `${setNumber} / ${plan.sets} 세트`}</Text>
+          <Text style={styles.workoutTarget}>{rest ? restLeft : plan.reps}</Text>
+          <Text style={styles.workoutUnit}>{rest ? '초' : '개'}</Text>
+          <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
+          <Text style={styles.workoutHint}>현재 확인된 기록을 바탕으로 만든 보조 훈련이야. 목표 횟수를 무리해서 한 세트에 따라갈 필요는 없어.</Text>
+        </View>
+        <Button
+          label={rest ? '휴식 건너뛰기' : setNumber >= plan.sets ? '훈련 완료' : '세트 완료'}
+          secondary={rest}
+          onPress={() => rest ? (setRest(false), setRestLeft(plan.rest)) : finishSet()}
+        />
       </View>
-      <View style={styles.workoutGrow}>
-        <Text style={styles.kicker}>{rest ? '휴식' : `${setNumber} / ${plan.sets} 세트`}</Text>
-        <Text style={styles.workoutTarget}>{rest ? restLeft : plan.reps}</Text>
-        <Text style={styles.workoutUnit}>{rest ? '초' : '개'}</Text>
-        <Text style={styles.timer}>{formatSeconds(seconds)}</Text>
-        <Text style={styles.workoutHint}>현재 확인된 기록을 바탕으로 만든 보조 훈련이야. 목표 횟수를 무리해서 한 세트에 따라갈 필요는 없어.</Text>
-      </View>
-      <Button
-        label={rest ? '휴식 건너뛰기' : setNumber >= plan.sets ? '훈련 완료' : '세트 완료'}
-        secondary={rest}
-        onPress={() => rest ? (setRest(false), setRestLeft(plan.rest)) : finishSet()}
-      />
     </SafeAreaView>
   );
 }
+

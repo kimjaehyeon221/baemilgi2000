@@ -136,7 +136,7 @@ export function recomputeProgress(raw: AppState): AppState {
 export function safeState(raw: any): AppState {
   const clearedLevel = Math.max(0, Math.min(200, Number(raw?.clearedLevel) || 0));
   const sessions = Array.isArray(raw?.sessions)
-    ? raw.sessions.map(safeSession).filter((item): item is Session => item !== null)
+    ? raw.sessions.map(safeSession).filter((item: Session | null): item is Session => item !== null)
     : [];
   const minimumSelected = clearedLevel >= 200 ? 200 : clearedLevel + 1;
   return {
@@ -154,3 +154,4 @@ export function formatSeconds(seconds: number) {
   const s = (seconds % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
+

@@ -68,39 +68,43 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
 
   if (step === 'intro') {
     return (
-      <SafeAreaView style={styles.onboarding}>
-        <View style={styles.introTop}>
-          <Text style={styles.introBrand}>배밀기 2000</Text>
-          <Text style={styles.introYear}>1911</Text>
+      <SafeAreaView style={styles.root}>
+        <View style={styles.onboarding}>
+          <View style={styles.introTop}>
+            <Text style={styles.introBrand}>배밀기 2000</Text>
+            <Text style={styles.introYear}>1911</Text>
+          </View>
+          <View style={styles.introGrow}>
+            <Text style={styles.introEyebrow}>GREAT GAMA</Text>
+            <Text style={styles.introTitle}>2,000</Text>
+            <Text style={styles.introSub}>오늘 가능한 횟수에서, 한 단계씩.</Text>
+            <View style={styles.introRule} />
+            <Text style={styles.introCopy}>
+              지금 할 수 있는 횟수에서 시작해 200개의 작은 퀘스트를 따라가. 성공뿐 아니라 멈춘 지점도 다음 기록이 돼.
+            </Text>
+            <Text style={styles.introCopy}>
+              마지막 2,000은 Great Gama의 역사적 Dand 기록에서 가져온 상징적인 끝점이야.
+            </Text>
+            <Text style={styles.introMeta}>운동 권장량이 아니며, 몸 상태에 맞춰 천천히 진행해.</Text>
+          </View>
+          <Button label="내 기록 시작" onPress={() => setStep('experience')} />
         </View>
-        <View style={styles.introGrow}>
-          <Text style={styles.introEyebrow}>GREAT GAMA</Text>
-          <Text style={styles.introTitle}>2,000</Text>
-          <Text style={styles.introSub}>오늘 가능한 횟수에서, 한 단계씩.</Text>
-          <View style={styles.introRule} />
-          <Text style={styles.introCopy}>
-            지금 할 수 있는 횟수에서 시작해 200개의 작은 퀘스트를 따라가. 성공뿐 아니라 멈춘 지점도 다음 기록이 돼.
-          </Text>
-          <Text style={styles.introCopy}>
-            마지막 2,000은 Great Gama의 역사적 Dand 기록에서 가져온 상징적인 끝점이야.
-          </Text>
-          <Text style={styles.introMeta}>운동 권장량이 아니며, 몸 상태에 맞춰 천천히 진행해.</Text>
-        </View>
-        <Button label="내 기록 시작" onPress={() => setStep('experience')} />
       </SafeAreaView>
     );
   }
 
   if (step === 'experience') {
     return (
-      <SafeAreaView style={styles.onboarding}>
-        <SetupTop step={1} total={4} />
-        <View style={styles.setupBody}>
-          <Text style={styles.question}>배밀기를 해본 적 있어?</Text>
-          <Text style={styles.copy}>처음이라면 자세부터 확인하고, 해봤다면 지금 최고 기록에서 시작해.</Text>
-          <View style={styles.choiceList}>
-            <ChoiceRow title="처음이야" body="자세를 보고 첫 테스트부터 시작" onPress={() => setStep('form')} />
-            <ChoiceRow title="해봤어" body="현재 최고 기록에서 바로 시작" onPress={() => setStep('experienced')} />
+      <SafeAreaView style={styles.root}>
+        <View style={styles.onboarding}>
+          <SetupTop step={1} total={4} />
+          <View style={styles.setupBody}>
+            <Text style={styles.question}>배밀기를 해본 적 있어?</Text>
+            <Text style={styles.copy}>처음이라면 자세부터 확인하고, 해봤다면 지금 최고 기록에서 시작해.</Text>
+            <View style={styles.choiceList}>
+              <ChoiceRow title="처음이야" body="자세를 보고 첫 테스트부터 시작" onPress={() => setStep('form')} />
+              <ChoiceRow title="해봤어" body="현재 최고 기록에서 바로 시작" onPress={() => setStep('experienced')} />
+            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -109,22 +113,24 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
 
   if (step === 'form') {
     return (
-      <SafeAreaView style={styles.onboarding}>
-        <SetupTop step={2} total={4} />
-        <ScrollView contentContainerStyle={styles.setupScroll} showsVerticalScrollIndicator={false}>
-          <Text style={styles.question}>이 앱에서 1회로 세는 자세</Text>
-          <Text style={styles.copy}>횟수보다 먼저, 매번 같은 동작을 1회로 세는 기준을 맞춰.</Text>
-          <View style={styles.formList}>
-            <FormStep n="1" title="엉덩이를 높여 시작" body="손을 고정하고 역 V자에 가깝게 시작." />
-            <FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽히며 가슴을 손 사이로 낮게 통과." />
-            <FormStep n="3" title="팔을 펴고 가슴을 든다" body="앞으로 나간 뒤 팔을 펴며 상체를 들어 올림." />
-            <FormStep n="4" title="팔을 편 채 뒤로" body="팔꿈치를 다시 굽히지 않고 엉덩이를 뒤·위로 보내 복귀." />
-          </View>
-          <Text style={styles.note}>되돌아올 때 팔꿈치를 다시 굽히는 Dive Bomber 방식은 이 앱의 기준에서 제외해.</Text>
-          <Button label="자세 영상 보기" secondary onPress={() => Linking.openURL(FORM_VIDEO_URL)} />
-          <View style={{ height: 10 }} />
-          <Button label="다음" onPress={() => setStep('pushup')} />
-        </ScrollView>
+      <SafeAreaView style={styles.root}>
+        <View style={styles.onboarding}>
+          <SetupTop step={2} total={4} />
+          <ScrollView contentContainerStyle={styles.setupScroll} showsVerticalScrollIndicator={false}>
+            <Text style={styles.question}>이 앱에서 1회로 세는 자세</Text>
+            <Text style={styles.copy}>횟수보다 먼저, 매번 같은 동작을 1회로 세는 기준을 맞춰.</Text>
+            <View style={styles.formList}>
+              <FormStep n="1" title="엉덩이를 높여 시작" body="손을 고정하고 역 V자에 가깝게 시작." />
+              <FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽히며 가슴을 손 사이로 낮게 통과." />
+              <FormStep n="3" title="팔을 펴고 가슴을 든다" body="앞으로 나간 뒤 팔을 펴며 상체를 들어 올림." />
+              <FormStep n="4" title="팔을 편 채 뒤로" body="팔꿈치를 다시 굽히지 않고 엉덩이를 뒤·위로 보내 복귀." />
+            </View>
+            <Text style={styles.note}>되돌아올 때 팔꿈치를 다시 굽히는 Dive Bomber 방식은 이 앱의 기준에서 제외해.</Text>
+            <Button label="자세 영상 보기" secondary onPress={() => Linking.openURL(FORM_VIDEO_URL)} />
+            <View style={{ height: 10 }} />
+            <Button label="다음" onPress={() => setStep('pushup')} />
+          </ScrollView>
+        </View>
       </SafeAreaView>
     );
   }
@@ -260,3 +266,4 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     </KeyboardAvoidingView>
   );
 }
+

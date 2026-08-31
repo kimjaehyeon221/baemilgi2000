@@ -108,10 +108,14 @@ export const styles = StyleSheet.create({
 
   pageTitle: { color: C.text, fontSize: 36, lineHeight: 41, fontWeight: '800', letterSpacing: -1.6 },
   pageCopy: { color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 9, marginBottom: 22 },
-  questSection: { marginTop: 10, marginBottom: 24 },
-  questHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: C.line, paddingBottom: 9, marginBottom: 10 },
-  questTitle: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.5 },
-  questRange: { color: C.muted, fontSize: 11, fontFamily: labelFont, fontWeight: '700' },
+  questHero: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 18, marginBottom: 28 },
+  questHeroRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  questHeroLevel: { color: C.text, fontSize: 25, lineHeight: 30, fontWeight: '800', letterSpacing: -0.8 },
+  questHeroCopy: { color: C.muted, fontSize: 12, fontWeight: '600', marginTop: 4 },
+  questHeroTarget: { color: C.text, fontSize: 44, lineHeight: 48, fontFamily: metricFont, fontWeight: '700', letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  questHeroUnit: { color: C.muted, fontSize: 14, fontWeight: '700' },
+  questProgressCopy: { color: C.muted, fontSize: 11, fontWeight: '600', marginTop: 9 },
+  questSectionLabel: { color: C.text, fontSize: 17, fontWeight: '800', marginBottom: 11, marginTop: 2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   cell: { width: '23%', minHeight: 64, borderWidth: 1, borderColor: C.line, backgroundColor: 'transparent', borderRadius: 6, padding: 8, justifyContent: 'space-between' },
   cellDone: { backgroundColor: C.accent, borderColor: C.accent },
@@ -120,6 +124,14 @@ export const styles = StyleSheet.create({
   cellLevel: { color: C.text, fontSize: 12, fontFamily: labelFont, fontWeight: '700' },
   cellReps: { color: C.muted, fontSize: 10, lineHeight: 13, fontFamily: labelFont, fontWeight: '600' },
   cellTextInverse: { color: '#FBF8F1' },
+  milestoneList: { borderTopWidth: 1, borderColor: C.line, marginBottom: 12 },
+  milestoneRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.line },
+  milestoneMark: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  milestoneMarkDone: { backgroundColor: C.accent, borderColor: C.accent },
+  milestoneMarkText: { color: C.muted, fontSize: 10, fontFamily: labelFont, fontWeight: '800' },
+  milestoneBody: { flex: 1, marginLeft: 13 },
+  milestoneTitle: { color: C.text, fontSize: 17, fontFamily: metricFont, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  milestoneCopy: { color: C.muted, fontSize: 11, marginTop: 3 },
 
   stats: { flexDirection: 'row', marginTop: 8, marginBottom: 30, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
   stat: { flex: 1, minHeight: 82, justifyContent: 'center', paddingVertical: 13 },
@@ -156,3 +168,4 @@ export const styles = StyleSheet.create({
   messageCard: { backgroundColor: C.panel, borderRadius: 6, padding: 22 },
   messageText: { color: C.text, fontSize: 22, lineHeight: 29, fontWeight: '800', marginBottom: 20 },
 });
+

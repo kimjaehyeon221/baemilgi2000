@@ -154,13 +154,13 @@ export default function App() {
     .reverse()
     .slice(0, 30);
 
-  const questGroups = [
-    { title: '기초', range: '1–50개', start: 1, end: 50 },
-    { title: '리듬', range: '51–100개', start: 51, end: 100 },
-    { title: '지구력', range: '100–250개', start: 101, end: 130 },
-    { title: '고반복', range: '250–500개', start: 131, end: 150 },
-    { title: '전설', range: '500–2,000개', start: 151, end: 200 },
-  ];
+  const nearbyStart = Math.max(1, nextLevel - 3);
+  const nearbyEnd = Math.min(200, nearbyStart + 11);
+  const nearbyLevels = Array.from(
+    { length: nearbyEnd - nearbyStart + 1 },
+    (_, i) => nearbyStart + i,
+  );
+  const milestoneLevels = [50, 100, 130, 150, 175, 200];
 
   const exportRecords = async () => {
     const payload = {
@@ -231,7 +231,7 @@ export default function App() {
         { text: '취소', style: 'cancel' },
         {
           text: '저장',
-          onPress: (value) => {
+          onPress: (value?: string) => {
             const actualReps = Math.max(0, Math.floor(Number(value) || 0));
             saveEditedSession(index, { success: false, actualReps });
           },
@@ -275,7 +275,7 @@ export default function App() {
         { text: '취소', style: 'cancel' },
         {
           text: '저장',
-          onPress: async (value) => {
+          onPress: async (value?: string) => {
             const reps = Math.max(0, Math.floor(Number(value) || 0));
             await commit(recomputeProgress({ ...state, firstBaemilgiMax: reps > 0 ? reps : null }));
           },
@@ -359,43 +359,83 @@ export default function App() {
       {tab === 'quests' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <Text style={styles.pageTitle}>200단계</Text>
-          <Text style={styles.pageCopy}>현재 위치부터 다음 관문까지 확인해. 완료한 단계는 다시 눌러 훈련할 수 있어.</Text>
-          {questGroups.map((group) => (
-            <View key={group.title} style={styles.questSection}>
-              <View style={styles.questHeading}>
-                <Text style={styles.questTitle}>{group.title}</Text>
-                <Text style={styles.questRange}>{group.range}</Text>
+          <Text style={styles.pageCopy}>200개 칸을 훑는 대신, 지금 필요한 단계와 앞으로 만날 관문만 보여줄게.</Text>
+
+          <View style={styles.questHero}>
+            <Text style={styles.kicker}>현재 위치</Text>
+            <View style={styles.questHeroRow}>
+              <View>
+                <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>
+                <Text style={styles.questHeroCopy}>다음 도전</Text>
               </View>
-              <View style={styles.grid}>
-                {Array.from({ length: group.end - group.start + 1 }, (_, i) => group.start + i).map((level) => {
-                  const done = level <= state.clearedLevel;
-                  const selected = level === state.selectedLevel && !done;
-                  const reps = targetForLevel(level);
-                  const landmark = [50, 100, 250, 500, 1000, 2000].includes(reps);
-                  const inverse = done || selected;
-                  return (
-                    <Pressable
-                      key={level}
-                      accessibilityRole="button"
-                      accessibilityLabel={`레벨 ${level}, 목표 ${reps}개${done ? ', 완료' : selected ? ', 현재 선택' : ''}`}
-                      accessibilityState={{ selected }}
-                      onPress={async () => {
-                        if (done) setTrainingLevel(level);
-                        else {
-                          await commit({ ...state, selectedLevel: level });
-                          setTab('home');
-                        }
-                      }}
-                      style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected, landmark && styles.cellLandmark]}
-                    >
-                      <Text style={[styles.cellLevel, inverse && styles.cellTextInverse]}>{done ? `✓ ${level}` : level}</Text>
-                      <Text style={[styles.cellReps, inverse && styles.cellTextInverse]}>{landmark ? `관문 · ${reps}` : `${reps}개`}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Text style={styles.questHeroTarget}>{nextTarget}<Text style={styles.questHeroUnit}>개</Text></Text>
             </View>
-          ))}
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
+            </View>
+            <Text style={styles.questProgressCopy}>{state.clearedLevel}단계 완료 · 200단계까지 {200 - state.clearedLevel}단계</Text>
+          </View>
+
+          <Text style={styles.questSectionLabel}>현재 구간</Text>
+          <View style={styles.grid}>
+            {nearbyLevels.map((level) => {
+              const done = level <= state.clearedLevel;
+              const selected = level === nextLevel && !done;
+              const reps = targetForLevel(level);
+              const inverse = done || selected;
+              return (
+                <Pressable
+                  key={level}
+                  accessibilityRole="button"
+                  accessibilityLabel={`레벨 ${level}, 목표 ${reps}개${done ? ', 완료' : selected ? ', 다음 도전' : ''}`}
+                  accessibilityState={{ selected }}
+                  onPress={async () => {
+                    if (done) setTrainingLevel(level);
+                    else {
+                      await commit({ ...state, selectedLevel: level });
+                      setTab('home');
+                    }
+                  }}
+                  style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected]}
+                >
+                  <Text style={[styles.cellLevel, inverse && styles.cellTextInverse]}>{done ? '완료' : `L${level}`}</Text>
+                  <Text style={[styles.cellReps, inverse && styles.cellTextInverse]}>{reps}개</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.questSectionLabel}>주요 관문</Text>
+          <View style={styles.milestoneList}>
+            {milestoneLevels.map((level) => {
+              const reps = targetForLevel(level);
+              const done = level <= state.clearedLevel;
+              return (
+                <Pressable
+                  key={level}
+                  accessibilityRole="button"
+                  accessibilityLabel={`레벨 ${level}, ${reps}개 관문${done ? ', 완료' : ''}`}
+                  onPress={async () => {
+                    if (done) setTrainingLevel(level);
+                    else {
+                      await commit({ ...state, selectedLevel: level });
+                      setTab('home');
+                    }
+                  }}
+                  style={styles.milestoneRow}
+                >
+                  <View style={[styles.milestoneMark, done && styles.milestoneMarkDone]}>
+                    <Text style={[styles.milestoneMarkText, done && styles.cellTextInverse]}>{done ? '✓' : level}</Text>
+                  </View>
+                  <View style={styles.milestoneBody}>
+                    <Text style={styles.milestoneTitle}>{reps.toLocaleString()}개</Text>
+                    <Text style={styles.milestoneCopy}>레벨 {level}</Text>
+                  </View>
+                  <Text style={styles.linkArrow}>→</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </ScrollView>
       )}
 
@@ -551,3 +591,4 @@ export default function App() {
     </SafeAreaView>
   );
 }
+
