@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-08-31T15:06:37.930Z",
+  "action": "CREATE_INTERNAL_TESTER",
+  "createHttpStatus": 201,
+  "createResult": "CREATED",
+  "createErrors": null,
+  "latestBuild": {
+    "buildNumber": "9",
+    "processingState": "VALID",
+    "expired": false
+  },
+  "internalGroup": {
+    "name": "Team (Expo)",
+    "hasAccessToAllBuilds": true,
+    "testerCount": 1
+  },
+  "targetAppBetaTesterCount": 1,
+  "diagnosis": "READY_FOR_INTERNAL_TESTING"
+}
