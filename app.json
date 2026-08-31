@@ -4,7 +4,7 @@
     "slug": "baemilgi-2000",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "backgroundColor": "#0B0B0A",
     "scheme": "baemilgi2000",
     "icon": "./assets/icon.png",
