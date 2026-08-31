@@ -3,6 +3,11 @@ name: BAEMILGI 2000 TestFlight
 # Manual release gate: code commits and OTA updates never create a new TestFlight binary by accident.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.release/testflight-build.txt'
 
 concurrency:
   group: baemilgi-testflight

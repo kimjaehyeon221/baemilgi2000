@@ -1,0 +1,4 @@
+BAEMILGI 2000 TestFlight release
+Requested: 2026-09-01 Asia/Seoul
+Source: main @ 5b9c15429247cfcbba7c7f0df334fb3db1f8502d
+Includes: native icon v2, onboarding motion, Korean typography, archive layout fix
