@@ -45,3 +45,5 @@ jobs:
           git add -A
           git commit -m "Apply PUSH TOTAL masonry brick UI"
           git push origin HEAD:push-total-rc
+
+# retry after repairing the exact first payload chunk
