@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: 22.13.1
 
+      - name: Install app dependencies
+        run: npm install
+
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
         with:
