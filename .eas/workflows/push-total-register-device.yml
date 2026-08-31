@@ -1,0 +1,15 @@
+name: PUSH TOTAL - Register iPhone
+
+on:
+  workflow_dispatch:
+    inputs:
+      apple_team_identifier:
+        type: string
+        required: true
+        description: Apple Developer Team ID
+
+jobs:
+  register_device:
+    type: apple-device-registration-request
+    params:
+      apple_team_identifier: ${{ inputs.apple_team_identifier }}
