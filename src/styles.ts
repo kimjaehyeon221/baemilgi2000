@@ -113,7 +113,7 @@ export const styles = StyleSheet.create({
   questTitle: { color: C.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.5 },
   questRange: { color: C.muted, fontSize: 11, fontFamily: labelFont, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  cell: { width: '23.2%', minHeight: 64, borderWidth: 1, borderColor: C.line, backgroundColor: 'transparent', borderRadius: 6, padding: 8, justifyContent: 'space-between' },
+  cell: { width: '23%', minHeight: 64, borderWidth: 1, borderColor: C.line, backgroundColor: 'transparent', borderRadius: 6, padding: 8, justifyContent: 'space-between' },
   cellDone: { backgroundColor: C.accent, borderColor: C.accent },
   cellSelected: { backgroundColor: C.selected, borderColor: C.selected },
   cellLandmark: { borderWidth: 2, borderColor: '#8D6F61' },
