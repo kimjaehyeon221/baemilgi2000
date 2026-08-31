@@ -39,7 +39,17 @@ function FocusHeader({ code, onClose, light = false }: { code: string; onClose: 
   );
 }
 
-function StampFlash({ kind, value }: { kind: 'cleared' | 'recorded'; value: number }) {
+function StampFlash({
+  kind,
+  value,
+  saveFailed = false,
+  onRetry,
+}: {
+  kind: 'cleared' | 'recorded';
+  value: number;
+  saveFailed?: boolean;
+  onRetry?: () => void;
+}) {
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -56,10 +66,10 @@ function StampFlash({ kind, value }: { kind: 'cleared' | 'recorded'; value: numb
   return (
     <View
       style={[S.flash, S.flashLight]}
-      pointerEvents="none"
+      pointerEvents={saveFailed ? 'auto' : 'none'}
       accessible
       accessibilityLiveRegion="assertive"
-      accessibilityLabel={`${value}개, ${cleared ? '성공 기록' : '중단 기록'} 저장 중`}
+      accessibilityLabel={`${value}개, ${cleared ? '성공 기록' : '중단 기록'}${saveFailed ? ', 저장 실패. 다시 저장할 수 있음' : ' 저장 중'}`}
     >
       <StatusBar barStyle="dark-content" />
       <Text style={S.flashValue}>{value}</Text>
@@ -78,7 +88,19 @@ function StampFlash({ kind, value }: { kind: 'cleared' | 'recorded'; value: numb
       >
         <Text style={[S.stampText, !cleared && S.recordStampText]}>{cleared ? 'CLEARED' : 'RECORDED'}</Text>
       </Animated.View>
-      <Text style={S.flashMeta}>{cleared ? 'TRAINING VERIFIED' : 'ATTEMPT LOGGED'}</Text>
+      <Text style={S.flashMeta}>
+        {saveFailed ? 'LOCAL SAVE FAILED · RECORD KEPT ON SCREEN' : cleared ? 'TRAINING VERIFIED' : 'ATTEMPT LOGGED'}
+      </Text>
+      {saveFailed && onRetry ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="기록 다시 저장"
+          onPress={onRetry}
+          style={({ pressed }) => [S.retrySaveAction, pressed && S.pressed]}
+        >
+          <Text style={S.retrySaveActionText}>SAVE AGAIN</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -90,7 +112,7 @@ export function Challenge({
 }: {
   level: number;
   onCancel: () => void;
-  onFinish: (success: boolean, seconds: number, actualReps: number) => void;
+  onFinish: (success: boolean, seconds: number, actualReps: number) => Promise<boolean> | boolean;
 }) {
   useKeepAwake();
   const target = targetForLevel(level);
@@ -99,7 +121,11 @@ export function Challenge({
   const [failedReps, setFailedReps] = useState('');
   const [flash, setFlash] = useState<'cleared' | 'recorded' | null>(null);
   const [flashValue, setFlashValue] = useState(target);
+  const [saveFailed, setSaveFailed] = useState(false);
   const runningSinceRef = useRef(Date.now());
+  const resultLockedRef = useRef(false);
+  const savingRef = useRef(false);
+  const pendingResultRef = useRef<{ success: boolean; seconds: number; reps: number } | null>(null);
   const accumulatedMsRef = useRef(0);
 
   const currentElapsedSeconds = () => Math.max(
@@ -124,14 +150,28 @@ export function Challenge({
     return () => clearInterval(id);
   }, [recordFailure, flash]);
 
+  const persistPendingResult = async () => {
+    const pending = pendingResultRef.current;
+    if (!pending || savingRef.current) return;
+    savingRef.current = true;
+    setSaveFailed(false);
+    const saved = await onFinish(pending.success, pending.seconds, pending.reps);
+    if (!saved) {
+      savingRef.current = false;
+      setSaveFailed(true);
+    }
+  };
+
   const finishCleared = () => {
-    if (flash) return;
+    if (resultLockedRef.current || flash) return;
+    resultLockedRef.current = true;
     const finalSeconds = currentElapsedSeconds();
     pauseElapsedClock();
+    pendingResultRef.current = { success: true, seconds: finalSeconds, reps: target };
     setFlashValue(target);
     setFlash('cleared');
     Vibration.vibrate(35);
-    setTimeout(() => onFinish(true, finalSeconds, target), 950);
+    setTimeout(persistPendingResult, 950);
   };
 
   const saveFailure = () => {
@@ -147,15 +187,27 @@ export function Challenge({
       );
       return;
     }
+    if (resultLockedRef.current) return;
+    resultLockedRef.current = true;
     Keyboard.dismiss();
     const finalSeconds = Math.floor(accumulatedMsRef.current / 1000);
+    pendingResultRef.current = { success: false, seconds: finalSeconds, reps };
     setFlashValue(reps);
     setFlash('recorded');
     Vibration.vibrate(20);
-    setTimeout(() => onFinish(false, finalSeconds, reps), 850);
+    setTimeout(persistPendingResult, 850);
   };
 
-  if (flash) return <StampFlash kind={flash} value={flashValue} />;
+  if (flash) {
+    return (
+      <StampFlash
+        kind={flash}
+        value={flashValue}
+        saveFailed={saveFailed}
+        onRetry={persistPendingResult}
+      />
+    );
+  }
 
   if (recordFailure) {
     return (
@@ -266,7 +318,7 @@ export function Training({
   level: number;
   currentBest: number;
   onCancel: () => void;
-  onFinish: (seconds: number) => void;
+  onFinish: (seconds: number) => Promise<boolean> | boolean;
 }) {
   useKeepAwake();
   const plan = trainingPlan(currentBest, targetForLevel(level));
@@ -276,6 +328,7 @@ export function Training({
   const [restLeft, setRestLeft] = useState(plan.rest);
   const sessionStartedAtRef = useRef(Date.now());
   const restDeadlineRef = useRef<number | null>(null);
+  const actionLockedRef = useRef(false);
 
   const currentSessionSeconds = () => Math.max(0, Math.floor((Date.now() - sessionStartedAtRef.current) / 1000));
 
@@ -316,12 +369,31 @@ export function Training({
     setRestLeft(plan.rest);
   };
 
-  const finishSet = () => {
-    if (setNumber >= plan.sets) onFinish(currentSessionSeconds());
-    else {
-      setSetNumber((v) => v + 1);
-      beginRest();
+  const releaseActionLock = () => {
+    setTimeout(() => {
+      actionLockedRef.current = false;
+    }, 350);
+  };
+
+  const handleTrainingAction = async () => {
+    if (actionLockedRef.current) return;
+    actionLockedRef.current = true;
+
+    if (rest) {
+      skipRest();
+      releaseActionLock();
+      return;
     }
+
+    if (setNumber >= plan.sets) {
+      const saved = await onFinish(currentSessionSeconds());
+      if (!saved) actionLockedRef.current = false;
+      return;
+    }
+
+    setSetNumber((v) => v + 1);
+    beginRest();
+    releaseActionLock();
   };
 
   return (
@@ -351,7 +423,7 @@ export function Training({
           accessibilityRole="button"
           accessibilityLabel={rest ? '휴식 건너뛰기' : setNumber >= plan.sets ? '훈련 완료 기록' : `${setNumber}세트 완료`}
           style={({ pressed }) => [rest ? S.stopAction : S.completeAction, pressed && S.pressed]}
-          onPress={() => (rest ? skipRest() : finishSet())}
+          onPress={handleTrainingAction}
         >
           <Text style={rest ? S.stopActionText : S.completeActionText}>
             {rest ? 'SKIP REST' : setNumber >= plan.sets ? 'COMPLETE TRAINING' : 'COMPLETE SET'}
@@ -419,7 +491,9 @@ const S = StyleSheet.create({
   stampText: { color: '#B22222', fontFamily: serif, fontSize: 25, fontWeight: '900', letterSpacing: 3 },
   recordStamp: { borderWidth: 2, borderColor: '#1B365D' },
   recordStampText: { color: '#1B365D', fontFamily: mono, fontSize: 17, letterSpacing: 2 },
-  flashMeta: { color: '#686A68', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.4, marginTop: 24 },
+  flashMeta: { color: '#686A68', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.4, marginTop: 24, textAlign: 'center' },
+  retrySaveAction: { minWidth: 220, minHeight: 56, marginTop: 24, borderWidth: 2, borderStyle: 'dashed', borderColor: '#121212', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  retrySaveActionText: { color: '#121212', fontFamily: headline, fontSize: 13, fontWeight: '900', letterSpacing: 1.1 },
 
   trainingBand: { minHeight: 64, marginTop: 16, borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#1B365D', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
   trainingBandLabel: { color: '#D5DBE2', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },

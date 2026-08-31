@@ -231,3 +231,8 @@ Why: the product promise is a durable training path, not a level picker. Skilled
 ### Interruption-safe timers
 
 Challenge elapsed time, Training elapsed time, and rest countdowns are derived from wall-clock timestamps rather than assuming JavaScript executes once per second. If iOS suspends the app during an incoming call, lock screen, app switch, or background interval, the next foreground tick reconciles to real elapsed time. The STOP HERE edit sheet intentionally pauses challenge elapsed time; returning to the quest resumes from that frozen value.
+
+
+### Persistence is part of the workout flow
+
+A completed physical effort is not considered finished in the UI until its local record is safely persisted. Challenge keeps the stamped result in memory and exposes `SAVE AGAIN` if local storage fails. Training stays on the final set if its completion record fails. Rapid taps are guarded so a physical double-tap cannot create duplicate attempts, skip sets, or immediately skip a newly-entered rest state.

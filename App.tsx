@@ -117,14 +117,15 @@ export default function App() {
             ],
           };
           const saved = await commit(next);
+          if (!saved) return false;
           setChallengeLevel(null);
-          if (!saved) return;
           if (success && clearedLevel >= 200) setMessage('2,000. 마지막 퀘스트를 완료했어.');
           else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) {
             setMessage('500개를 넘었어. 최종 목표는 2,000개야.');
           } else {
             setMessage(null);
           }
+          return true;
         }}
       />
     );
@@ -156,8 +157,10 @@ export default function App() {
               },
             ],
           });
+          if (!saved) return false;
           setTrainingLevel(null);
-          if (saved) setMessage('훈련을 기록했어. 준비됐을 때 다음 퀘스트에 도전해.');
+          setMessage('훈련을 기록했어. 준비됐을 때 다음 퀘스트에 도전해.');
+          return true;
         }}
       />
     );

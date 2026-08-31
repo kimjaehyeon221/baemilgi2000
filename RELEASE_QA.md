@@ -4,6 +4,12 @@ This checklist treats BAEMILGI 2000 as a real iOS product, not a design prototyp
 
 ## P0 — Block release if any fail
 
+- [ ] A local save failure on final Training set keeps the user on the final set so completion can be retried.
+
+- [ ] A local save failure keeps the completed Challenge result on screen and offers SAVE AGAIN.
+
+- [ ] Rapid double-taps on COMPLETE / COMPLETE SET cannot create duplicate records or skip sets.
+
 - [ ] Future quest/milestone taps cannot skip progression.
 - [ ] Baseline-derived starting level still skips irrelevant early quests correctly.
 
