@@ -118,7 +118,7 @@ jobs:
             const groups = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled&limit=200`);
             const summaries = [];
             for (const group of groups.data || []) {
-              const testers = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType&limit=200`);
+              const testers = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType,email,firstName,lastName&limit=200`);
               const states = {};
               for (const tester of testers.data || []) {
                 const state = tester.attributes?.state || 'UNKNOWN';
@@ -132,9 +132,17 @@ jobs:
                 publicLinkEnabled: group.attributes.publicLinkEnabled,
                 testerCount: (testers.data || []).length,
                 testerStates: states,
+                testers: (testers.data || []).map(t => ({ id: t.id, ...t.attributes })),
               });
             }
             console.log('GROUPS', JSON.stringify(summaries));
+
+            try {
+              const users = await asc(`/v1/users?fields%5Busers%5D=username,firstName,lastName,roles&limit=200`);
+              console.log('ASC_USERS', JSON.stringify((users.data || []).map(u => ({ id: u.id, ...u.attributes }))));
+            } catch (error) {
+              console.log('ASC_USERS_UNAVAILABLE', error.message);
+            }
           }
 
           main().catch(error => {
