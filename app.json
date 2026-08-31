@@ -9,11 +9,6 @@
     "backgroundColor": "#F4F2EC",
     "scheme": "pushtotal",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F4F2EC"
-    },
     "plugins": [
       [
         "expo-sensors",
