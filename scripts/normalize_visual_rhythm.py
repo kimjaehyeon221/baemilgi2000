@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 
+# Stitch visual rhythm pass: typography is locked; now normalize spacing, strokes, and hierarchy.
 styles_path = Path('src/styles.ts')
 workout_path = Path('src/Workout.tsx')
 design_path = Path('DESIGN.md')
