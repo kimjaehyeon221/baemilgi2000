@@ -29,37 +29,29 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Load refinement script from main
+      - name: Apply, validate, and report
         run: |
+          set +e
           git fetch origin main
           git show origin/main:scripts/push_total_integrity_pass.js > /tmp/push_total_integrity_pass.js
+          STAGE="install expo-audio"
+          npm install expo-audio@~57.0.4 --save-exact > /tmp/push-total-apply.log 2>&1
+          CODE=$?
 
-      - name: Install cadence audio dependency
-        run: npm install expo-audio@~57.0.4 --save-exact
-
-      - name: Generate local cadence tones
-        run: |
-          mkdir -p assets
-          node <<'NODE'
+          if [ $CODE -eq 0 ]; then
+            STAGE="generate cadence tones"
+            mkdir -p assets
+            node <<'NODE' >> /tmp/push-total-apply.log 2>&1
           const fs = require('fs');
           function wav(path, frequency, duration, volume = 0.42) {
             const rate = 44100;
             const samples = Math.floor(rate * duration);
             const dataSize = samples * 2;
             const buffer = Buffer.alloc(44 + dataSize);
-            buffer.write('RIFF', 0);
-            buffer.writeUInt32LE(36 + dataSize, 4);
-            buffer.write('WAVE', 8);
-            buffer.write('fmt ', 12);
-            buffer.writeUInt32LE(16, 16);
-            buffer.writeUInt16LE(1, 20);
-            buffer.writeUInt16LE(1, 22);
-            buffer.writeUInt32LE(rate, 24);
-            buffer.writeUInt32LE(rate * 2, 28);
-            buffer.writeUInt16LE(2, 32);
-            buffer.writeUInt16LE(16, 34);
-            buffer.write('data', 36);
-            buffer.writeUInt32LE(dataSize, 40);
+            buffer.write('RIFF', 0); buffer.writeUInt32LE(36 + dataSize, 4); buffer.write('WAVE', 8);
+            buffer.write('fmt ', 12); buffer.writeUInt32LE(16, 16); buffer.writeUInt16LE(1, 20); buffer.writeUInt16LE(1, 22);
+            buffer.writeUInt32LE(rate, 24); buffer.writeUInt32LE(rate * 2, 28); buffer.writeUInt16LE(2, 32); buffer.writeUInt16LE(16, 34);
+            buffer.write('data', 36); buffer.writeUInt32LE(dataSize, 40);
             for (let i = 0; i < samples; i++) {
               const t = i / rate;
               const edge = Math.min(1, i / (rate * 0.012), (samples - i - 1) / (rate * 0.018));
@@ -73,25 +65,56 @@ jobs:
           wav('assets/cadence-down.wav', 560, 0.12, 0.40);
           wav('assets/cadence-up.wav', 880, 0.12, 0.40);
           NODE
+            CODE=$?
+          fi
 
-      - name: Apply product refinement
-        run: node /tmp/push_total_integrity_pass.js
+          if [ $CODE -eq 0 ]; then
+            STAGE="patch App.tsx"
+            node /tmp/push_total_integrity_pass.js >> /tmp/push-total-apply.log 2>&1
+            CODE=$?
+          fi
 
-      - name: TypeScript validation
-        run: npm run typecheck
+          if [ $CODE -eq 0 ]; then
+            STAGE="typecheck"
+            npm run typecheck >> /tmp/push-total-apply.log 2>&1
+            CODE=$?
+          fi
 
-      - name: iOS bundle validation
-        run: npx expo export --platform ios --output-dir dist-ios
+          if [ $CODE -eq 0 ]; then
+            STAGE="ios bundle"
+            npx expo export --platform ios --output-dir dist-ios >> /tmp/push-total-apply.log 2>&1
+            CODE=$?
+          fi
 
-      - name: Commit verified PUSH TOTAL changes
-        run: |
-          rm -rf dist-ios
+          if [ $CODE -eq 0 ]; then
+            rm -rf dist-ios
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add App.tsx package.json package-lock.json assets/cadence-start.wav assets/cadence-down.wav assets/cadence-up.wav
+            if ! git diff --cached --quiet; then
+              git commit -m 'Refine PUSH TOTAL cadence and record integrity'
+              git push origin HEAD:push-total-rc
+            fi
+            echo "SUCCESS" > /tmp/push-total-status.txt
+            echo "cadence=3s full rep; inactivity=4s; prep=10s; correction=±10" >> /tmp/push-total-status.txt
+            exit 0
+          fi
+
+          echo "FAILED_STAGE=$STAGE" > /tmp/push-total-status.txt
+          echo "EXIT_CODE=$CODE" >> /tmp/push-total-status.txt
+          echo "--- LOG TAIL ---" >> /tmp/push-total-status.txt
+          tail -80 /tmp/push-total-apply.log >> /tmp/push-total-status.txt
+
+          git reset --hard HEAD
+          git clean -fd
+          git checkout main
+          git pull --ff-only origin main
+          mkdir -p docs
+          cp /tmp/push-total-status.txt docs/PUSH_TOTAL_CADENCE_APPLY_STATUS.txt
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add App.tsx package.json package-lock.json assets/cadence-start.wav assets/cadence-down.wav assets/cadence-up.wav
-          if git diff --cached --quiet; then
-            echo 'No PUSH TOTAL changes to commit.'
-          else
-            git commit -m 'Refine PUSH TOTAL cadence and record integrity'
-            git push origin HEAD:push-total-rc
-          fi
+          git add docs/PUSH_TOTAL_CADENCE_APPLY_STATUS.txt
+          git commit -m 'Record PUSH TOTAL cadence apply failure' || true
+          git push origin HEAD:main || true
+          cat /tmp/push-total-status.txt
+          exit $CODE
