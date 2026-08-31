@@ -1,0 +1,32 @@
+name: Apply Stitch Refinement
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/apply_stitch_refinement.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply Stitch master refinement
+        run: python3 scripts/apply_stitch_refinement.py
+      - name: Commit refined UI
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add App.tsx src/styles.ts src/Workout.tsx
+          git commit -m "Refine BAEMILGI to Stitch master direction"
+          git push
