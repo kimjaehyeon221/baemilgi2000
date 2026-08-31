@@ -19,7 +19,7 @@ jobs:
       ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
     steps:
-      - name: Checkout masonry release candidate
+      - name: Checkout PUSH TOTAL release candidate
         uses: actions/checkout@v5
         with:
           ref: push-total-rc
@@ -41,7 +41,7 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Inspect build upload and TestFlight readiness
+      - name: Ensure account holder can install build 9 in TestFlight
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -61,12 +61,21 @@ jobs:
             const signature = crypto.sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
             const token = `${unsigned}.${signature}`;
 
-            async function asc(path) {
-              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, { headers: { Authorization: `Bearer ${token}` } });
+            async function asc(path, options = {}) {
+              const method = options.method || 'GET';
+              const headers = { Authorization: `Bearer ${token}` };
+              if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+                method,
+                headers,
+                body: options.body === undefined ? undefined : JSON.stringify(options.body),
+              });
               const text = await res.text();
-              let body;
-              try { body = JSON.parse(text); } catch { body = { raw: text }; }
-              if (!res.ok) throw new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`);
+              let body = null;
+              if (text) {
+                try { body = JSON.parse(text); } catch { body = { raw: text }; }
+              }
+              if (!res.ok) throw new Error(`ASC ${res.status} ${method} ${path}\n${JSON.stringify(body)}`);
               return body;
             }
 
@@ -75,74 +84,74 @@ jobs:
             console.log('APP', JSON.stringify(appSummary));
             if (appSummary.bundleId !== expectedBundleId) throw new Error(`Bundle ID mismatch: expected ${expectedBundleId}, got ${appSummary.bundleId}`);
 
-            const uploadList = await asc(`/v1/apps/${appId}/buildUploads?fields%5BbuildUploads%5D=cfBundleShortVersionString,cfBundleVersion,createdDate,state,platform,uploadedDate,build&include=build&fields%5Bbuilds%5D=version,uploadedDate,expirationDate,expired,processingState,buildAudienceType,usesNonExemptEncryption,betaGroups,preReleaseVersion&limit=200`);
-            const uploads = (uploadList.data || []).map(x => ({ id: x.id, ...x.attributes }));
-            const upload = uploads.find(x => x.cfBundleVersion === buildNumber);
-            if (!upload) {
-              console.log('UPLOAD_NOT_VISIBLE_YET');
-              console.log('RECENT_UPLOADS', JSON.stringify(uploads.slice(-10).map(x => ({ id: x.id, version: x.cfBundleShortVersionString, build: x.cfBundleVersion, state: x.state, uploadedDate: x.uploadedDate }))));
-              return;
-            }
-            console.log('UPLOAD', JSON.stringify(upload));
-
-            const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&include=preReleaseVersion,betaGroups&fields%5Bbuilds%5D=version,uploadedDate,expirationDate,expired,processingState,buildAudienceType,usesNonExemptEncryption,preReleaseVersion,betaGroups&fields%5BpreReleaseVersions%5D=version,platform&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled&limit=10`);
+            const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&include=betaGroups,preReleaseVersion&fields%5Bbuilds%5D=version,processingState,expired,betaGroups,preReleaseVersion&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds&fields%5BpreReleaseVersions%5D=version,platform&limit=10`);
             const build = builds.data?.[0];
-            if (!build) {
-              console.log('BUILD_NOT_VISIBLE_YET');
-              return;
+            if (!build) throw new Error('Build 9 is not visible in App Store Connect');
+            if (build.attributes.processingState !== 'VALID' || build.attributes.expired) {
+              throw new Error(`Build 9 is not install-ready: ${build.attributes.processingState}`);
             }
+            console.log('BUILD_VALID', build.attributes.version);
 
-            const included = builds.included || [];
-            const prerelease = included.find(x => x.type === 'preReleaseVersions');
-            const attachedGroups = included.filter(x => x.type === 'betaGroups').map(x => ({
-              id: x.id,
-              name: x.attributes?.name,
-              internal: x.attributes?.isInternalGroup,
-              allBuilds: x.attributes?.hasAccessToAllBuilds,
-              publicLinkEnabled: x.attributes?.publicLinkEnabled,
-            }));
-            console.log('BUILD', JSON.stringify({
-              id: build.id,
-              buildNumber: build.attributes.version,
-              appVersion: prerelease?.attributes?.version || null,
-              platform: prerelease?.attributes?.platform || null,
-              processingState: build.attributes.processingState,
-              expired: build.attributes.expired,
-              uploadedDate: build.attributes.uploadedDate,
-              expirationDate: build.attributes.expirationDate,
-              buildAudienceType: build.attributes.buildAudienceType,
-              usesNonExemptEncryption: build.attributes.usesNonExemptEncryption,
-              attachedGroups,
-            }));
+            const groups = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds&limit=200`);
+            const group = (groups.data || []).find(g => g.attributes?.isInternalGroup && g.attributes?.name === 'Team (Expo)');
+            if (!group) throw new Error('Internal TestFlight group Team (Expo) not found');
+            console.log('INTERNAL_GROUP_FOUND', group.id);
 
-            const groups = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled&limit=200`);
-            const summaries = [];
-            for (const group of groups.data || []) {
-              const testers = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType,email,firstName,lastName&limit=200`);
-              const states = {};
-              for (const tester of testers.data || []) {
-                const state = tester.attributes?.state || 'UNKNOWN';
-                states[state] = (states[state] || 0) + 1;
+            const users = await asc(`/v1/users?fields%5Busers%5D=username,firstName,lastName,roles&limit=200`);
+            const accountHolders = (users.data || []).filter(u => (u.attributes?.roles || []).includes('ACCOUNT_HOLDER'));
+            if (accountHolders.length !== 1) throw new Error(`Expected exactly one Account Holder, found ${accountHolders.length}`);
+            const owner = accountHolders[0].attributes;
+            console.log('ACCOUNT_HOLDER_FOUND');
+
+            let groupTesters = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType,email&limit=200`);
+            let tester = (groupTesters.data || []).find(t => t.attributes?.email?.toLowerCase() === owner.username.toLowerCase());
+
+            if (!tester) {
+              const existing = await asc(`/v1/betaTesters?filter%5Bemail%5D=${encodeURIComponent(owner.username)}&fields%5BbetaTesters%5D=state,inviteType,email&limit=10`);
+              tester = existing.data?.[0] || null;
+
+              if (tester) {
+                await asc(`/v1/betaTesters/${tester.id}/relationships/betaGroups`, {
+                  method: 'POST',
+                  body: { data: [{ type: 'betaGroups', id: group.id }] },
+                });
+                console.log('TESTER_ADDED_TO_GROUP', tester.id);
+              } else {
+                const created = await asc('/v1/betaTesters', {
+                  method: 'POST',
+                  body: {
+                    data: {
+                      type: 'betaTesters',
+                      attributes: {
+                        email: owner.username,
+                        firstName: owner.firstName,
+                        lastName: owner.lastName,
+                      },
+                      relationships: {
+                        betaGroups: {
+                          data: [{ type: 'betaGroups', id: group.id }],
+                        },
+                      },
+                    },
+                  },
+                });
+                tester = created.data;
+                console.log('TESTER_CREATED', tester.id);
               }
-              summaries.push({
-                id: group.id,
-                name: group.attributes.name,
-                internal: group.attributes.isInternalGroup,
-                allBuilds: group.attributes.hasAccessToAllBuilds,
-                publicLinkEnabled: group.attributes.publicLinkEnabled,
-                testerCount: (testers.data || []).length,
-                testerStates: states,
-                testers: (testers.data || []).map(t => ({ id: t.id, ...t.attributes })),
-              });
+            } else {
+              console.log('TESTER_ALREADY_IN_GROUP', tester.id);
             }
-            console.log('GROUPS', JSON.stringify(summaries));
 
-            try {
-              const users = await asc(`/v1/users?fields%5Busers%5D=username,firstName,lastName,roles&limit=200`);
-              console.log('ASC_USERS', JSON.stringify((users.data || []).map(u => ({ id: u.id, ...u.attributes }))));
-            } catch (error) {
-              console.log('ASC_USERS_UNAVAILABLE', error.message);
-            }
+            groupTesters = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType,email&limit=200`);
+            tester = (groupTesters.data || []).find(t => t.attributes?.email?.toLowerCase() === owner.username.toLowerCase());
+            if (!tester) throw new Error('Account Holder was not present in the internal TestFlight group after update');
+
+            console.log('TESTFLIGHT_TESTER', JSON.stringify({
+              id: tester.id,
+              state: tester.attributes?.state || null,
+              inviteType: tester.attributes?.inviteType || null,
+              groupTesterCount: (groupTesters.data || []).length,
+            }));
           }
 
           main().catch(error => {
