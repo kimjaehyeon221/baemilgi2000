@@ -72,8 +72,10 @@ export const styles = StyleSheet.create({
   button: { minHeight: 58, borderRadius: 2, backgroundColor: C.accent, borderWidth: 1, borderColor: C.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
   buttonSecondary: { backgroundColor: 'transparent', borderColor: C.line },
   buttonDanger: { backgroundColor: 'transparent', borderColor: C.danger },
+  buttonDisabled: { backgroundColor: C.panelLift, borderColor: C.line },
   buttonText: { color: C.ink, fontSize: 13, fontFamily: labelFont, fontWeight: '900', letterSpacing: 0.45 },
   buttonSecondaryText: { color: C.text },
+  buttonTextDisabled: { color: C.faint },
 
   header: { height: 60, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: C.line },
   brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -83,6 +85,11 @@ export const styles = StyleSheet.create({
   circleText: { color: C.muted, fontSize: 8, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1 },
 
   page: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 106 },
+  storageInline: { minHeight: 34, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, marginBottom: 16 },
+  storageDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.accent, marginRight: 8 },
+  storageDotError: { backgroundColor: C.danger },
+  storageInlineText: { flex: 1, color: C.muted, fontSize: 10, fontWeight: '800' },
+  storageInlineCode: { color: C.faint, fontSize: 8, fontFamily: labelFont, fontWeight: '900', letterSpacing: 0.7 },
   heroStage: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, padding: 18, paddingTop: 15, overflow: 'hidden' },
   heroTopline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: C.line, paddingBottom: 12, marginBottom: 19 },
   heroCode: { color: C.muted, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.1 },
@@ -142,6 +149,12 @@ export const styles = StyleSheet.create({
   stat: { flex: 1, minHeight: 86, justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 10, borderRightWidth: 1, borderColor: C.line },
   statLabel: { color: C.hot, fontSize: 8, fontFamily: labelFont, fontWeight: '900', letterSpacing: 0.7 },
   statValue: { color: C.text, fontSize: 27, fontFamily: metricFont, fontWeight: '900', marginTop: 5, fontVariant: ['tabular-nums'] },
+  storageCard: { backgroundColor: C.panel, borderLeftWidth: 5, borderColor: C.accent, paddingHorizontal: 15, paddingTop: 14, marginBottom: 28 },
+  storageCardTop: { flexDirection: 'row', alignItems: 'center' },
+  storageTitle: { flex: 1, color: C.text, fontSize: 12, fontWeight: '900' },
+  storageCopy: { color: C.muted, fontSize: 11, lineHeight: 18, marginTop: 10, marginBottom: 8 },
+  storageAction: { minHeight: 49, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderColor: C.line },
+  storageActionText: { color: C.accent, fontSize: 11, fontWeight: '900' },
   historyRow: { minHeight: 73, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: C.line, paddingVertical: 8 },
   historyMain: { color: C.text, fontSize: 13, fontWeight: '900' },
   historySub: { color: C.faint, fontSize: 10, marginTop: 4 },
@@ -159,6 +172,7 @@ export const styles = StyleSheet.create({
   workoutTitle: { color: C.accent, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1 },
   workoutGrow: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.panel, borderLeftWidth: 1, borderRightWidth: 1, borderColor: C.line, marginVertical: 18, paddingHorizontal: 16 },
   workoutTarget: { color: C.text, fontSize: 118, lineHeight: 122, fontFamily: displayFont, fontWeight: '900', letterSpacing: -7, fontVariant: ['tabular-nums'] },
+  calibrationWord: { color: C.text, fontSize: 72, lineHeight: 80, fontFamily: displayFont, fontWeight: '900', letterSpacing: -4.2 },
   workoutUnit: { color: C.muted, fontSize: 12, fontWeight: '900' },
   timer: { color: C.ink, backgroundColor: C.accent, fontSize: 18, fontFamily: metricFont, fontWeight: '900', marginTop: 22, paddingHorizontal: 14, paddingVertical: 7, fontVariant: ['tabular-nums'] },
   workoutHint: { color: C.muted, fontSize: 11, lineHeight: 18, textAlign: 'center', maxWidth: 292, marginTop: 18 },
@@ -173,4 +187,3 @@ export const styles = StyleSheet.create({
   messageCard: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.accent, padding: 22 },
   messageText: { color: C.text, fontSize: 23, lineHeight: 29, fontFamily: displayFont, fontWeight: '900', marginBottom: 20 },
 });
-
