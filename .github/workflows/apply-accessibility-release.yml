@@ -1,0 +1,49 @@
+name: Apply Accessibility Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/apply-accessibility-release.yml'
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Apply accessibility release pass
+        run: python scripts/accessibility_release.py
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-ci
+
+      - name: Commit accessibility release pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add App.tsx src/Workout.tsx src/Onboarding.tsx
+          if git diff --cached --quiet; then
+            echo 'No changes'
+          else
+            git commit -m 'Respect iOS accessibility motion and text settings'
+            git push
+          fi
