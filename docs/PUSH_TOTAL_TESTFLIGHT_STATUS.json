@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-08-31T14:57:38.384Z",
+  "app": {
+    "id": "6806938654",
+    "name": "PUSH TOTAL",
+    "bundleId": "com.magpie221.pushtotal",
+    "sku": "push-total-ios"
+  },
+  "latestBuild": {
+    "id": "13cd25d0-84f3-4d24-9156-004de6de9dbd",
+    "buildNumber": "9",
+    "marketingVersion": "0.9.0",
+    "processingState": "VALID",
+    "uploadedDate": "2026-08-31T05:57:38-07:00",
+    "expired": false
+  },
+  "betaTesterCountOnAccount": 1,
+  "groups": [
+    {
+      "id": "2ac9dd12-3343-488a-9a7d-fb342d95ad33",
+      "name": "Team (Expo)",
+      "isInternalGroup": true,
+      "hasAccessToAllBuilds": true,
+      "publicLinkEnabled": false,
+      "buildCount": 1,
+      "testerCount": 0,
+      "latestBuildAssigned": true
+    }
+  ],
+  "diagnosis": "NO_TESTERS_IN_ASSIGNED_INTERNAL_GROUP"
+}
