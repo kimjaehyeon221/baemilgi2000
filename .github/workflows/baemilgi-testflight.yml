@@ -1,0 +1,92 @@
+name: BAEMILGI 2000 TestFlight
+
+# One-time automatic run on creation; after the first verified handoff this is switched to manual-only.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/baemilgi-testflight.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: baemilgi-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      EXPO_APPLE_TEAM_TYPE: ${{ secrets.APPLE_TEAM_TYPE }}
+    steps:
+      - name: Checkout BAEMILGI release candidate
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validate iOS CI secrets
+        env:
+          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          test -n "$EXPO_TOKEN_VALUE" || { echo "Missing EXPO_TOKEN"; exit 1; }
+          test -n "$ASC_API_KEY_P8" || { echo "Missing APPLE_ASC_API_KEY_P8"; exit 1; }
+          test -n "$EXPO_ASC_KEY_ID" || { echo "Missing APPLE_ASC_KEY_ID"; exit 1; }
+          test -n "$EXPO_ASC_ISSUER_ID" || { echo "Missing APPLE_ASC_ISSUER_ID"; exit 1; }
+          test -n "$EXPO_APPLE_TEAM_ID" || { echo "Missing APPLE_TEAM_ID"; exit 1; }
+          test -n "$EXPO_APPLE_TEAM_TYPE" || { echo "Missing APPLE_TEAM_TYPE"; exit 1; }
+
+      - name: Prepare temporary App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${EXPO_ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate core progression invariants
+        run: bash scripts/check-core.sh
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-ci
+
+      - name: Validate BAEMILGI production identity
+        run: |
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const eas = require('./eas.json');
+          if (app.ios?.bundleIdentifier !== 'com.magpie221.baemilgi2000') throw new Error('Unexpected iOS bundle identifier');
+          if (app.extra?.eas?.projectId !== '40d2bec8-1e2e-49ec-81cc-3c1c6a75c1a6') throw new Error('Unexpected EAS project ID');
+          if (eas.submit?.production?.ios?.ascAppId !== '6806938654') throw new Error('Unexpected App Store Connect app ID');
+          console.log(`Validated ${app.name} ${app.version} / ${app.ios.bundleIdentifier}`);
+          NODE
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          expo-cache: false
+          eas-cache: false
+
+      - name: Build production binary and submit to TestFlight
+        run: eas build --platform ios --profile production --auto-submit --non-interactive
