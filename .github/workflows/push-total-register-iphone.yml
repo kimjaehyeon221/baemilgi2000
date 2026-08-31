@@ -6,34 +6,34 @@ on:
 jobs:
   register:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Validate Expo token
-        env:
-          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          test -n "$EXPO_TOKEN_VALUE" || { echo "Missing EXPO_TOKEN"; exit 1; }
+      - name: Checkout PUSH TOTAL release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Start browser-based iPhone registration
-        env:
-          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
         run: |
-          PAYLOAD=$(jq -n \
-            --arg appId "c28e2156-a87c-4e46-886c-48440d672a0f" \
-            --arg gitRef "push-total-rc" \
-            --arg fileName "push-total-register-device.yml" \
-            '{appId:$appId,gitRef:$gitRef,fileName:$fileName,inputs:{}}')
+          eas workflow:run .eas/workflows/push-total-register-device.yml --non-interactive
 
-          RESPONSE=$(curl -fsS -X POST "https://api.expo.dev/v2/workflows/dispatch" \
-            -H "Authorization: Bearer $EXPO_TOKEN_VALUE" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-
-          echo "$RESPONSE" | jq .
-          URL=$(echo "$RESPONSE" | jq -r '.data.url // empty')
-          test -n "$URL" || { echo "EAS workflow URL was not returned."; exit 1; }
-
-          echo "### iPhone registration" >> "$GITHUB_STEP_SUMMARY"
-          echo "Open the EAS workflow page below, then continue the browser/QR registration flow on the iPhone." >> "$GITHUB_STEP_SUMMARY"
+          echo "### iPhone registration started" >> "$GITHUB_STEP_SUMMARY"
+          echo "The EAS device-registration workflow was uploaded directly from the push-total-rc branch, so a GitHub↔Expo repository connection is not required for this step." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Open the PUSH TOTAL Workflows page and select the newest **PUSH TOTAL - Register iPhone** run. It should be waiting for action and show the device registration / QR flow." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://expo.dev/accounts/magpie221/projects/push-total/workflows" >> "$GITHUB_STEP_SUMMARY"
