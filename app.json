@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PUSH TOTAL",
+    "name": "PUSH TOTAL SENSOR",
     "slug": "push-total",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -13,6 +13,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#F4F3EE"
     },
+    "plugins": [
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "푸쉬업 반복 움직임을 감지하기 위해 동작 센서를 사용합니다."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.magpie221.pushtotal",
@@ -23,7 +31,8 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMotionUsageDescription": "푸쉬업 반복 움직임을 감지하기 위해 동작 센서를 사용합니다."
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
