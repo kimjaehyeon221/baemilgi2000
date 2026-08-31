@@ -1,0 +1,39 @@
+name: Push Total Register iPhone
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate Expo token
+        env:
+          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN_VALUE" || { echo "Missing EXPO_TOKEN"; exit 1; }
+
+      - name: Start browser-based iPhone registration
+        env:
+          EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg appId "c28e2156-a87c-4e46-886c-48440d672a0f" \
+            --arg gitRef "push-total-rc" \
+            --arg fileName "push-total-register-device.yml" \
+            '{appId:$appId,gitRef:$gitRef,fileName:$fileName,inputs:{}}')
+
+          RESPONSE=$(curl -fsS -X POST "https://api.expo.dev/v2/workflows/dispatch" \
+            -H "Authorization: Bearer $EXPO_TOKEN_VALUE" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "$RESPONSE" | jq .
+          URL=$(echo "$RESPONSE" | jq -r '.data.url // empty')
+          test -n "$URL" || { echo "EAS workflow URL was not returned."; exit 1; }
+
+          echo "### iPhone registration" >> "$GITHUB_STEP_SUMMARY"
+          echo "Open the EAS workflow page below, then continue the browser/QR registration flow on the iPhone." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
