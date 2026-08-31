@@ -1,0 +1,56 @@
+name: BAEMILGI iOS Prebuild Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - baemilgi-app
+    paths:
+      - 'App.tsx'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'eas.json'
+      - 'assets/**'
+      - 'scripts/**'
+      - '.github/workflows/baemilgi-prebuild-check.yml'
+
+concurrency:
+  group: baemilgi-prebuild-check
+  cancel-in-progress: true
+
+jobs:
+  prebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout BAEMILGI app branch
+        uses: actions/checkout@v5
+        with:
+          ref: baemilgi-app
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate core progression invariants
+        run: bash scripts/check-core.sh
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Validate iOS JS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-ci
+
+      - name: Run Expo iOS prebuild with full logs
+        env:
+          CI: '1'
+          EXPO_DEBUG: '1'
+        run: npx expo prebuild --platform ios --clean --no-install
