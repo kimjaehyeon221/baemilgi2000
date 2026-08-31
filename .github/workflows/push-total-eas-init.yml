@@ -1,0 +1,33 @@
+name: Push Total EAS Init
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-eas-init.yml
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Initialize EAS project
+        run: npx eas-cli@latest init --account magpie221 --non-interactive --json
+
+      - name: Print linked project id
+        run: node -e "const a=require('./app.json'); console.log('EAS_PROJECT_ID=' + (a.expo?.extra?.eas?.projectId || 'missing'))"
