@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 
+# Apply the Stitch typography roles consistently across every native screen.
 styles_path = Path('src/styles.ts')
 workout_path = Path('src/Workout.tsx')
 design_path = Path('DESIGN.md')
@@ -19,14 +20,12 @@ styles = re.sub(
     styles,
 )
 
-# Ensure every text style has an explicit family instead of falling back to SF in random places.
 lines = styles.splitlines()
 for i, line in enumerate(lines):
     if 'fontSize:' in line and 'fontFamily:' not in line and re.match(r'^\s{2}[A-Za-z0-9_]+: \{', line):
         lines[i] = line.replace('{ ', '{ fontFamily: bodyFont, ', 1)
 styles = '\n'.join(lines) + ('\n' if styles.endswith('\n') else '')
 
-# Role corrections that mirror the Stitch system.
 def force_family(text, style_name, family):
     pattern = rf"(  {re.escape(style_name)}: \{{[^\n]*?)fontFamily: [A-Za-z]+Font"
     return re.sub(pattern, rf"\1fontFamily: {family}", text)
@@ -51,9 +50,7 @@ for name in [
 ]:
     styles = force_family(styles, name, 'bodyFont')
 
-# The primary button is a UI headline, not a condensed metric.
 styles = styles.replace('buttonText: { color: C.gi, fontSize: 15, fontFamily: metricFont,', 'buttonText: { color: C.gi, fontSize: 15, fontFamily: headlineFont,')
-# 2,000 on onboarding is the same display-number voice as workout metrics, not an archival headline.
 styles = styles.replace('introTitle: { color: C.ink, fontSize: 86, lineHeight: 91, fontFamily: displayFont,', 'introTitle: { color: C.ink, fontSize: 86, lineHeight: 86, fontFamily: metricFont,')
 styles_path.write_text(styles)
 
