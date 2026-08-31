@@ -36,13 +36,11 @@ If `expo prebuild` modifies package files, restore or intentionally commit only 
 
 For iOS build issues, inspect the exact EAS phase named in the failure. Do not assume an icon problem or dependency problem without evidence from logs.
 
-## Current release issue
-The most recent EAS production build passed Apple credential setup and upload, but failed in the `Configure Xcode project` build phase with an unknown error. Previous `Prebuild` failures caused by a corrupted PNG icon were fixed locally and `npx expo prebuild --platform ios --no-install` now completes successfully.
-
-Latest failed EAS Build ID known from the user session:
-`03ecdf3a-6026-4b71-9ae1-823fdc0487f2`
-
-Goal: inspect the Configure Xcode project failure, reproduce/fix it, rerun local validation, and leave the repository in a state that should pass a production iOS EAS build.
+## Current release status
+- The earlier `Configure Xcode project` failure was resolved by using an ASCII native target name in commit `238309c68d4b408b870b5d9266ee46382c91f53f`.
+- Production iOS EAS build `a4544ec9-3c97-49ba-8297-f50312f17838` finished successfully as version `1.0.0 (5)`.
+- App Store Connect submission `c8e04c28-7425-4abf-9fef-33b432ba225d` finished successfully.
+- Remaining release work is real-device regression testing, App Store screenshots/privacy metadata, and App Review submission state confirmation.
 
 ## Safety / release boundaries
 - Do not change bundle identifier, Apple team, EAS project ID, privacy policy, tracking behavior, native permissions, payments, or authentication unless the task explicitly requires it.
