@@ -22,7 +22,7 @@ import { FONT } from './typography';
 
 const mono = FONT.data;
 const serif = FONT.archival;
-const metric = FONT.display;
+const metric = FONT.metric;
 const body = FONT.body;
 const headline = FONT.headline;
 

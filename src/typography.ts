@@ -1,10 +1,11 @@
 export const FONT = {
-  // Final release typography: one humanist family + one data face.
-  // Avenir Next carries brand, UI, body and large metrics. Menlo is reserved
-  // for quest codes, dates and compact metadata only.
-  display: 'Avenir Next',
-  headline: 'Avenir Next',
-  body: 'Avenir Next',
+  // Korean UI uses the iOS system family so Hangul never falls through from
+  // Avenir Next with mismatched metrics. Avenir is reserved for large numbers,
+  // while Menlo remains limited to short ASCII data labels.
+  display: 'System',
+  headline: 'System',
+  body: 'System',
   data: 'Menlo',
-  archival: 'Avenir Next',
+  archival: 'System',
+  metric: 'Avenir Next',
 } as const;

@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
+  Easing,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
   SafeAreaView,
+  StyleSheet,
   ScrollView,
   StatusBar,
   Text,
   TextInput,
   View,
+  Vibration,
 } from 'react-native';
 import { useKeepAwake } from 'expo-keep-awake';
 import {
@@ -81,39 +85,127 @@ const openReference = async (url: string) => {
   }
 };
 
+const FORM_FRAMES = [
+  {
+    code: '01 / START',
+    title: '엉덩이를 높여 시작해.',
+    body: '손을 어깨보다 조금 넓게 두고, 몸을 역 V자로 만들어.',
+    note: '시작 자세가 같아야 매번 같은 1회를 셀 수 있어.',
+  },
+  {
+    code: '02 / DRIVE',
+    title: '가슴을 낮게 앞으로 보내.',
+    body: '팔꿈치를 굽히며 가슴이 손 사이를 지나가게 움직여.',
+    note: '속도보다 끊기지 않는 한 번의 흐름이 중요해.',
+  },
+  {
+    code: '03 / RETURN',
+    title: '팔을 펴고 뒤로 돌아와.',
+    body: '가슴을 든 다음, 팔을 편 채 엉덩이를 뒤와 위로 보내.',
+    note: '팔꿈치를 다시 깊게 굽히는 동작은 이 앱의 1회에서 제외해.',
+  },
+] as const;
+
+function MotionSketch({ frame }: { frame: number }) {
+  const rotations = ['-18deg', '10deg', '-7deg'];
+  const shifts = [-20, 14, -4];
+  return (
+    <View style={O.motionStage} accessible accessibilityLabel={FORM_FRAMES[frame].title}>
+      <View style={O.motionGround} />
+      <View style={[O.motionBody, { transform: [{ translateX: shifts[frame] }, { rotate: rotations[frame] }] }]} />
+      <View style={[O.motionHead, { transform: [{ translateX: shifts[frame] + 55 }, { translateY: frame === 1 ? 22 : 4 }] }]} />
+      <View style={[O.motionArm, { transform: [{ translateX: shifts[frame] + 24 }, { translateY: frame === 1 ? 26 : 15 }, { rotate: frame === 1 ? '62deg' : '42deg' }] }]} />
+      <View style={O.motionArrow}><Text style={O.motionArrowText}>→</Text></View>
+    </View>
+  );
+}
+
+function IntroLaunch({ onContinue }: { onContinue: () => void }) {
+  const [opened, setOpened] = useState(false);
+  const press = useRef(new Animated.Value(0)).current;
+  const reveal = useRef(new Animated.Value(0)).current;
+
+  const openQuest = () => {
+    if (opened) return;
+    setOpened(true);
+    Vibration.vibrate(18);
+    Animated.parallel([
+      Animated.spring(press, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 10,
+        stiffness: 150,
+        mass: 0.7,
+      }),
+      Animated.timing(reveal, {
+        toValue: 1,
+        duration: 360,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const markScale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] });
+  const markShift = press.interpolate({ inputRange: [0, 1], outputRange: [0, 16] });
+  const copyShift = reveal.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.onboarding}>
+        <View style={O.launchTop}>
+          <Text style={O.launchBrand}>BAEMILGI 2000</Text>
+          <Text style={O.launchMeta}>FIRST MOTION</Text>
+        </View>
+
+        <Pressable
+          onPress={openQuest}
+          accessibilityRole="button"
+          accessibilityLabel={opened ? '첫 퀘스트 열림' : '눌러서 첫 퀘스트 열기'}
+          style={({ pressed }) => [O.launchStage, pressed && O.launchPressed]}
+        >
+          <Animated.View style={[O.launchMark, { transform: [{ translateY: markShift }, { scale: markScale }] }]}>
+            <View style={O.launchFoldLeft} />
+            <View style={O.launchFoldRight} />
+            <View style={O.launchDrive} />
+            <View style={O.launchStamp} />
+          </Animated.View>
+          <Text style={O.launchCounter}>{opened ? '001' : '000'}</Text>
+          <Text style={O.launchPrompt}>{opened ? 'QUEST OPEN' : 'TAP TO MOVE'}</Text>
+        </Pressable>
+
+        <View style={O.launchCopyArea}>
+          {opened ? (
+            <Animated.View style={{ opacity: reveal, transform: [{ translateY: copyShift }] }}>
+              <Text style={O.launchTitle}>한 번이 열렸어.</Text>
+              <Text style={O.launchCopy}>지금 가능한 횟수에서 시작해, 다음 한 번으로 이어가.</Text>
+            </Animated.View>
+          ) : (
+            <Text style={O.launchHint}>설명보다 먼저, 화면을 눌러 움직임을 시작해봐.</Text>
+          )}
+        </View>
+
+        <Button
+          label={opened ? '내 기록으로 시작' : '먼저 화면을 눌러'}
+          disabled={!opened}
+          onPress={onContinue}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
 export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   const [step, setStep] = useState<
     'intro' | 'experience' | 'form' | 'measureIntro' | 'measureActive' | 'measureResult' | 'experienced'
   >('intro');
   const [baemilgi, setBaemilgi] = useState('');
   const [measuredReps, setMeasuredReps] = useState('');
+  const [formFrame, setFormFrame] = useState(0);
 
   if (step === 'intro') {
-    return (
-      <SafeAreaView style={styles.root}>
-        <View style={styles.onboarding}>
-          <View style={styles.introTop}>
-            <Text style={styles.introBrand}>BAEMILGI / 2000</Text>
-            <Text style={styles.introYear}>GAMA / 1911 ARCHIVE</Text>
-          </View>
-          <View style={styles.introGrow}>
-            <View style={styles.introSignal}><Text style={styles.introSignalText}>QUEST SYSTEM / 001—200</Text></View>
-            <Text style={styles.introEyebrow}>GREAT GAMA ARCHIVE</Text>
-            <Text style={styles.introTitle} maxFontSizeMultiplier={1.15}>2,000</Text>
-            <Text style={styles.introSub}>오늘 가능한 횟수에서, 한 단계씩.</Text>
-            <View style={styles.introRule} />
-            <Text style={styles.introCopy}>
-              지금 할 수 있는 횟수에서 시작해 200개의 작은 퀘스트를 따라가. 성공뿐 아니라 멈춘 지점도 다음 기록이 돼.
-            </Text>
-            <Text style={styles.introCopy}>
-              마지막 2,000은 Great Gama의 역사적 Dand 기록에서 가져온 상징적인 끝점이야.
-            </Text>
-            <Text style={styles.introMeta}>운동 권장량이 아니며, 몸 상태에 맞춰 천천히 진행해.</Text>
-          </View>
-          <Button label="내 기록 시작" onPress={() => setStep('experience')} />
-        </View>
-      </SafeAreaView>
-    );
+    return <IntroLaunch onContinue={() => setStep('experience')} />;
   }
 
   if (step === 'experience') {
@@ -122,11 +214,11 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         <View style={styles.onboarding}>
           <SetupTop step={1} onBack={() => setStep('intro')} />
           <View style={styles.setupBody}>
-            <Text style={styles.question}>배밀기를 해본 적 있어?</Text>
-            <Text style={styles.copy}>처음이라면 자세부터 확인하고, 해봤다면 지금 최고 기록에서 시작해.</Text>
+            <Text style={styles.question}>어디서 시작할까?</Text>
+            <Text style={styles.copy}>처음이면 동작을 짧게 익히고, 경험이 있으면 기록만 입력해.</Text>
             <View style={styles.choiceList}>
-              <ChoiceRow title="처음이야" body="자세를 보고 첫 테스트부터 시작" onPress={() => setStep('form')} />
-              <ChoiceRow title="해봤어" body="현재 최고 기록에서 바로 시작" onPress={() => setStep('experienced')} />
+              <ChoiceRow title="처음부터 측정" body="3가지 동작만 보고 바로 테스트" onPress={() => setStep('form')} />
+              <ChoiceRow title="기록이 있어" body="현재 최고 횟수에서 바로 시작" onPress={() => setStep('experienced')} />
             </View>
           </View>
         </View>
@@ -135,24 +227,34 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
   }
 
   if (step === 'form') {
+    const frame = FORM_FRAMES[formFrame];
+    const lastFrame = formFrame === FORM_FRAMES.length - 1;
     return (
       <SafeAreaView style={styles.root}>
         <View style={styles.onboarding}>
-          <SetupTop step={2} onBack={() => setStep('experience')} />
-          <ScrollView contentContainerStyle={styles.setupScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.question}>이 앱에서 1회로 세는 자세</Text>
-            <Text style={styles.copy}>횟수보다 먼저, 매번 같은 동작을 1회로 세는 기준을 맞춰.</Text>
-            <View style={styles.formList}>
-              <FormStep n="1" title="엉덩이를 높여 시작" body="손을 고정하고 역 V자에 가깝게 시작." />
-              <FormStep n="2" title="가슴을 앞으로" body="팔꿈치를 굽히며 가슴을 손 사이로 낮게 통과." />
-              <FormStep n="3" title="팔을 펴고 가슴을 든다" body="앞으로 나간 뒤 팔을 펴며 상체를 들어 올림." />
-              <FormStep n="4" title="팔을 편 채 뒤로" body="팔꿈치를 다시 굽히지 않고 엉덩이를 뒤·위로 보내 복귀." />
+          <SetupTop
+            step={2}
+            onBack={() => formFrame > 0 ? setFormFrame((current) => current - 1) : setStep('experience')}
+          />
+          <View style={O.guideBody}>
+            <View style={O.guideProgress}>
+              {FORM_FRAMES.map((_, index) => (
+                <View key={index} style={[O.guideProgressItem, index <= formFrame && O.guideProgressItemActive]} />
+              ))}
             </View>
-            <Text style={styles.note}>되돌아올 때 팔꿈치를 다시 굽히는 Dive Bomber 방식은 이 앱의 기준에서 제외해.</Text>
-            <Button label="자세 영상 보기" secondary onPress={() => openReference(FORM_VIDEO_URL)} />
-            <View style={{ height: 10 }} />
-            <Button label="직접 측정하러 가기" onPress={() => setStep('measureIntro')} />
-          </ScrollView>
+            <Text style={O.guideCode}>{frame.code}</Text>
+            <Text style={styles.question}>{frame.title}</Text>
+            <Text style={styles.copy}>{frame.body}</Text>
+            <MotionSketch frame={formFrame} />
+            <Text style={O.guideNote}>{frame.note}</Text>
+          </View>
+          <View style={O.guideActions}>
+            <Button
+              label={lastFrame ? '기준 확인 · 직접 측정' : '다음 동작'}
+              onPress={() => lastFrame ? setStep('measureIntro') : setFormFrame((current) => current + 1)}
+            />
+            <Button label="전체 자세 영상 보기" secondary onPress={() => openReference(FORM_VIDEO_URL)} />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -162,21 +264,20 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     return (
       <SafeAreaView style={styles.root}>
         <View style={styles.onboarding}>
-        <SetupTop step={3} onBack={() => setStep('form')} />
-        <View style={styles.setupBody}>
-          <Text style={styles.question}>앱이 정하지 않고,{`\n`}직접 측정해.</Text>
-          <Text style={styles.copy}>목표 숫자는 보여주지 않을게. 같은 자세를 유지할 수 있는 만큼만 하고, 직접 센 횟수를 기록해.</Text>
-          <View style={styles.formList}>
-            <FormStep n="01" title="휴대폰을 보이는 곳에 두기" body="측정 화면은 계속 켜져 있어." />
-            <FormStep n="02" title="정확한 자세로 직접 세기" body="속도보다 매번 같은 동작이 중요해." />
-            <FormStep n="03" title="자세가 무너지기 전에 종료" body="통증이나 어지럼이 있으면 바로 멈춰." />
+          <SetupTop step={3} onBack={() => setStep('form')} />
+          <View style={O.measureBody}>
+            <Text style={O.guideCode}>BASELINE / NO TARGET</Text>
+            <Text style={styles.question}>목표 숫자 없이{String.fromCharCode(10)}직접 세어봐.</Text>
+            <Text style={styles.copy}>앱은 답을 만들지 않아. 같은 자세로 가능한 만큼 움직이고, 멈춘 횟수를 직접 기록해.</Text>
+            <View style={O.measurePreview}>
+              <Text style={O.measurePreviewNumber}>—</Text>
+              <Text style={O.measurePreviewLabel}>YOUR HONEST REPS</Text>
+              <View style={O.measurePreviewRule} />
+              <Text style={O.measurePreviewCopy}>통증이나 어지럼이 있으면 바로 종료</Text>
+            </View>
+            <Text style={O.guideNote}>0개도 정확한 시작 기록이야. 이 기록은 나중에 언제든 수정할 수 있어.</Text>
           </View>
-          <Text style={styles.note}>0개도 유효한 시작 기록이야. 측정 결과를 과장하지 않아야 다음 훈련이 정확해져.</Text>
-        </View>
-        <View style={{ gap: 9 }}>
-          <Button label="목표 없이 측정 시작" onPress={() => setStep('measureActive')} />
-          <Button label="자세 영상 다시 보기" secondary onPress={() => openReference(FORM_VIDEO_URL)} />
-        </View>
+          <Button label="측정 시작" onPress={() => setStep('measureActive')} />
         </View>
       </SafeAreaView>
     );
@@ -323,3 +424,43 @@ function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinis
     </SafeAreaView>
   );
 }
+
+
+const O = StyleSheet.create({
+  launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  launchBrand: { color: '#121212', fontFamily: 'Menlo', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
+  launchMeta: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
+  launchStage: { flex: 1, minHeight: 360, alignItems: 'center', justifyContent: 'center' },
+  launchPressed: { opacity: 0.82 },
+  launchMark: { width: 238, height: 176, position: 'relative', marginBottom: 18 },
+  launchFoldLeft: { position: 'absolute', left: 33, top: 0, width: 83, height: 98, backgroundColor: '#1B365D', transform: [{ rotate: '-14deg' }, { skewY: '-9deg' }] },
+  launchFoldRight: { position: 'absolute', right: 33, top: 0, width: 83, height: 98, backgroundColor: '#1B365D', transform: [{ rotate: '14deg' }, { skewY: '9deg' }] },
+  launchDrive: { position: 'absolute', left: 26, right: 26, bottom: 8, height: 68, backgroundColor: '#1B365D', transform: [{ skewX: '-18deg' }] },
+  launchStamp: { position: 'absolute', right: 16, bottom: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#B22222' },
+  launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 62, lineHeight: 70, fontWeight: '800', letterSpacing: -1.8, fontVariant: ['tabular-nums'] },
+  launchPrompt: { color: '#686A68', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.6, marginTop: 4 },
+  launchCopyArea: { minHeight: 104, justifyContent: 'flex-end', paddingBottom: 18 },
+  launchTitle: { color: '#121212', fontSize: 31, lineHeight: 40, fontWeight: '800', letterSpacing: -0.8 },
+  launchCopy: { color: '#686A68', fontSize: 14, lineHeight: 22, marginTop: 7, maxWidth: 310 },
+  launchHint: { color: '#686A68', fontSize: 13, lineHeight: 21, maxWidth: 300 },
+  guideBody: { flex: 1, paddingTop: 28 },
+  guideProgress: { flexDirection: 'row', gap: 6, marginBottom: 25 },
+  guideProgressItem: { flex: 1, height: 3, backgroundColor: '#D7D3CA' },
+  guideProgressItemActive: { backgroundColor: '#1B365D' },
+  guideCode: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginBottom: 9 },
+  motionStage: { height: 218, marginTop: 22, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', backgroundColor: '#F0EEE8' },
+  motionGround: { position: 'absolute', left: 26, right: 26, bottom: 38, height: 2, backgroundColor: '#C8C4BB' },
+  motionBody: { width: 152, height: 18, backgroundColor: '#1B365D' },
+  motionHead: { position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: '#1B365D' },
+  motionArm: { position: 'absolute', width: 72, height: 10, backgroundColor: '#1B365D' },
+  motionArrow: { position: 'absolute', right: 18, top: 16 },
+  motionArrowText: { color: '#B22222', fontFamily: 'Menlo', fontSize: 23, fontWeight: '900' },
+  guideNote: { color: '#686A68', fontSize: 12, lineHeight: 19, marginTop: 15 },
+  guideActions: { gap: 9 },
+  measureBody: { flex: 1, paddingTop: 42 },
+  measurePreview: { flex: 1, maxHeight: 244, marginTop: 28, backgroundColor: '#121212', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  measurePreviewNumber: { color: '#FAF9F6', fontFamily: 'Avenir Next', fontSize: 88, lineHeight: 98, fontWeight: '800' },
+  measurePreviewLabel: { color: '#A9B9CF', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  measurePreviewRule: { width: 48, height: 3, backgroundColor: '#1B365D', marginVertical: 18 },
+  measurePreviewCopy: { color: '#A8ADAE', fontSize: 11, lineHeight: 18, textAlign: 'center' },
+});

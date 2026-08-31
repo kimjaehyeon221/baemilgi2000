@@ -23,7 +23,7 @@ export const C = {
 
 const labelFont = FONT.data;
 const displayFont = FONT.archival;
-const metricFont = FONT.display;
+const metricFont = FONT.metric;
 const bodyFont = FONT.body;
 const headlineFont = FONT.headline;
 
