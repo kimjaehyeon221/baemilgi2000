@@ -169,6 +169,19 @@ Do not introduce an unassigned system/default font inside designed screens. A te
 
 Rule: **one dominant number per active screen.**
 
+### 10.1 Spacing and stroke lock
+
+The mobile implementation follows the Stitch rhythm rather than screen-by-screen arbitrary spacing:
+
+- **Seam:** 16pt — default mobile edge and small vertical unit
+- **Fold:** 32pt — major section separation / entry into a focused canvas
+- **Stitch:** 2pt — reinforced active/structural line
+- **Hairline:** 1pt — ledger rules, ordinary separators
+- **Primary action height:** 56pt
+
+Prefer multiples of 8/16/32. Do not introduce one-off 18/22/27/31pt layout gaps unless a visual correction has a specific reason. Home, Quest, Archive, Challenge, Training and onboarding should feel cut from the same gi pattern.
+
+
 ## 11. UX principles
 
 - User should understand the next action within roughly two seconds.
