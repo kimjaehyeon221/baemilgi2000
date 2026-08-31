@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { FONT } from './typography';
 
 export const C = {
   bg: '#121212',
@@ -20,9 +21,11 @@ export const C = {
   activeLine: '#42484D',
 };
 
-const labelFont = 'Courier New';
-const displayFont = 'Georgia';
-const metricFont = 'Avenir Next Condensed';
+const labelFont = FONT.data;
+const displayFont = FONT.archival;
+const metricFont = FONT.display;
+const bodyFont = FONT.body;
+const headlineFont = FONT.headline;
 
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
@@ -35,11 +38,11 @@ export const styles = StyleSheet.create({
   introSignal: { alignSelf: 'flex-start', backgroundColor: C.blue, paddingHorizontal: 9, paddingVertical: 6, marginBottom: 23 },
   introSignalText: { color: C.gi, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.1 },
   introEyebrow: { color: C.stamp, fontSize: 10, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.75, marginBottom: 4 },
-  introTitle: { color: C.ink, fontSize: 86, lineHeight: 91, fontFamily: displayFont, fontWeight: '900', letterSpacing: -5.4 },
-  introSub: { color: C.ink, fontSize: 19, lineHeight: 26, fontWeight: '900', letterSpacing: -0.7, marginTop: 1, maxWidth: 310 },
+  introTitle: { color: C.ink, fontSize: 86, lineHeight: 91, fontFamily: metricFont, fontWeight: '900', letterSpacing: -5.4 },
+  introSub: { fontFamily: bodyFont, color: C.ink, fontSize: 19, lineHeight: 26, fontWeight: '900', letterSpacing: -0.7, marginTop: 1, maxWidth: 310 },
   introRule: { width: 96, height: 4, backgroundColor: C.blue, marginTop: 23, marginBottom: 19 },
-  introCopy: { color: C.muted, fontSize: 13, lineHeight: 20, maxWidth: 316, marginBottom: 10 },
-  introMeta: { color: C.faint, fontSize: 10, lineHeight: 16, maxWidth: 310, marginTop: 2, fontWeight: '700' },
+  introCopy: { fontFamily: bodyFont, color: C.muted, fontSize: 13, lineHeight: 20, maxWidth: 316, marginBottom: 10 },
+  introMeta: { fontFamily: bodyFont, color: C.faint, fontSize: 10, lineHeight: 16, maxWidth: 310, marginTop: 2, fontWeight: '700' },
 
   setupTop: { height: 62, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: C.line },
   setupBrand: { color: C.ink, fontSize: 11, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1 },
@@ -47,29 +50,29 @@ export const styles = StyleSheet.create({
   setupBody: { flex: 1, justifyContent: 'flex-start', paddingTop: 50, paddingBottom: 18 },
   setupScroll: { paddingTop: 38, paddingBottom: 24 },
   question: { color: C.ink, fontSize: 35, lineHeight: 39, fontFamily: displayFont, fontWeight: '900', letterSpacing: -1.5, maxWidth: 320 },
-  copy: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 14, maxWidth: 310 },
+  copy: { fontFamily: bodyFont, color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 14, maxWidth: 310 },
 
   choiceList: { marginTop: 33, borderTopWidth: 1, borderColor: C.line },
   choiceRow: { minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 1, borderColor: C.line },
-  choiceTitle: { color: C.ink, fontSize: 18, fontWeight: '900', letterSpacing: -0.55 },
-  choiceBody: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  choiceArrow: { color: C.blue, fontSize: 23, fontWeight: '900' },
+  choiceTitle: { fontFamily: headlineFont, color: C.ink, fontSize: 18, fontWeight: '900', letterSpacing: -0.55 },
+  choiceBody: { fontFamily: bodyFont, color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  choiceArrow: { fontFamily: bodyFont, color: C.blue, fontSize: 23, fontWeight: '900' },
 
   formList: { marginTop: 27, borderTopWidth: 1, borderColor: C.line },
   formStep: { flexDirection: 'row', gap: 15, paddingVertical: 16, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.line },
   formN: { width: 27, color: C.stamp, fontSize: 11, fontFamily: labelFont, fontWeight: '900' },
-  formTitle: { color: C.ink, fontSize: 14, fontWeight: '900' },
-  formBody: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
-  note: { color: C.muted, backgroundColor: C.panelLift, borderLeftWidth: 4, borderColor: C.blue, padding: 13, fontSize: 11, lineHeight: 18, marginVertical: 20 },
+  formTitle: { fontFamily: headlineFont, color: C.ink, fontSize: 14, fontWeight: '900' },
+  formBody: { fontFamily: bodyFont, color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  note: { fontFamily: bodyFont, color: C.muted, backgroundColor: C.panelLift, borderLeftWidth: 4, borderColor: C.blue, padding: 13, fontSize: 11, lineHeight: 18, marginVertical: 20 },
 
   inputRow: { flexDirection: 'row', alignItems: 'baseline', borderBottomWidth: 3, borderColor: C.blue, marginTop: 28 },
   bigInput: { flex: 1, color: C.ink, fontSize: 76, lineHeight: 84, fontFamily: metricFont, fontWeight: '900', letterSpacing: -4, paddingVertical: 5, fontVariant: ['tabular-nums'] },
-  inputUnit: { color: C.blue, fontSize: 16, fontWeight: '900', paddingBottom: 14 },
-  inputHint: { color: C.faint, fontSize: 11, lineHeight: 17, marginTop: 10 },
+  inputUnit: { fontFamily: bodyFont, color: C.blue, fontSize: 16, fontWeight: '900', paddingBottom: 14 },
+  inputHint: { fontFamily: bodyFont, color: C.faint, fontSize: 11, lineHeight: 17, marginTop: 10 },
   recommendLabel: { alignSelf: 'flex-start', color: C.gi, backgroundColor: C.blue, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1, marginBottom: 1, paddingHorizontal: 8, paddingVertical: 5 },
   recommendInput: { flex: 1, color: C.ink, fontSize: 88, lineHeight: 96, fontFamily: metricFont, fontWeight: '900', letterSpacing: -5, paddingVertical: 4, fontVariant: ['tabular-nums'] },
-  recommendUnit: { color: C.blue, fontSize: 18, fontWeight: '900', paddingBottom: 16 },
-  recommendCopy: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 9 },
+  recommendUnit: { fontFamily: bodyFont, color: C.blue, fontSize: 18, fontWeight: '900', paddingBottom: 16 },
+  recommendCopy: { fontFamily: bodyFont, color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 9 },
   recommendRule: { height: 1, backgroundColor: C.line, marginVertical: 22 },
 
   kicker: { color: C.blue, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.45, marginBottom: 7 },
@@ -78,7 +81,7 @@ export const styles = StyleSheet.create({
   buttonSecondary: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.muted },
   buttonDanger: { backgroundColor: 'transparent', borderColor: C.stamp },
   buttonDisabled: { backgroundColor: C.panelLift, borderColor: C.line },
-  buttonText: { color: C.gi, fontSize: 15, fontFamily: metricFont, fontWeight: '900', letterSpacing: 1.1 },
+  buttonText: { color: C.gi, fontSize: 15, fontFamily: headlineFont, fontWeight: '900', letterSpacing: 1.1 },
   buttonSecondaryText: { color: C.ink },
   buttonTextDisabled: { color: C.faint },
 
@@ -93,14 +96,14 @@ export const styles = StyleSheet.create({
   storageInline: { minHeight: 34, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, marginBottom: 16 },
   storageDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.blue, marginRight: 8 },
   storageDotError: { backgroundColor: C.stamp },
-  storageInlineText: { flex: 1, color: C.muted, fontSize: 10, fontWeight: '800' },
+  storageInlineText: { fontFamily: bodyFont, flex: 1, color: C.muted, fontSize: 10, fontWeight: '800' },
   storageInlineCode: { color: C.faint, fontSize: 8, fontFamily: labelFont, fontWeight: '900', letterSpacing: 0.7 },
   heroStage: { backgroundColor: C.gi, borderWidth: 1, borderColor: C.line, borderTopWidth: 4, borderTopColor: C.blue, padding: 18, paddingTop: 15, overflow: 'hidden' },
   heroTopline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.line, paddingBottom: 12, marginBottom: 19 },
   heroCode: { color: C.blue, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.1 },
   heroStatus: { color: C.stamp, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1 },
   heroNumber: { color: C.ink, fontSize: 104, lineHeight: 107, fontFamily: metricFont, fontWeight: '900', letterSpacing: -6.5, marginTop: -3, fontVariant: ['tabular-nums'] },
-  heroUnit: { color: C.muted, fontSize: 12, fontWeight: '800', marginTop: -3 },
+  heroUnit: { fontFamily: bodyFont, color: C.muted, fontSize: 12, fontWeight: '800', marginTop: -3 },
   heroManifesto: { display: 'none' },
   progressTrack: { height: 12, backgroundColor: '#E9E6DF', marginTop: 20, overflow: 'hidden', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
   progressFill: { height: 12, backgroundColor: C.blue },
@@ -111,27 +114,27 @@ export const styles = StyleSheet.create({
   currentPanel: { minHeight: 94, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.panelLift, borderWidth: 1, borderColor: C.line, marginTop: 22, paddingHorizontal: 16, paddingVertical: 14 },
   currentLabel: { color: C.blue, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 0.8 },
   currentValue: { color: C.ink, fontSize: 36, lineHeight: 40, fontFamily: metricFont, fontWeight: '900', marginTop: 1, fontVariant: ['tabular-nums'] },
-  currentUnit: { color: C.ink, fontSize: 12, fontWeight: '900' },
+  currentUnit: { fontFamily: bodyFont, color: C.ink, fontSize: 12, fontWeight: '900' },
   currentLevelBlock: { alignItems: 'flex-end' },
   currentLevel: { color: C.ink, fontSize: 19, fontFamily: metricFont, fontWeight: '900', marginTop: 5, fontVariant: ['tabular-nums'] },
 
   linkRow: { minHeight: 61, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.line },
-  linkText: { color: C.ink, fontSize: 13, fontWeight: '900' },
-  linkArrow: { color: C.blue, fontSize: 21, fontWeight: '900' },
+  linkText: { fontFamily: headlineFont, color: C.ink, fontSize: 13, fontWeight: '900' },
+  linkArrow: { fontFamily: bodyFont, color: C.blue, fontSize: 21, fontWeight: '900' },
   section: { marginTop: 26, paddingTop: 1 },
   sectionCode: { color: C.stamp, fontSize: 8, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.2, marginBottom: 9 },
-  sectionTitle: { color: C.ink, fontSize: 15, fontWeight: '900' },
-  sectionBody: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 7 },
+  sectionTitle: { fontFamily: headlineFont, color: C.ink, fontSize: 15, fontWeight: '900' },
+  sectionBody: { fontFamily: bodyFont, color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 7 },
 
   pageEyebrow: { color: C.stamp, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.4, marginBottom: 7 },
   pageTitle: { color: C.ink, fontSize: 42, lineHeight: 45, fontFamily: displayFont, fontWeight: '900', letterSpacing: -1.9 },
-  pageCopy: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 9, marginBottom: 22 },
+  pageCopy: { fontFamily: bodyFont, color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 9, marginBottom: 22 },
   questHero: { backgroundColor: C.blue, borderRadius: 0, padding: 17, marginBottom: 26 },
   questHeroRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   questHeroLevel: { color: C.gi, fontSize: 25, lineHeight: 29, fontFamily: displayFont, fontWeight: '900', letterSpacing: -0.8 },
-  questHeroCopy: { color: '#D7DFEA', fontSize: 10, fontWeight: '900', marginTop: 3 },
+  questHeroCopy: { fontFamily: bodyFont, color: '#D7DFEA', fontSize: 10, fontWeight: '900', marginTop: 3 },
   questHeroTarget: { color: C.gi, fontSize: 46, lineHeight: 49, fontFamily: metricFont, fontWeight: '900', letterSpacing: -2.2, fontVariant: ['tabular-nums'] },
-  questHeroUnit: { color: C.gi, fontSize: 12, fontWeight: '900' },
+  questHeroUnit: { fontFamily: bodyFont, color: C.gi, fontSize: 12, fontWeight: '900' },
   questProgressCopy: { color: '#D7DFEA', fontSize: 9, fontFamily: labelFont, fontWeight: '900', marginTop: 8 },
   questSectionLabel: { color: C.ink, fontSize: 14, fontFamily: labelFont, fontWeight: '900', letterSpacing: 0.4, marginBottom: 11, marginTop: 2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
@@ -156,13 +159,13 @@ export const styles = StyleSheet.create({
   statValue: { color: C.ink, fontSize: 27, fontFamily: metricFont, fontWeight: '900', marginTop: 5, fontVariant: ['tabular-nums'] },
   storageCard: { backgroundColor: C.panelLift, borderLeftWidth: 5, borderColor: C.blue, paddingHorizontal: 15, paddingTop: 14, marginBottom: 28 },
   storageCardTop: { flexDirection: 'row', alignItems: 'center' },
-  storageTitle: { flex: 1, color: C.ink, fontSize: 12, fontWeight: '900' },
-  storageCopy: { color: C.muted, fontSize: 11, lineHeight: 18, marginTop: 10, marginBottom: 8 },
+  storageTitle: { fontFamily: bodyFont, flex: 1, color: C.ink, fontSize: 12, fontWeight: '900' },
+  storageCopy: { fontFamily: bodyFont, color: C.muted, fontSize: 11, lineHeight: 18, marginTop: 10, marginBottom: 8 },
   storageAction: { minHeight: 49, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderColor: C.line },
-  storageActionText: { color: C.blue, fontSize: 11, fontWeight: '900' },
+  storageActionText: { fontFamily: bodyFont, color: C.blue, fontSize: 11, fontWeight: '900' },
   historyRow: { minHeight: 73, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.line, paddingVertical: 8 },
-  historyMain: { color: C.ink, fontSize: 13, fontWeight: '900' },
-  historySub: { color: C.faint, fontSize: 10, marginTop: 4 },
+  historyMain: { fontFamily: bodyFont, color: C.ink, fontSize: 13, fontWeight: '900' },
+  historySub: { fontFamily: bodyFont, color: C.faint, fontSize: 10, marginTop: 4 },
   historyTarget: { color: C.ink, fontSize: 18, fontFamily: metricFont, fontWeight: '900', textAlign: 'right', fontVariant: ['tabular-nums'] },
   historyEdit: { color: C.stamp, fontSize: 9, fontFamily: labelFont, fontWeight: '900', marginTop: 4, textAlign: 'right' },
 
@@ -180,15 +183,15 @@ export const styles = StyleSheet.create({
   calibrationWord: { color: C.activeText, fontSize: 72, lineHeight: 80, fontFamily: metricFont, fontWeight: '900', letterSpacing: -4.2 },
   workoutUnit: { color: '#B7B9BA', fontSize: 11, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.2 },
   timer: { color: '#B8C7DC', backgroundColor: 'transparent', fontSize: 17, fontFamily: labelFont, fontWeight: '900', marginTop: 24, paddingHorizontal: 14, paddingVertical: 7, fontVariant: ['tabular-nums'] },
-  workoutHint: { color: '#8E9294', fontSize: 11, lineHeight: 18, textAlign: 'center', maxWidth: 292, marginTop: 18 },
+  workoutHint: { fontFamily: bodyFont, color: '#8E9294', fontSize: 11, lineHeight: 18, textAlign: 'center', maxWidth: 292, marginTop: 18 },
   failureQuestion: { color: C.activeText, fontSize: 42, lineHeight: 45, fontFamily: displayFont, fontWeight: '900', letterSpacing: -1.8, textAlign: 'center' },
 
   overlay: { flex: 1, backgroundColor: '#000000A8', justifyContent: 'flex-end' },
   centerOverlay: { flex: 1, backgroundColor: '#000000A8', justifyContent: 'center', padding: 20 },
   sheet: { backgroundColor: C.gi, borderTopWidth: 5, borderColor: C.blue, padding: 22, maxHeight: '90%' },
   sheetTitle: { color: C.ink, fontSize: 28, lineHeight: 31, fontFamily: displayFont, fontWeight: '900', letterSpacing: -1.1 },
-  sheetCopy: { color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 10, marginBottom: 14 },
-  restoreInput: { minHeight: 150, color: C.ink, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: C.line, borderRadius: 0, padding: 12, fontSize: 11, lineHeight: 18, textAlignVertical: 'top', marginVertical: 12 },
+  sheetCopy: { fontFamily: bodyFont, color: C.muted, fontSize: 13, lineHeight: 20, marginTop: 10, marginBottom: 14 },
+  restoreInput: { fontFamily: bodyFont, minHeight: 150, color: C.ink, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: C.line, borderRadius: 0, padding: 12, fontSize: 11, lineHeight: 18, textAlignVertical: 'top', marginVertical: 12 },
   messageCard: { backgroundColor: C.gi, borderWidth: 2, borderColor: C.stamp, padding: 22 },
   messageText: { color: C.ink, fontSize: 23, lineHeight: 29, fontFamily: displayFont, fontWeight: '900', marginBottom: 20 },
   // Stitch master — Gi & Ink home / woven quest band
@@ -200,7 +203,7 @@ export const styles = StyleSheet.create({
   dojoHeroNumber: { color: C.ink, fontFamily: metricFont, fontSize: 116, lineHeight: 120, fontWeight: '900', letterSpacing: -5, fontVariant: ['tabular-nums'] },
   dojoCurrentBestRow: { flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 8 },
   dojoCurrentBestLabel: { color: C.muted, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.2 },
-  dojoCurrentBestValue: { color: C.ink, fontSize: 13, fontFamily: labelFont, fontWeight: '900' },
+  dojoCurrentBestValue: { color: C.ink, fontSize: 13, fontFamily: metricFont, fontWeight: '900' },
   questBandStage: { minHeight: 92, justifyContent: 'center', marginTop: 13, marginBottom: 5, position: 'relative' },
   questBandStitch: { position: 'absolute', left: 0, right: 0, top: 45, borderTopWidth: 1, borderStyle: 'dashed', borderColor: C.line },
   questBand: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: C.gi, borderTopWidth: 2, borderBottomWidth: 2, borderColor: C.blue, paddingHorizontal: 8, gap: 3 },
@@ -208,10 +211,10 @@ export const styles = StyleSheet.create({
   questBandItemText: { color: C.faint, fontFamily: labelFont, fontSize: 10, fontWeight: '900' },
   questBandDoneText: { color: C.ink },
   questBandActive: { backgroundColor: C.ink, borderWidth: 2, borderColor: C.ink, minWidth: 44 },
-  questBandActiveText: { color: C.gi, fontSize: 11 },
+  questBandActiveText: { fontFamily: bodyFont, color: C.gi, fontSize: 11 },
   questBandTape: { position: 'absolute', left: -4, top: -2, bottom: -2, width: 4, backgroundColor: C.blue },
   archiveFooter: { marginTop: 31, paddingTop: 16, paddingBottom: 16, borderTopWidth: 1, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  archiveFooterLabel: { color: C.ink, fontFamily: displayFont, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
+  archiveFooterLabel: { color: C.ink, fontFamily: headlineFont, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
   archiveFooterValue: { color: C.faint, fontFamily: labelFont, fontSize: 8, fontWeight: '900', letterSpacing: 0.8, marginTop: 5 },
 
   // Stitch master — dojo training ledger/archive
@@ -234,8 +237,8 @@ export const styles = StyleSheet.create({
   drillTagText: { color: C.blue, fontFamily: labelFont, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
   archiveEmpty: { minHeight: 160, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.line },
   archiveEmptyTitle: { color: C.ink, fontFamily: displayFont, fontSize: 22, fontWeight: '900' },
-  archiveEmptyCopy: { color: C.muted, fontSize: 11, marginTop: 8 },
+  archiveEmptyCopy: { fontFamily: bodyFont, color: C.muted, fontSize: 11, marginTop: 8 },
   archiveQuote: { marginTop: 24, marginBottom: 24, borderLeftWidth: 3, borderStyle: 'dashed', borderColor: C.blue, paddingVertical: 9, paddingLeft: 15 },
-  archiveQuoteText: { color: C.ink, fontFamily: displayFont, fontSize: 13, lineHeight: 20, fontStyle: 'italic', opacity: 0.78 },
+  archiveQuoteText: { color: C.ink, fontFamily: bodyFont, fontSize: 13, lineHeight: 20, fontStyle: 'italic', opacity: 0.78 },
 
 });

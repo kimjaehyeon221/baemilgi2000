@@ -16,10 +16,13 @@ import {
 import { useKeepAwake } from 'expo-keep-awake';
 import { formatSeconds, targetForLevel, trainingPlan } from './core';
 import { C } from './styles';
+import { FONT } from './typography';
 
-const mono = 'Courier New';
-const serif = 'Georgia';
-const metric = 'Avenir Next Condensed';
+const mono = FONT.data;
+const serif = FONT.archival;
+const metric = FONT.display;
+const body = FONT.body;
+const headline = FONT.headline;
 
 function FocusHeader({ code, onClose, light = false }: { code: string; onClose: () => void; light?: boolean }) {
   return (
@@ -304,7 +307,7 @@ const S = StyleSheet.create({
   blueStitch: { width: 18, height: 3, backgroundColor: '#1B365D' },
   code: { color: '#A8ADAE', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
   codeLight: { color: '#1B365D' },
-  close: { color: '#A8ADAE', fontSize: 34, lineHeight: 36, fontWeight: '300' },
+  close: { fontFamily: body, color: '#A8ADAE', fontSize: 34, lineHeight: 36, fontWeight: '300' },
   closeLight: { color: '#121212' },
 
   matFrame: { flex: 1, maxHeight: 430, minHeight: 360, marginTop: 24, borderWidth: 2, borderColor: '#354B69', backgroundColor: '#151515', position: 'relative', justifyContent: 'center', alignItems: 'center' },
@@ -314,12 +317,12 @@ const S = StyleSheet.create({
   target: { color: '#FAF9F6', fontFamily: metric, fontSize: 116, lineHeight: 124, fontWeight: '900', letterSpacing: -7, fontVariant: ['tabular-nums'] },
   targetLabel: { color: '#8B9091', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 2.2, marginTop: 8 },
   elapsed: { position: 'absolute', bottom: 16, right: 16, color: '#7E98BA', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
-  activeHint: { color: '#8D9192', fontSize: 11, lineHeight: 17, marginTop: 18, marginHorizontal: 4 },
+  activeHint: { fontFamily: body, color: '#8D9192', fontSize: 11, lineHeight: 17, marginTop: 18, marginHorizontal: 4 },
   activeActions: { gap: 10, marginTop: 18 },
   completeAction: { minHeight: 58, backgroundColor: '#FAF9F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FAF9F6' },
-  completeActionText: { color: '#121212', fontSize: 18, fontWeight: '900', letterSpacing: 1.2 },
+  completeActionText: { fontFamily: headline, color: '#121212', fontSize: 18, fontWeight: '900', letterSpacing: 1.2 },
   stopAction: { minHeight: 56, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#565B5D' },
-  stopActionText: { color: '#FAF9F6', fontSize: 15, fontWeight: '900', letterSpacing: 1.1 },
+  stopActionText: { fontFamily: headline, color: '#FAF9F6', fontSize: 15, fontWeight: '900', letterSpacing: 1.1 },
   pressed: { opacity: 0.7, transform: [{ scale: 0.987 }] },
 
   logRoot: { flex: 1, backgroundColor: '#FAF9F6' },
@@ -329,20 +332,20 @@ const S = StyleSheet.create({
   ledgerHeadingRow: { marginTop: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 14, borderBottomWidth: 2, borderBottomColor: '#121212' },
   ledgerTitle: { color: '#121212', fontFamily: serif, fontSize: 30, lineHeight: 35, fontWeight: '900' },
   ledgerCode: { color: '#686A68', fontFamily: mono, fontSize: 8, fontWeight: '900', letterSpacing: 1.1, marginTop: 5 },
-  ledgerMark: { color: '#1B365D', fontSize: 18 },
+  ledgerMark: { fontFamily: body, color: '#1B365D', fontSize: 18 },
   dashedRule: { height: 1, borderTopWidth: 1, borderStyle: 'dashed', borderColor: '#C8C4BB', marginTop: 22 },
   ledgerPrompt: { color: '#686A68', fontFamily: serif, fontStyle: 'italic', fontSize: 13, lineHeight: 20, paddingLeft: 14, borderLeftWidth: 2, borderLeftColor: '#1B365D', marginTop: 20, marginBottom: 28 },
   ledgerRows: { borderTopWidth: 2, borderTopColor: '#121212' },
   ledgerRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderStyle: 'dashed', borderBottomColor: '#C8C4BB' },
   ledgerLabel: { color: '#686A68', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  ledgerValue: { color: '#121212', fontFamily: mono, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  ledgerValue: { color: '#121212', fontFamily: metric, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] },
   stopInputWrap: { minWidth: 92, alignItems: 'flex-end', borderBottomWidth: 2, borderBottomColor: '#1B365D' },
   stopInput: { minWidth: 92, color: '#121212', fontFamily: metric, fontSize: 44, lineHeight: 50, fontWeight: '900', textAlign: 'right', paddingVertical: 4, fontVariant: ['tabular-nums'] },
   logActions: { gap: 10, marginTop: 14 },
   stitchedAction: { minHeight: 56, borderWidth: 2, borderStyle: 'dashed', borderColor: '#121212', alignItems: 'center', justifyContent: 'center' },
-  stitchedActionText: { color: '#121212', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
+  stitchedActionText: { color: '#121212', fontFamily: headline, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
   returnAction: { minHeight: 52, borderWidth: 1, borderColor: '#C8C4BB', alignItems: 'center', justifyContent: 'center' },
-  returnActionText: { color: '#686A68', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  returnActionText: { color: '#686A68', fontFamily: headline, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
 
   flash: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF9F6', paddingHorizontal: 24 },
   flashLight: { backgroundColor: '#FAF9F6' },

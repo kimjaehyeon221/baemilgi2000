@@ -158,14 +158,14 @@ Do not add unrelated exercises, heavy-bag work, sparring categories, or other fe
 
 ## 10. Typography and hierarchy
 
-The design direction may draw from the Stitch handoff using:
+The Stitch master uses four deliberate roles, and the app must preserve those roles consistently across every screen:
 
-- large condensed/display numerals for active metrics
-- clean grotesk/sans for primary UI
-- monospaced/data typography for quest codes and metadata
-- restrained serif usage for archive/history moments
+- **Display metric** — Stitch `Anton` → iOS QA build `Avenir Next Condensed`: hero targets, reps, timers when dominant, large numeric inputs.
+- **UI / action** — Stitch `Hanken Grotesk` → iOS QA build `Avenir Next`: body copy, buttons, navigation, ordinary interface headings.
+- **Data / metadata** — Stitch `JetBrains Mono` → iOS QA build `Menlo`: QUEST codes, dates, labels, statuses, set counters, archive columns.
+- **Archival** — Stitch `Source Serif 4` → iOS QA build `Georgia`: training-log titles, recorded-result headlines, restrained editorial moments.
 
-In React Native implementation, exact web fonts are optional if they create unnecessary native complexity. Preserve hierarchy and character first.
+Do not introduce an unassigned system/default font inside designed screens. A text element must belong to one of these four roles. Do not use the condensed display face for buttons or body copy, and do not use the archival serif for active workout metrics.
 
 Rule: **one dominant number per active screen.**
 
