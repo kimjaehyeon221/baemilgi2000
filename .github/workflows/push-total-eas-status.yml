@@ -43,7 +43,7 @@ jobs:
           expo-cache: false
           eas-cache: false
 
-      - name: Inspect EAS workflow and build status
+      - name: Inspect EAS workflow and build logs
         env:
           EXPO_TOKEN_VALUE: ${{ secrets.EXPO_TOKEN }}
           INPUT_RUN_ID: ${{ inputs.workflow_run_id }}
@@ -72,9 +72,32 @@ jobs:
             echo "===== BUILD $BUILD_ID ====="
             RAW=$(eas build:view "$BUILD_ID" --json 2>&1 || true)
             JSON=$(printf '%s\n' "$RAW" | sed -n '/^{/,$p')
-            if [ -n "$JSON" ] && printf '%s\n' "$JSON" | jq -e . >/dev/null 2>&1; then
-              printf '%s\n' "$JSON" | jq '{id,status,platform,distribution,buildProfile,appVersion,appBuildVersion,error,artifacts,createdAt,updatedAt,completedAt}'
-            else
-              printf '%s\n' "$RAW" | sed -E 's#https://[^ ]+#<url redacted>#g' | tail -n 25
+            if [ -z "$JSON" ] || ! printf '%s\n' "$JSON" | jq -e . >/dev/null 2>&1; then
+              printf '%s\n' "$RAW" | sed -E 's#https://[^ ]+#<url redacted>#g' | tail -n 30
+              continue
             fi
+
+            printf '%s\n' "$JSON" | jq '{id,status,platform,distribution,buildProfile,error,createdAt,completedAt,logFileCount:(.logFiles // [] | length)}'
+
+            LOG_URLS=$(printf '%s\n' "$JSON" | jq -r '.logFiles[]?')
+            if [ -z "$LOG_URLS" ]; then
+              echo "No logFiles returned by EAS build:view."
+              continue
+            fi
+
+            LOG_INDEX=0
+            while IFS= read -r LOG_URL; do
+              [ -z "$LOG_URL" ] && continue
+              LOG_INDEX=$((LOG_INDEX + 1))
+              echo "--- relevant lines from log $LOG_INDEX ---"
+              LOG_BODY=$(curl -fsS "$LOG_URL" 2>/dev/null || true)
+              if [ -z "$LOG_BODY" ]; then
+                echo "Could not read this log file."
+                continue
+              fi
+              printf '%s\n' "$LOG_BODY" \
+                | grep -Eai 'resolve build configuration|error|failed|failure|credential|certificate|provision|signing|apple|distribution' \
+                | sed -E 's#https://[^ ]+#<url redacted>#g' \
+                | tail -n 80 || true
+            done <<< "$LOG_URLS"
           done
