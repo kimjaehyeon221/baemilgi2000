@@ -4,6 +4,9 @@ This checklist treats BAEMILGI 2000 as a real iOS product, not a design prototyp
 
 ## P0 — Block release if any fail
 
+- [ ] Future quest/milestone taps cannot skip progression.
+- [ ] Baseline-derived starting level still skips irrelevant early quests correctly.
+
 - [ ] Existing local records survive update, force quit, and normal relaunch.
 - [ ] Simulated AsyncStorage read failure never opens an empty writable profile.
 - [ ] Challenge complete saves exactly one record.

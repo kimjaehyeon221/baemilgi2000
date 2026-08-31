@@ -101,8 +101,8 @@ export default function App() {
             ...state,
             clearedLevel,
             selectedLevel: success
-              ? Math.min(200, Math.max(clearedLevel + 1, state.selectedLevel))
-              : state.selectedLevel,
+              ? Math.min(200, clearedLevel + 1)
+              : Math.min(200, old + 1),
             sessions: [
               ...state.sessions,
               {
@@ -163,7 +163,7 @@ export default function App() {
     );
   }
 
-  const nextLevel = state.clearedLevel >= 200 ? 200 : Math.max(state.clearedLevel + 1, state.selectedLevel);
+  const nextLevel = state.clearedLevel >= 200 ? 200 : state.clearedLevel + 1;
   const nextTarget = targetForLevel(nextLevel);
   const hasPersonalRecord = state.firstBaemilgiMax !== null || state.sessions.some((session) => session.type === 'challenge');
   const currentReps = state.sessions.reduce((best, session) => {
@@ -447,13 +447,21 @@ export default function App() {
                   accessibilityRole="button"
                   accessibilityLabel={`레벨 ${level}, 목표 ${reps}개${done ? ', 완료' : selected ? ', 다음 도전' : ''}`}
                   accessibilityState={{ selected }}
-                  onPress={async () => {
-                    if (done) setTrainingLevel(level);
-                    else {
-                      await commit({ ...state, selectedLevel: level });
-                      setTab('home');
+                  onPress={() => {
+                    if (done) {
+                      setTrainingLevel(level);
+                      return;
                     }
+                    if (level === nextLevel) {
+                      setTab('home');
+                      return;
+                    }
+                    Alert.alert(
+                      `레벨 ${level} · ${reps}개`,
+                      `앞으로 만날 퀘스트야. 현재는 레벨 ${nextLevel}부터 이어서 진행해.`,
+                    );
                   }}
+                  accessibilityHint={done ? '완료한 단계의 훈련을 시작합니다' : level === nextLevel ? '현재 다음 퀘스트로 이동합니다' : '미래 퀘스트의 목표를 미리 봅니다'}
                   style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected]}
                 >
                   <Text style={[styles.cellLevel, inverse && styles.cellTextInverse]}>{done ? '완료' : `L${level}`}</Text>
@@ -473,13 +481,17 @@ export default function App() {
                   key={level}
                   accessibilityRole="button"
                   accessibilityLabel={`레벨 ${level}, ${reps}개 관문${done ? ', 완료' : ''}`}
-                  onPress={async () => {
-                    if (done) setTrainingLevel(level);
-                    else {
-                      await commit({ ...state, selectedLevel: level });
-                      setTab('home');
+                  onPress={() => {
+                    if (done) {
+                      setTrainingLevel(level);
+                      return;
                     }
+                    Alert.alert(
+                      `관문 · 레벨 ${level}`,
+                      `${reps.toLocaleString()}개. 현재 퀘스트를 이어가면 이 관문에 도달해.`,
+                    );
                   }}
+                  accessibilityHint={done ? '완료한 관문 단계의 훈련을 시작합니다' : '미래 관문의 목표를 미리 봅니다'}
                   style={styles.milestoneRow}
                 >
                   <View style={[styles.milestoneMark, done && styles.milestoneMarkDone]}>
@@ -489,7 +501,7 @@ export default function App() {
                     <Text style={styles.milestoneTitle}>{reps.toLocaleString()}개</Text>
                     <Text style={styles.milestoneCopy}>레벨 {level}</Text>
                   </View>
-                  <Text style={styles.linkArrow}>→</Text>
+                  <Text style={styles.linkArrow}>{done ? '↻' : '·'}</Text>
                 </Pressable>
               );
             })}

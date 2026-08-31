@@ -219,3 +219,10 @@ The current redesign is a real-device validation pass. If the Gi White / Judo Bl
 - Historical references must be labeled as historical references. Never imply that BAEMILGI 2000 was established in 1911.
 - Decorative progression bands and micro-labels must not create noisy VoiceOver output. Group meaningful metrics and label editable archive rows as actions.
 - The visual language may be technical, but important operational text should remain readable on a real iPhone. Tiny prototype labels are not production UI.
+
+
+### Sequential progression lock
+
+The release build uses sequential quests. The user's baseline/current max determines the starting point, and after that the only active challenge is `clearedLevel + 1` (or 200 after completion). Future quest cells and milestone rows are previews, not shortcuts. Completed levels may be reopened as training.
+
+Why: the product promise is a durable training path, not a level picker. Skilled users already skip irrelevant early stages through the onboarding baseline, so arbitrary future-jump controls add inconsistency without meaningful utility.

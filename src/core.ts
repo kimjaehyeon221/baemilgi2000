@@ -118,7 +118,8 @@ export function recomputeProgress(raw: AppState): AppState {
   return {
     ...raw,
     clearedLevel,
-    selectedLevel: Math.max(minimumSelected, Math.min(200, raw.selectedLevel || minimumSelected)),
+    // kept in the persisted schema for backwards compatibility; release progression is sequential.
+    selectedLevel: minimumSelected,
   };
 }
 
