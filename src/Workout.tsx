@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Alert,
   Animated,
   Keyboard,
@@ -51,8 +52,28 @@ function StampFlash({
   onRetry?: () => void;
 }) {
   const pulse = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion === null) return;
+    pulse.stopAnimation();
+    if (reduceMotion) {
+      pulse.setValue(1);
+      return;
+    }
+    pulse.setValue(0);
     Animated.spring(pulse, {
       toValue: 1,
       useNativeDriver: true,
@@ -60,7 +81,7 @@ function StampFlash({
       stiffness: 210,
       mass: 0.7,
     }).start();
-  }, [pulse]);
+  }, [pulse, reduceMotion]);
 
   const cleared = kind === 'cleared';
   return (
@@ -72,7 +93,7 @@ function StampFlash({
       accessibilityLabel={`${value}개, ${cleared ? '성공 기록' : '중단 기록'}${saveFailed ? ', 저장 실패. 다시 저장할 수 있음' : ' 저장 중'}`}
     >
       <StatusBar barStyle="dark-content" />
-      <Text style={S.flashValue}>{value}</Text>
+      <Text style={S.flashValue} maxFontSizeMultiplier={1.15}>{value}</Text>
       <Animated.View
         style={[
           S.stamp,
@@ -283,10 +304,10 @@ export function Challenge({
             <View style={S.matDot} />
           </View>
           <View style={S.targetCenter}>
-            <Text style={S.target}>{target}</Text>
+            <Text style={S.target} maxFontSizeMultiplier={1.15}>{target}</Text>
             <Text style={S.targetLabel}>TARGET REPS</Text>
           </View>
-          <Text style={S.elapsed}>{formatSeconds(seconds)}  ELAPSED</Text>
+          <Text style={S.elapsed} maxFontSizeMultiplier={1.3}>{formatSeconds(seconds)}  ELAPSED</Text>
         </View>
 
         <Text style={S.activeHint}>직접 세어. 자세가 무너지거나 불편하면 STOP HERE.</Text>
@@ -412,9 +433,9 @@ export function Training({
         </View>
 
         <View style={S.trainingMat}>
-          <Text style={S.trainingNumber}>{rest ? formatSeconds(restLeft) : plan.reps}</Text>
+          <Text style={S.trainingNumber} maxFontSizeMultiplier={1.15}>{rest ? formatSeconds(restLeft) : plan.reps}</Text>
           <Text style={S.trainingUnit}>{rest ? 'REST' : 'REPS'}</Text>
-          <Text style={S.trainingSession}>{formatSeconds(seconds)}  SESSION</Text>
+          <Text style={S.trainingSession} maxFontSizeMultiplier={1.3}>{formatSeconds(seconds)}  SESSION</Text>
         </View>
 
         <Text style={S.activeHint}>반복 가능한 리듬을 유지해. 쉬는 동안 호흡을 정리해.</Text>

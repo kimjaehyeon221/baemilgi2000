@@ -399,7 +399,7 @@ export default function App() {
               accessible
               accessibilityLabel={`다음 목표 ${nextTarget}개. 현재 최고 기록 ${hasPersonalRecord ? `${currentReps}개` : '없음'}`}
             >
-              <Text style={styles.dojoHeroNumber}>{nextTarget}</Text>
+              <Text style={styles.dojoHeroNumber} maxFontSizeMultiplier={1.15}>{nextTarget}</Text>
               <View style={styles.dojoCurrentBestRow}>
                 <Text style={styles.dojoCurrentBestLabel}>CURRENT BEST:</Text>
                 <Text style={styles.dojoCurrentBestValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
@@ -462,7 +462,7 @@ export default function App() {
                 <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>
                 <Text style={styles.questHeroCopy}>다음 도전</Text>
               </View>
-              <Text style={styles.questHeroTarget}>{nextTarget}<Text style={styles.questHeroUnit}>개</Text></Text>
+              <Text style={styles.questHeroTarget} maxFontSizeMultiplier={1.2}>{nextTarget}<Text style={styles.questHeroUnit}>개</Text></Text>
             </View>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />

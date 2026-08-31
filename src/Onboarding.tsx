@@ -99,7 +99,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
           <View style={styles.introGrow}>
             <View style={styles.introSignal}><Text style={styles.introSignalText}>QUEST SYSTEM / 001—200</Text></View>
             <Text style={styles.introEyebrow}>GREAT GAMA ARCHIVE</Text>
-            <Text style={styles.introTitle}>2,000</Text>
+            <Text style={styles.introTitle} maxFontSizeMultiplier={1.15}>2,000</Text>
             <Text style={styles.introSub}>오늘 가능한 횟수에서, 한 단계씩.</Text>
             <View style={styles.introRule} />
             <Text style={styles.introCopy}>
@@ -220,6 +220,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
               placeholder="0"
               placeholderTextColor="#9F978B"
               style={styles.bigInput}
+              maxFontSizeMultiplier={1.2}
               maxLength={4}
               accessibilityLabel="배밀기 최고 기록"
             />
@@ -270,6 +271,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
             placeholder="직접 입력"
             placeholderTextColor="#707069"
             style={styles.recommendInput}
+            maxFontSizeMultiplier={1.2}
             maxLength={4}
             accessibilityLabel="직접 측정한 배밀기 개수"
           />
