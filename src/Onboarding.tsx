@@ -76,15 +76,15 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
         <View style={styles.introGrow}>
           <Text style={styles.introEyebrow}>GREAT GAMA</Text>
           <Text style={styles.introTitle}>2,000</Text>
-          <Text style={styles.introSub}>약 3시간 동안 이어진 Dand 기록</Text>
+          <Text style={styles.introSub}>오늘 가능한 횟수에서, 한 단계씩.</Text>
           <View style={styles.introRule} />
           <Text style={styles.introCopy}>
-            Great Gama는 20세기 초 인도 전통 레슬링의 전설로 남은 선수야. 1911년 관찰 기록에는 약 3시간 동안 2,000회가 넘는 Dand를 했다고 적혀 있어.
+            지금 할 수 있는 횟수에서 시작해 200개의 작은 퀘스트를 따라가. 성공뿐 아니라 멈춘 지점도 다음 기록이 돼.
           </Text>
           <Text style={styles.introCopy}>
-            배밀기 2000은 그 숫자를 끝점으로 삼아. 시작은 지금 가능한 횟수에서, 기록은 한 단계씩.
+            마지막 2,000은 Great Gama의 역사적 Dand 기록에서 가져온 상징적인 끝점이야.
           </Text>
-          <Text style={styles.introMeta}>2,000은 운동 권장량이 아니라 역사적 도전 기록이야.</Text>
+          <Text style={styles.introMeta}>운동 권장량이 아니며, 몸 상태에 맞춰 천천히 진행해.</Text>
         </View>
         <Button label="내 기록 시작" onPress={() => setStep('experience')} />
       </SafeAreaView>
