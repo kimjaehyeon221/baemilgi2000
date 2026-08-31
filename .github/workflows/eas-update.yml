@@ -38,9 +38,10 @@ jobs:
         run: CI=1 npx expo export --platform ios --output-dir dist-ci
 
       # TestFlight 1.0.0 (6) is the current iPhone QA binary.
-      # Keep UI/JS OTA updates on its embedded runtime during this design-test cycle.
-      # This pass validates typography + Stitch seam/fold/stroke visual rhythm.
-      # Remove this pin and return to fingerprint policy after the next native/TestFlight build.
+      # Keep JS-only release QA fixes on its embedded runtime until the next native build.
+      # This batch includes typography, tap/legibility/accessibility, data-safety,
+      # long-history access, onboarding back navigation, and sequential quest progression.
+      # Remove this pin before any native dependency/config change is shipped.
       - name: Target current iPhone QA runtime
         run: |
           node - <<'NODE'
