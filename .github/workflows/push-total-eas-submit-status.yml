@@ -1,0 +1,62 @@
+name: Inspect PUSH TOTAL EAS Submit Status
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-eas-submit-status.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PUSH TOTAL RC
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Query recent submissions
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli@latest submit:list --platform ios --limit 5 --json --non-interactive > /tmp/submissions.json
+          node <<'NODE'
+          const fs=require('fs');
+          const list=JSON.parse(fs.readFileSync('/tmp/submissions.json','utf8'));
+          const rows=Array.isArray(list)?list:(list.data||list.submissions||[]);
+          const sanitized=rows.map(s=>({id:s.id||null,status:s.status||null,buildId:s.build?.id||s.buildId||null,createdAt:s.createdAt||null,updatedAt:s.updatedAt||null}));
+          fs.mkdirSync('docs',{recursive:true});
+          fs.writeFileSync('docs/PUSH_TOTAL_EAS_SUBMISSIONS.json',JSON.stringify({checkedAt:new Date().toISOString(),submissions:sanitized},null,2)+'\n');
+          console.log(JSON.stringify(sanitized,null,2));
+          NODE
+
+      - name: Persist sanitized status on main
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          cp /tmp/submissions.json /tmp/raw-submissions.json
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          # Regenerate sanitized file after switching branches.
+          node <<'NODE'
+          const fs=require('fs');
+          const list=JSON.parse(fs.readFileSync('/tmp/raw-submissions.json','utf8'));
+          const rows=Array.isArray(list)?list:(list.data||list.submissions||[]);
+          const sanitized=rows.map(s=>({id:s.id||null,status:s.status||null,buildId:s.build?.id||s.buildId||null,createdAt:s.createdAt||null,updatedAt:s.updatedAt||null}));
+          fs.mkdirSync('docs',{recursive:true});
+          fs.writeFileSync('docs/PUSH_TOTAL_EAS_SUBMISSIONS.json',JSON.stringify({checkedAt:new Date().toISOString(),submissions:sanitized},null,2)+'\n');
+          NODE
+          git add docs/PUSH_TOTAL_EAS_SUBMISSIONS.json
+          git commit -m 'Record PUSH TOTAL EAS submission status' || exit 0
+          git push origin HEAD:main
