@@ -1,0 +1,32 @@
+name: Apply Typography System
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/unify_typography.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply typography system
+        run: python3 scripts/unify_typography.py
+      - name: Commit typography refinement
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/typography.ts src/styles.ts src/Workout.tsx DESIGN.md
+          git commit -m "Unify BAEMILGI typography system"
+          git push
