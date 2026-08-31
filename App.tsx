@@ -22,7 +22,7 @@ import {
 type EntrySource = 'pocket' | 'manual';
 type SensitivityKey = 'high' | 'medium' | 'low';
 type Screen = 'home' | 'wall' | 'session' | 'history';
-type SessionStatus = 'countdown' | 'running';
+type SessionStatus = 'countdown' | 'running' | 'confirm';
 type MotionPhase = 'neutral' | 'positive';
 
 type Entry = {
@@ -163,31 +163,32 @@ function BrickWall({ filledBricks, compact = false }: { filledBricks: number; co
   const minimumSlots = compact ? 16 : 28;
   const capacity = Math.max(minimumSlots, Math.ceil((visibleFilled + (compact ? 4 : 12)) / 4) * 4);
   const rows = Math.ceil(capacity / 4);
-  let index = 0;
 
   return (
     <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
-      {Array.from({ length: rows }, (_, rowIndex) => (
-        <View key={rowIndex} style={[styles.brickRow, rowIndex % 2 === 1 && styles.brickRowOffset]}>
-          {Array.from({ length: 4 }, (_, brickIndex) => {
-            const filled = index < visibleFilled;
-            const brickNumber = index;
-            index += 1;
-            return (
-              <View
-                key={`${rowIndex}-${brickIndex}`}
-                style={[
-                  styles.brick,
-                  compact && styles.brickCompact,
-                  filled ? styles.brickFilled : styles.brickEmpty,
-                  filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
-                  filled && brickNumber % 5 === 2 && styles.brickFilledDark,
-                ]}
-              />
-            );
-          })}
-        </View>
-      ))}
+      {Array.from({ length: rows }, (_, visualRow) => {
+        const rowFromBottom = rows - 1 - visualRow;
+        return (
+          <View key={visualRow} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
+            {Array.from({ length: 4 }, (_, brickIndex) => {
+              const brickNumber = rowFromBottom * 4 + brickIndex;
+              const filled = brickNumber < visibleFilled;
+              return (
+                <View
+                  key={`${visualRow}-${brickIndex}`}
+                  style={[
+                    styles.brick,
+                    compact && styles.brickCompact,
+                    filled ? styles.brickFilled : styles.brickEmpty,
+                    filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
+                    filled && brickNumber % 5 === 2 && styles.brickFilledDark,
+                  ]}
+                />
+              );
+            })}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -222,8 +223,11 @@ export default function App() {
   const [editingValue, setEditingValue] = useState('');
 
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('countdown');
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(10);
   const [sessionCount, setSessionCount] = useState(0);
+  const [detectedCount, setDetectedCount] = useState(0);
+  const [confirmedCount, setConfirmedCount] = useState(0);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -364,39 +368,50 @@ export default function App() {
     showToast(`+${formatNumber(amount)} RECORDED`);
   };
 
-  const addManual = (amount: number) => {
-    saveEntry(amount, 'manual');
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-  };
-
-  const submitCustom = () => {
-    const amount = parsePositiveInt(customValue);
-    if (!amount) {
-      Alert.alert('숫자를 확인해 주세요', '1 이상의 푸쉬업 개수를 입력해 주세요.');
-      return;
-    }
-    addManual(amount);
-    setCustomValue('');
-  };
-
   const finishSession = (automatic = false) => {
     if (finishingRef.current) return;
     finishingRef.current = true;
     const finalCount = countRef.current;
     clearSessionInfrastructure();
     if (finalCount > 0) {
-      saveEntry(finalCount, 'pocket');
+      setDetectedCount(finalCount);
+      setConfirmedCount(finalCount);
+      setSessionStatus('confirm');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } else {
       showToast('NO REPS DETECTED');
+      setScreen('home');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
     }
-    setScreen('home');
     setSessionCount(0);
     countRef.current = 0;
-    setCountdown(3);
+    setCountdown(10);
     setElapsed(0);
     setTimeout(() => { finishingRef.current = false; }, automatic ? 250 : 0);
+  };
+
+  const adjustConfirmedCount = (delta: number) => {
+    const lower = Math.max(1, detectedCount - 10);
+    const upper = detectedCount + 10;
+    setConfirmedCount((current) => Math.min(upper, Math.max(lower, current + delta)));
+    void Haptics.selectionAsync().catch(() => undefined);
+  };
+
+  const confirmPocketCount = () => {
+    if (confirmedCount <= 0) return;
+    saveEntry(confirmedCount, 'pocket');
+    setScreen('home');
+    setSessionStatus('countdown');
+    setDetectedCount(0);
+    setConfirmedCount(0);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const retryPocketCount = () => {
+    setDetectedCount(0);
+    setConfirmedCount(0);
+    setSessionStatus('countdown');
+    void startPocket();
   };
   finishSessionRef.current = finishSession;
 
@@ -476,7 +491,7 @@ export default function App() {
     countRef.current = 0;
     setSessionCount(0);
     setElapsed(0);
-    setCountdown(3);
+    setCountdown(10);
 
     try {
       const available = await DeviceMotion.isAvailableAsync();
@@ -492,9 +507,9 @@ export default function App() {
 
       setScreen('session');
       setSessionStatus('countdown');
-      [1, 2, 3].forEach((second) => {
+      [1,2,3,4,5,6,7,8,9,10].forEach((second) => {
         const timer = setTimeout(() => {
-          const left = 3 - second;
+          const left = 10 - second;
           if (left > 0) setCountdown(left);
           else void beginListening();
         }, second * 1000);
@@ -507,9 +522,16 @@ export default function App() {
 
   const cancelSession = () => {
     if (sessionStatus === 'running' && countRef.current > 0) {
-      Alert.alert('세트를 끝낼까요?', `${countRef.current}개를 저장하고 홈으로 돌아갑니다.`, [
+      Alert.alert('세트를 끝낼까요?', `${countRef.current}개를 감지했습니다. 확인 화면으로 이동합니다.`, [
         { text: '계속', style: 'cancel' },
         { text: '끝내기', onPress: () => finishSession(false) },
+      ]);
+      return;
+    }
+    if (sessionStatus === 'confirm') {
+      Alert.alert('이번 세트를 버릴까요?', '확정하지 않은 기록은 LIFETIME에 들어가지 않습니다.', [
+        { text: '계속 확인', style: 'cancel' },
+        { text: '버리기', style: 'destructive', onPress: () => { setDetectedCount(0); setConfirmedCount(0); setSessionStatus('countdown'); setScreen('home'); } },
       ]);
       return;
     }
@@ -518,13 +540,8 @@ export default function App() {
   };
 
   const finishOnboarding = () => {
-    const base = existingValue.trim() === '' ? 0 : parsePositiveInt(existingValue);
-    if (existingValue.trim() !== '' && base === null) {
-      Alert.alert('숫자를 확인해 주세요', '기존 누적 푸쉬업 개수를 숫자로 입력해 주세요.');
-      return;
-    }
-    setState({ onboarded: true, baseTotal: base ?? 0, entries: [], sensitivity: 'medium' });
-    setExistingValue('');
+    setState({ onboarded: true, baseTotal: 0, entries: [], sensitivity: 'medium' });
+    setOnboardingStep(0);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
@@ -542,26 +559,6 @@ export default function App() {
     ]);
   };
 
-  const beginEdit = (entry: Entry) => {
-    setEditingId(entry.id);
-    setEditingValue(String(entry.amount));
-  };
-
-  const saveEdit = () => {
-    if (!editingId) return;
-    const amount = parsePositiveInt(editingValue);
-    if (!amount) {
-      Alert.alert('숫자를 확인해 주세요', '1 이상의 개수를 입력해 주세요.');
-      return;
-    }
-    setState((current) => ({
-      ...current,
-      entries: current.entries.map((entry) => entry.id === editingId ? { ...entry, amount } : entry),
-    }));
-    setEditingId(null);
-    setEditingValue('');
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-  };
 
   const exportData = async () => {
     const lines = ['created_at,date,pushups,source'];
@@ -598,44 +595,68 @@ export default function App() {
   }
 
   if (!state.onboarded) {
+    const steps = [
+      {
+        code: '01 / BUILD',
+        title: '평생 한 푸쉬업을\n벽으로 남깁니다.',
+        body: '100 PUSHES = 1 BRICK. 벽돌은 아래에서 위로 쌓이고, 한 번 쌓인 기록은 당신의 실제 수행만으로 만들어집니다.',
+      },
+      {
+        code: '02 / POCKET',
+        title: '주머니에 넣고\n자세부터 잡으세요.',
+        body: 'POCKET COUNT를 누르면 10초가 주어집니다. 앞주머니에 iPhone을 넣고 시작 자세를 잡으세요. 신호 후의 움직임부터 셉니다.',
+      },
+      {
+        code: '03 / TRUST',
+        title: '기록은\n직접 쌓은 것만.',
+        body: '자유 수동 입력은 없습니다. 센서가 센 횟수를 마지막에 확인하고 ±10 안에서만 보정합니다. 과거 숫자도 가져오지 않고 오늘 0부터 시작합니다.',
+      },
+    ];
+    const step = steps[onboardingStep];
     return (
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" />
-        <KeyboardAvoidingView style={styles.onboarding} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.introHero}>
+        <StatusBar barStyle={onboardingStep === 0 ? 'light-content' : 'dark-content'} />
+        <View style={styles.onboardingV2}>
+          <View style={[styles.onboardingVisual, onboardingStep === 0 ? styles.onboardingVisualDark : styles.onboardingVisualLight]}>
             <View style={styles.introHeader}>
-              <Text style={styles.introWordmark}>PUSH TOTAL</Text>
-              <Text style={styles.introCode}>PT / 001</Text>
+              <Text style={[styles.introWordmark, onboardingStep > 0 && styles.introWordmarkDark]}>PUSH TOTAL</Text>
+              <Text style={styles.introCode}>{step.code}</Text>
             </View>
-            <View style={styles.introWallWrap}>
-              <BrickWall filledBricks={12} compact />
-            </View>
-            <Text style={styles.introTitle}>BUILD IT.</Text>
-            <Text style={styles.introTagline}>ONE REP AT A TIME.</Text>
+            {onboardingStep === 0 ? (
+              <View style={styles.introWallWrap}><BrickWall filledBricks={9} compact /></View>
+            ) : onboardingStep === 1 ? (
+              <View style={styles.onboardingPocketCard}>
+                <View style={styles.pocketIllustration}><View style={styles.phoneShape} /><View style={styles.pocketCurveLight} /></View>
+                <Text style={styles.onboardingTen}>10</Text>
+                <Text style={styles.onboardingTenLabel}>SECONDS TO GET READY</Text>
+              </View>
+            ) : (
+              <View style={styles.trustMark}>
+                <Text style={styles.trustMarkSmall}>SENSOR VERIFIED</Text>
+                <Text style={styles.trustMarkBig}>±10</Text>
+                <Text style={styles.trustMarkSmall}>MAX CORRECTION</Text>
+              </View>
+            )}
           </View>
-
-          <View style={styles.onboardingForm}>
+          <View style={styles.onboardingCopy}>
             <Text style={styles.kicker}>YOUR PUSH-UP PEDOMETER</Text>
-            <Text style={styles.onboardingTitle}>푸쉬업을 쌓아{`\n`}나만의 벽을 만드세요.</Text>
-            <Text style={styles.onboardingBody}>100개의 푸쉬업이 벽돌 하나가 됩니다. 지금까지 해온 푸쉬업이 있다면 시작 숫자로 가져올 수 있어요.</Text>
-            <Text style={styles.fieldLabel}>EXISTING TOTAL / OPTIONAL</Text>
-            <View style={styles.existingRow}>
-              <TextInput
-                value={existingValue}
-                onChangeText={(value) => setExistingValue(value.replace(/[^0-9]/g, ''))}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="#8E8B86"
-                style={styles.existingInput}
-              />
-              <Text style={styles.existingUnit}>PUSHES</Text>
+            <Text style={styles.onboardingTitle}>{step.title}</Text>
+            <Text style={styles.onboardingBody}>{step.body}</Text>
+            <View style={styles.onboardingProgress}>
+              {[0,1,2].map(i => <View key={i} style={[styles.onboardingProgressBar, i === onboardingStep && styles.onboardingProgressBarActive]} />)}
             </View>
-            <Pressable onPress={finishOnboarding} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-              <Text style={styles.primaryButtonText}>START BUILDING</Text>
-            </Pressable>
-            <Text style={styles.microcopy}>기록과 센서 처리는 이 iPhone 안에서만 이루어집니다.</Text>
+            {onboardingStep < 2 ? (
+              <Pressable onPress={() => setOnboardingStep((current) => current + 1)} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+                <Text style={styles.primaryButtonText}>CONTINUE</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={finishOnboarding} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+                <Text style={styles.primaryButtonText}>START AT ZERO</Text>
+              </Pressable>
+            )}
+            {onboardingStep > 0 && <Pressable onPress={() => setOnboardingStep((current) => current - 1)}><Text style={styles.onboardingBack}>BACK</Text></Pressable>}
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     );
   }
@@ -650,7 +671,7 @@ export default function App() {
           <View style={styles.sessionHeader}>
             <Text style={styles.sessionWordmark}>PUSH TOTAL</Text>
             <Pressable onPress={cancelSession} hitSlop={12}>
-              <Text style={styles.endSetText}>{sessionStatus === 'running' && sessionCount > 0 ? 'END SET' : 'CANCEL'}</Text>
+              <Text style={styles.endSetText}>{sessionStatus === 'running' && sessionCount > 0 ? 'END SET' : sessionStatus === 'confirm' ? 'DISCARD' : 'CANCEL'}</Text>
             </Pressable>
           </View>
 
@@ -661,12 +682,12 @@ export default function App() {
                   <View style={styles.phoneShape} />
                   <View style={styles.pocketCurve} />
                 </View>
-                <Text style={styles.sessionKicker}>POCKET READY</Text>
+                <Text style={styles.sessionKicker}>GET INTO POSITION</Text>
                 <Text style={styles.countdownNumber}>{countdown}</Text>
-                <Text style={styles.sessionTitle}>앞주머니에 넣으세요.</Text>
-                <Text style={styles.sessionBody}>진동이 한 번 오면 평소 속도로 푸쉬업을 시작하세요.</Text>
+                <Text style={styles.sessionTitle}>10초 안에 자세를 잡으세요.</Text>
+                <Text style={styles.sessionBody}>카운트가 끝나면 강한 진동이 옵니다. 그때부터 첫 푸쉬업을 시작하세요.</Text>
               </>
-            ) : (
+            ) : sessionStatus === 'running' ? (
               <>
                 <View style={styles.sensorStatus}>
                   <View style={styles.liveMarker}>
@@ -677,7 +698,24 @@ export default function App() {
                 </View>
                 <Animated.Text style={[styles.sessionCount, { transform: [{ scale: repScale }] }]}>{sessionCount}</Animated.Text>
                 <Text style={styles.sessionMetric}>CURRENT SET</Text>
-                <Text style={styles.sessionBody}>마지막 반복 뒤 7초 동안 새 움직임이 없으면 자동 저장됩니다.</Text>
+                <Text style={styles.sessionBody}>멈춘 뒤 7초 동안 반복 움직임이 없으면 확인 화면으로 넘어갑니다.</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sessionKicker}>VERIFY YOUR SET</Text>
+                <Text style={styles.confirmQuestion}>{detectedCount}개 한 것 맞나요?</Text>
+                <Text style={styles.confirmNumber}>{confirmedCount}</Text>
+                <Text style={styles.sessionMetric}>CONFIRMED PUSHES</Text>
+                <View style={styles.correctionRow}>
+                  {[-10,-1,1,10].map(delta => (
+                    <Pressable key={delta} onPress={() => adjustConfirmedCount(delta)} style={styles.correctionButton}>
+                      <Text style={styles.correctionButtonText}>{delta > 0 ? '+' : ''}{delta}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={styles.sessionBody}>센서값 {detectedCount}개 기준 ±10 안에서만 보정할 수 있습니다.</Text>
+                <Pressable onPress={confirmPocketCount} style={styles.confirmButton}><Text style={styles.confirmButtonText}>YES · ADD TO LIFETIME</Text></Pressable>
+                <Pressable onPress={retryPocketCount} style={styles.retryButton}><Text style={styles.retryButtonText}>COUNT AGAIN</Text></Pressable>
               </>
             )}
           </View>
@@ -775,40 +813,20 @@ export default function App() {
           <View style={styles.historySection}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionLabel}>RECENT LOG</Text>
-              <Text style={styles.sectionMeta}>EDITABLE</Text>
+              <Text style={styles.sectionMeta}>VERIFIED SETS</Text>
             </View>
             {recentEntries.length === 0 ? (
               <Text style={styles.emptyText}>아직 기록이 없어요.</Text>
             ) : recentEntries.map((entry) => (
               <View key={entry.id} style={styles.entryRow}>
-                {editingId === entry.id ? (
-                  <View style={styles.editRow}>
-                    <TextInput
-                      value={editingValue}
-                      onChangeText={(value) => setEditingValue(value.replace(/[^0-9]/g, ''))}
-                      keyboardType="number-pad"
-                      style={styles.editInput}
-                      autoFocus
-                    />
-                    <Text style={styles.editUnit}>PUSHES</Text>
-                    <Pressable onPress={saveEdit}><Text style={styles.saveEdit}>SAVE</Text></Pressable>
-                    <Pressable onPress={() => setEditingId(null)}><Text style={styles.cancelEdit}>CANCEL</Text></Pressable>
+                <View style={styles.entryLeft}>
+                  <View style={[styles.entryBrick, entry.source === 'pocket' && styles.entryBrickSensor]} />
+                  <View>
+                    <Text style={styles.entryAmount}>{formatNumber(entry.amount)}</Text>
+                    <Text style={styles.entryTime}>{entry.date} · {new Date(entry.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · {entry.source === 'pocket' ? 'POCKET VERIFIED' : 'LEGACY'}</Text>
                   </View>
-                ) : (
-                  <>
-                    <View style={styles.entryLeft}>
-                      <View style={[styles.entryBrick, entry.source === 'pocket' && styles.entryBrickSensor]} />
-                      <View>
-                        <Text style={styles.entryAmount}>{formatNumber(entry.amount)}</Text>
-                        <Text style={styles.entryTime}>{entry.date} · {new Date(entry.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · {entry.source === 'pocket' ? 'POCKET' : 'MANUAL'}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.entryActions}>
-                      <Pressable onPress={() => beginEdit(entry)} hitSlop={10}><Text style={styles.entryEdit}>EDIT</Text></Pressable>
-                      <Pressable onPress={() => deleteEntry(entry)} hitSlop={10}><Text style={styles.entryDelete}>DELETE</Text></Pressable>
-                    </View>
-                  </>
-                )}
+                </View>
+                <Pressable onPress={() => deleteEntry(entry)} hitSlop={10}><Text style={styles.entryDelete}>DELETE</Text></Pressable>
               </View>
             ))}
           </View>
@@ -894,36 +912,13 @@ export default function App() {
             <View style={styles.sensorOrb}><View style={styles.sensorOrbDot} /></View>
           </Pressable>
 
-          <View style={styles.manualSection}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionLabel}>MANUAL LOG</Text>
-              <Text style={styles.sectionMeta}>FAST INPUT</Text>
-            </View>
-            <View style={styles.quickRow}>
-              {[10, 20, 30, 50].map((amount) => (
-                <Pressable key={amount} onPress={() => addManual(amount)} style={({ pressed }) => [styles.quickButton, pressed && styles.quickButtonPressed]}>
-                  <Text style={styles.quickButtonText}>{amount}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.customRow}>
-              <TextInput
-                value={customValue}
-                onChangeText={(value) => setCustomValue(value.replace(/[^0-9]/g, ''))}
-                onSubmitEditing={submitCustom}
-                keyboardType="number-pad"
-                returnKeyType="done"
-                placeholder="다른 개수"
-                placeholderTextColor="#827D78"
-                style={styles.customInput}
-              />
-              <Pressable onPress={submitCustom} style={({ pressed }) => [styles.customButton, pressed && styles.pressed]}>
-                <Text style={styles.customButtonText}>LOG</Text>
-              </Pressable>
-            </View>
+          <View style={styles.trustedRecordNote}>
+            <Text style={styles.trustedRecordLabel}>TRUSTED RECORD</Text>
+            <Text style={styles.trustedRecordTitle}>직접 수행한 푸쉬업만 쌓입니다.</Text>
+            <Text style={styles.trustedRecordBody}>자유 수동 입력은 없습니다. Pocket Count가 감지한 세트만 확인 후 LIFETIME에 추가됩니다.</Text>
           </View>
 
-          <Text style={styles.homeFootnote}>푸쉬업을 걸음처럼 누적하고, 100개마다 벽돌 하나를 쌓습니다. Pocket Count는 iPhone 동작 센서로 반복 움직임을 추정합니다.</Text>
+          <Text style={styles.homeFootnote}>100 PUSHES = 1 BRICK. 벽돌은 아래에서 위로 쌓입니다. Pocket Count는 준비 신호 이후의 반복 움직임을 추정하고, 마지막 확인을 거쳐 기록합니다.</Text>
         </ScrollView>
       </KeyboardAvoidingView>
       <BottomNav active="home" onNavigate={setScreen} />
@@ -983,6 +978,24 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: BG, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },
   microcopy: { marginTop: 9, color: MUTED, fontSize: 9, lineHeight: 14, fontWeight: '600' },
 
+  onboardingV2: { flex: 1, backgroundColor: BG },
+  onboardingVisual: { flex: 1.05, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
+  onboardingVisualDark: { backgroundColor: INK },
+  onboardingVisualLight: { backgroundColor: SURFACE },
+  introWordmarkDark: { color: BRICK_DARK },
+  onboardingCopy: { flex: 0.95, paddingHorizontal: 24, paddingTop: 26, paddingBottom: 22, justifyContent: 'center' },
+  onboardingProgress: { marginTop: 24, flexDirection: 'row', gap: 6 },
+  onboardingProgressBar: { flex: 1, height: 3, backgroundColor: SURFACE_HIGH },
+  onboardingProgressBarActive: { backgroundColor: BRICK },
+  onboardingBack: { marginTop: 15, color: MUTED, fontSize: 10, fontWeight: '900', letterSpacing: 1.2, textAlign: 'center' },
+  onboardingPocketCard: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  pocketCurveLight: { position: 'absolute', bottom: -42, width: 170, height: 78, borderTopWidth: 2, borderColor: '#8C857D', borderRadius: 80, backgroundColor: SURFACE },
+  onboardingTen: { marginTop: 14, color: INK, fontSize: 76, lineHeight: 80, fontWeight: '900', letterSpacing: -4 },
+  onboardingTenLabel: { color: BRICK_DARK, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  trustMark: { flex: 1, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: LINE },
+  trustMarkSmall: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.6 },
+  trustMarkBig: { color: BRICK_DARK, fontSize: 92, lineHeight: 102, fontWeight: '900', letterSpacing: -5 },
+
   // Dashboard
   homeContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 118 },
   heroCard: { marginTop: 18, minHeight: 196, backgroundColor: INK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
@@ -1018,6 +1031,10 @@ const styles = StyleSheet.create({
   customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
   customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },
   homeFootnote: { marginTop: 17, color: MUTED, fontSize: 10, lineHeight: 16, fontWeight: '600' },
+  trustedRecordNote: { marginTop: 20, paddingTop: 18, borderTopWidth: 1, borderColor: LINE },
+  trustedRecordLabel: { color: BRICK_DARK, fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
+  trustedRecordTitle: { marginTop: 5, color: INK, fontSize: 18, lineHeight: 23, fontWeight: '900', letterSpacing: -0.5 },
+  trustedRecordBody: { marginTop: 6, color: MUTED, fontSize: 11, lineHeight: 17, fontWeight: '600' },
 
   // Bottom navigation
   bottomNav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 82, paddingBottom: 8, backgroundColor: INK, borderTopWidth: 4, borderColor: BRICK, flexDirection: 'row' },
@@ -1065,6 +1082,16 @@ const styles = StyleSheet.create({
   sessionStatLabel: { color: '#77726E', fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
   sessionStatValue: { marginTop: 2, color: BG, fontSize: 15, fontWeight: '800', fontVariant: ['tabular-nums'] },
   elapsedText: { marginTop: 8, color: '#5E5A56', fontSize: 8, fontWeight: '900', letterSpacing: 1.0, textAlign: 'center' },
+
+  confirmQuestion: { marginBottom: 8, color: BG, fontSize: 24, lineHeight: 30, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' },
+  confirmNumber: { color: BG, fontSize: 122, lineHeight: 132, fontWeight: '900', letterSpacing: -6, fontVariant: ['tabular-nums'] },
+  correctionRow: { marginTop: 22, flexDirection: 'row', gap: 8 },
+  correctionButton: { width: 58, height: 46, borderWidth: 1, borderColor: '#5A5550', alignItems: 'center', justifyContent: 'center' },
+  correctionButtonText: { color: BG, fontSize: 15, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  confirmButton: { marginTop: 24, width: '100%', maxWidth: 320, minHeight: 56, backgroundColor: BRICK, alignItems: 'center', justifyContent: 'center' },
+  confirmButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
+  retryButton: { marginTop: 10, minHeight: 44, justifyContent: 'center' },
+  retryButtonText: { color: '#918B85', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
 
   // History
   historyContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
