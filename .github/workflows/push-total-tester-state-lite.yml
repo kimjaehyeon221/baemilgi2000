@@ -1,0 +1,93 @@
+name: Read PUSH TOTAL Tester State
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-tester-state-lite.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Read sanitized tester state
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806938654'
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const key = process.env.ASC_API_KEY_P8;
+          const kid = process.env.ASC_KEY_ID;
+          const iss = process.env.ASC_ISSUER_ID;
+          const appId = process.env.ASC_APP_ID;
+          const enc = x => Buffer.from(x).toString('base64url');
+          const now = Math.floor(Date.now()/1000);
+          const h = enc(JSON.stringify({alg:'ES256',kid,typ:'JWT'}));
+          const p = enc(JSON.stringify({iss,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const msg = `${h}.${p}`;
+          const sig = crypto.sign('sha256',Buffer.from(msg),{key,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const token = `${msg}.${sig}`;
+          async function get(path){
+            const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{headers:{Authorization:`Bearer ${token}`}});
+            const text=await r.text(); let body=null;
+            if(text){try{body=JSON.parse(text)}catch{body={raw:text.slice(0,200)}}}
+            if(!r.ok) throw new Error(`ASC ${r.status} ${path}: ${JSON.stringify(body)}`);
+            return body;
+          }
+          (async()=>{
+            let report;
+            try {
+              const [testers,users,groups,builds]=await Promise.all([
+                get('/v1/betaTesters?limit=200'),
+                get('/v1/users?limit=200&include=visibleApps&limit%5BvisibleApps%5D=50'),
+                get(`/v1/betaGroups?filter%5Bapp%5D=${appId}&limit=200`),
+                get(`/v1/builds?filter%5Bapp%5D=${appId}&sort=-uploadedDate&limit=20`)
+              ]);
+              const eligibleRoles=new Set(['ACCOUNT_HOLDER','ADMIN','APP_MANAGER','DEVELOPER','MARKETING']);
+              const eligible=(users.data||[]).filter(u=>(u.attributes?.roles||[]).some(r=>eligibleRoles.has(r)) && (u.attributes?.allAppsVisible || (u.relationships?.visibleApps?.data||[]).some(a=>a.id===appId)));
+              const byEmail=new Map((testers.data||[]).filter(t=>t.attributes?.email).map(t=>[String(t.attributes.email).trim().toLowerCase(),t]));
+              const matches=eligible.map(u=>({u,t:byEmail.get(String(u.attributes?.username||'').trim().toLowerCase())})).filter(x=>x.t);
+              if(matches.length!==1) throw new Error(`matched eligible tester count=${matches.length}`);
+              const {u,t}=matches[0];
+              const latest=builds.data?.[0]||null;
+              const internal=(groups.data||[]).filter(g=>g.attributes?.isInternalGroup);
+              report={
+                checkedAt:new Date().toISOString(),
+                diagnosis:'TESTER_STATE_READ',
+                latestBuild:latest?{buildNumber:latest.attributes?.version||null,processingState:latest.attributes?.processingState||null,expired:Boolean(latest.attributes?.expired)}:null,
+                tester:{state:t.attributes?.state||null,inviteType:t.attributes?.inviteType||null},
+                appStoreConnectUser:{roles:u.attributes?.roles||[],allAppsVisible:Boolean(u.attributes?.allAppsVisible),provisioningAllowed:u.attributes?.provisioningAllowed??null,targetAppIncludedInUserResponse:Boolean(u.attributes?.allAppsVisible)||(u.relationships?.visibleApps?.data||[]).some(a=>a.id===appId)},
+                internalGroups:internal.map(g=>({name:g.attributes?.name||null,hasAccessToAllBuilds:Boolean(g.attributes?.hasAccessToAllBuilds)}))
+              };
+            } catch(e) {
+              report={checkedAt:new Date().toISOString(),diagnosis:'TESTER_STATE_READ_FAILED',error:String(e.message||e)};
+            }
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/PUSH_TOTAL_TESTER_STATE.json',JSON.stringify(report,null,2)+'\n');
+            console.log(JSON.stringify(report,null,2));
+          })();
+          NODE
+      - name: Persist sanitized state
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/PUSH_TOTAL_TESTER_STATE.json
+          git commit -m 'Record PUSH TOTAL tester enrollment state' || exit 0
+          git push origin HEAD:main
