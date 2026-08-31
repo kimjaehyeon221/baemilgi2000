@@ -1,4 +1,5 @@
 name: Apply Core Integrity
+# Release gate: progression, session normalization, training-plan invariants.
 
 on:
   push:
