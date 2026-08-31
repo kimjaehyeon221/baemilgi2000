@@ -46,7 +46,7 @@ jobs:
           INPUT_RUN_ID: ${{ inputs.workflow_run_id }}
           INPUT_BUILD_ID: ${{ inputs.build_id }}
         run: |
-          set -euo pipefail
+          set -u
 
           RUN_IDS="$INPUT_RUN_ID"
           if [ -z "$RUN_IDS" ]; then
@@ -67,6 +67,11 @@ jobs:
 
           for BUILD_ID in $BUILD_IDS; do
             echo "===== BUILD $BUILD_ID ====="
-            eas build:view "$BUILD_ID" --json \
-              | jq '{id,status,platform,distribution,buildProfile,appVersion,appBuildVersion,error,artifacts,createdAt,updatedAt,completedAt}'
+            RAW=$(eas build:view "$BUILD_ID" --json 2>&1 || true)
+            JSON=$(printf '%s\n' "$RAW" | sed -n '/^{/,$p')
+            if [ -n "$JSON" ] && printf '%s\n' "$JSON" | jq -e . >/dev/null 2>&1; then
+              printf '%s\n' "$JSON" | jq '{id,status,platform,distribution,buildProfile,appVersion,appBuildVersion,error,artifacts,createdAt,updatedAt,completedAt}'
+            else
+              printf '%s\n' "$RAW" | sed -E 's#https://[^ ]+#<url redacted>#g' | tail -n 25
+            fi
           done
