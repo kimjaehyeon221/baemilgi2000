@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 15
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
     steps:
       - name: Checkout masonry release candidate
         uses: actions/checkout@v5
@@ -35,11 +36,11 @@ jobs:
           expo-cache: false
           eas-cache: false
 
-      - name: Read successful submission record
-        run: eas submit:view c2487e98-daab-47ba-a658-690fad1332fa --json
+      - name: Connect correct App Store Connect app
+        run: eas integrations:asc:connect --asc-app-id 6806588875 --api-key-id "$EXPO_ASC_KEY_ID" --json --non-interactive
 
-      - name: Read Expo ASC project integration
+      - name: Verify ASC integration
         run: eas integrations:asc:status --json --non-interactive
 
-      - name: List recent iOS submissions
-        run: eas submit:list --platform ios --limit 10 --json --non-interactive
+      - name: Read TestFlight status
+        run: eas submit:status --platform ios --profile production --json --non-interactive
