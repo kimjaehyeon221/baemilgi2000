@@ -1,9 +1,14 @@
 name: Push Total TestFlight
 
 # Standard reusable iOS path: GitHub -> EAS production build -> TestFlight.
-# Manual-only: code commits never publish a TestFlight build by accident.
+# This push trigger is temporary for the current validated RC build.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-testflight.yml'
 
 jobs:
   testflight:
