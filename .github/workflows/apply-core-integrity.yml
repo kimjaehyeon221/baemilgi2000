@@ -1,5 +1,6 @@
 name: Apply Core Integrity
 # Release gate: progression, session normalization, training-plan invariants.
+# TypeScript 6 runner validated with NodeNext.
 
 on:
   push:
