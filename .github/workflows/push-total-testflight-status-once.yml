@@ -41,7 +41,7 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      - name: Ensure account holder can install build 9 in TestFlight
+      - name: Inspect account holder and existing beta tester state
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -49,109 +49,48 @@ jobs:
 
           async function main() {
             const appId = process.env.ASC_APP_ID;
-            const buildNumber = process.env.ASC_BUILD_NUMBER;
-            const expectedBundleId = process.env.ASC_EXPECTED_BUNDLE_ID;
             const keyId = process.env.ASC_KEY_ID;
             const issuerId = process.env.ASC_ISSUER_ID;
             const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
-
             const b64url = value => Buffer.from(value).toString('base64url');
             const now = Math.floor(Date.now() / 1000);
             const unsigned = `${b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }))}.${b64url(JSON.stringify({ iss: issuerId, iat: now - 5, exp: now + 600, aud: 'appstoreconnect-v1' }))}`;
             const signature = crypto.sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
             const token = `${unsigned}.${signature}`;
 
-            async function asc(path, options = {}) {
-              const method = options.method || 'GET';
-              const headers = { Authorization: `Bearer ${token}` };
-              if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-                method,
-                headers,
-                body: options.body === undefined ? undefined : JSON.stringify(options.body),
-              });
+            async function asc(path) {
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, { headers: { Authorization: `Bearer ${token}` } });
               const text = await res.text();
-              let body = null;
-              if (text) {
-                try { body = JSON.parse(text); } catch { body = { raw: text }; }
-              }
-              if (!res.ok) throw new Error(`ASC ${res.status} ${method} ${path}\n${JSON.stringify(body)}`);
+              let body;
+              try { body = JSON.parse(text); } catch { body = { raw: text }; }
+              if (!res.ok) throw new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`);
               return body;
             }
 
             const app = await asc(`/v1/apps/${appId}?fields%5Bapps%5D=name,bundleId`);
-            const appSummary = { id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId };
-            console.log('APP', JSON.stringify(appSummary));
-            if (appSummary.bundleId !== expectedBundleId) throw new Error(`Bundle ID mismatch: expected ${expectedBundleId}, got ${appSummary.bundleId}`);
+            console.log('APP', JSON.stringify({ id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId }));
 
-            const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&include=betaGroups,preReleaseVersion&fields%5Bbuilds%5D=version,processingState,expired,betaGroups,preReleaseVersion&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds&fields%5BpreReleaseVersions%5D=version,platform&limit=10`);
-            const build = builds.data?.[0];
-            if (!build) throw new Error('Build 9 is not visible in App Store Connect');
-            if (build.attributes.processingState !== 'VALID' || build.attributes.expired) {
-              throw new Error(`Build 9 is not install-ready: ${build.attributes.processingState}`);
-            }
-            console.log('BUILD_VALID', build.attributes.version);
+            const users = await asc(`/v1/users?fields%5Busers%5D=username,firstName,lastName,roles,allAppsVisible&limit=200`);
+            const holders = (users.data || []).filter(u => (u.attributes?.roles || []).includes('ACCOUNT_HOLDER'));
+            if (holders.length !== 1) throw new Error(`Expected one Account Holder, found ${holders.length}`);
+            const holder = holders[0];
+            console.log('ACCOUNT_HOLDER', JSON.stringify({ id: holder.id, roles: holder.attributes.roles, allAppsVisible: holder.attributes.allAppsVisible }));
 
-            const groups = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds&limit=200`);
-            const group = (groups.data || []).find(g => g.attributes?.isInternalGroup && g.attributes?.name === 'Team (Expo)');
-            if (!group) throw new Error('Internal TestFlight group Team (Expo) not found');
-            console.log('INTERNAL_GROUP_FOUND', group.id);
-
-            const users = await asc(`/v1/users?fields%5Busers%5D=username,firstName,lastName,roles&limit=200`);
-            const accountHolders = (users.data || []).filter(u => (u.attributes?.roles || []).includes('ACCOUNT_HOLDER'));
-            if (accountHolders.length !== 1) throw new Error(`Expected exactly one Account Holder, found ${accountHolders.length}`);
-            const owner = accountHolders[0].attributes;
-            console.log('ACCOUNT_HOLDER_FOUND');
-
-            let groupTesters = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType,email&limit=200`);
-            let tester = (groupTesters.data || []).find(t => t.attributes?.email?.toLowerCase() === owner.username.toLowerCase());
-
-            if (!tester) {
-              const existing = await asc(`/v1/betaTesters?filter%5Bemail%5D=${encodeURIComponent(owner.username)}&fields%5BbetaTesters%5D=state,inviteType,email&limit=10`);
-              tester = existing.data?.[0] || null;
-
-              if (tester) {
-                await asc(`/v1/betaTesters/${tester.id}/relationships/betaGroups`, {
-                  method: 'POST',
-                  body: { data: [{ type: 'betaGroups', id: group.id }] },
-                });
-                console.log('TESTER_ADDED_TO_GROUP', tester.id);
-              } else {
-                const created = await asc('/v1/betaTesters', {
-                  method: 'POST',
-                  body: {
-                    data: {
-                      type: 'betaTesters',
-                      attributes: {
-                        email: owner.username,
-                        firstName: owner.firstName,
-                        lastName: owner.lastName,
-                      },
-                      relationships: {
-                        betaGroups: {
-                          data: [{ type: 'betaGroups', id: group.id }],
-                        },
-                      },
-                    },
-                  },
-                });
-                tester = created.data;
-                console.log('TESTER_CREATED', tester.id);
-              }
-            } else {
-              console.log('TESTER_ALREADY_IN_GROUP', tester.id);
+            const testers = await asc(`/v1/betaTesters?filter%5Bemail%5D=${encodeURIComponent(holder.attributes.username)}&include=apps,betaGroups,builds&fields%5BbetaTesters%5D=state,inviteType,email,apps,betaGroups,builds&fields%5Bapps%5D=name,bundleId&fields%5BbetaGroups%5D=name,isInternalGroup&fields%5Bbuilds%5D=version,processingState&limit=10`);
+            console.log('TESTER_COUNT', (testers.data || []).length);
+            for (const tester of testers.data || []) {
+              const rel = tester.relationships || {};
+              const ids = type => (rel[type]?.data || []).map(x => x.id);
+              const included = testers.included || [];
+              const byId = new Map(included.map(x => [x.id, x]));
+              const apps = ids('apps').map(id => byId.get(id)).filter(Boolean).map(x => ({ id: x.id, name: x.attributes?.name, bundleId: x.attributes?.bundleId }));
+              const groups = ids('betaGroups').map(id => byId.get(id)).filter(Boolean).map(x => ({ id: x.id, name: x.attributes?.name, internal: x.attributes?.isInternalGroup }));
+              const builds = ids('builds').map(id => byId.get(id)).filter(Boolean).map(x => ({ id: x.id, version: x.attributes?.version, processingState: x.attributes?.processingState }));
+              console.log('TESTER', JSON.stringify({ id: tester.id, state: tester.attributes?.state, inviteType: tester.attributes?.inviteType, apps, groups, builds }));
             }
 
-            groupTesters = await asc(`/v1/betaGroups/${group.id}/betaTesters?fields%5BbetaTesters%5D=state,inviteType,email&limit=200`);
-            tester = (groupTesters.data || []).find(t => t.attributes?.email?.toLowerCase() === owner.username.toLowerCase());
-            if (!tester) throw new Error('Account Holder was not present in the internal TestFlight group after update');
-
-            console.log('TESTFLIGHT_TESTER', JSON.stringify({
-              id: tester.id,
-              state: tester.attributes?.state || null,
-              inviteType: tester.attributes?.inviteType || null,
-              groupTesterCount: (groupTesters.data || []).length,
-            }));
+            const targetGroup = await asc(`/v1/betaGroups?filter%5Bapp%5D=${appId}&filter%5Bname%5D=${encodeURIComponent('Team (Expo)')}&fields%5BbetaGroups%5D=name,isInternalGroup,hasAccessToAllBuilds&limit=10`);
+            console.log('TARGET_GROUP', JSON.stringify((targetGroup.data || []).map(g => ({ id: g.id, ...g.attributes }))));
           }
 
           main().catch(error => {
