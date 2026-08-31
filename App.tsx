@@ -42,6 +42,7 @@ export default function App() {
   const [challengeLevel, setChallengeLevel] = useState<number | null>(null);
   const [trainingLevel, setTrainingLevel] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
   useEffect(() => {
     if (isUpdatePending) Updates.reloadAsync().catch(() => {});
@@ -57,11 +58,14 @@ export default function App() {
   }, []);
 
   const commit = async (next: AppState) => {
+    setSaveStatus('saving');
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setState(next);
+      setSaveStatus('saved');
       return true;
     } catch {
+      setSaveStatus('error');
       Alert.alert('기록 저장 실패', '이 기기에 기록을 저장하지 못했어. 저장 공간을 확인한 뒤 다시 시도해줘.');
       return false;
     }
@@ -148,7 +152,11 @@ export default function App() {
 
   const nextLevel = state.clearedLevel >= 200 ? 200 : Math.max(state.clearedLevel + 1, state.selectedLevel);
   const nextTarget = targetForLevel(nextLevel);
-  const currentReps = state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0;
+  const hasPersonalRecord = state.firstBaemilgiMax !== null || state.sessions.some((session) => session.type === 'challenge');
+  const currentReps = state.sessions.reduce((best, session) => {
+    if (session.type !== 'challenge') return best;
+    return Math.max(best, session.success ? session.target : session.actualReps ?? 0);
+  }, Math.max(state.firstBaemilgiMax ?? 0, state.clearedLevel > 0 ? targetForLevel(state.clearedLevel) : 0));
   const history = state.sessions
     .map((session, index) => ({ session, index }))
     .reverse()
@@ -311,6 +319,13 @@ export default function App() {
 
       {tab === 'home' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+          <View style={styles.storageInline} accessibilityLiveRegion="polite">
+            <View style={[styles.storageDot, saveStatus === 'error' && styles.storageDotError]} />
+            <Text style={styles.storageInlineText}>
+              {saveStatus === 'saving' ? '저장 중' : saveStatus === 'error' ? '저장 확인 필요' : '이 iPhone에 자동 저장됨'}
+            </Text>
+            <Text style={styles.storageInlineCode}>LOCAL / ON</Text>
+          </View>
           <View style={styles.heroStage}>
             <View style={styles.heroTopline}>
               <Text style={styles.heroCode}>QUEST / {String(nextLevel).padStart(3, '0')}</Text>
@@ -330,7 +345,7 @@ export default function App() {
           <View style={styles.currentPanel}>
             <View>
               <Text style={styles.currentLabel}>현재 최고</Text>
-              <Text style={styles.currentValue}>{currentReps || '—'}<Text style={styles.currentUnit}>개</Text></Text>
+              <Text style={styles.currentValue}>{hasPersonalRecord ? currentReps : '—'}<Text style={styles.currentUnit}>개</Text></Text>
             </View>
             <View style={styles.currentLevelBlock}>
               <Text style={styles.currentLabel}>완료</Text>
@@ -460,12 +475,30 @@ export default function App() {
             </Pressable>
             <View style={styles.stat}>
               <Text style={styles.statLabel}>현재</Text>
-              <Text style={styles.statValue}>{currentReps || '—'}</Text>
+              <Text style={styles.statValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statLabel}>퀘스트</Text>
               <Text style={styles.statValue}>{state.clearedLevel}</Text>
             </View>
+          </View>
+
+          <View style={styles.storageCard}>
+            <View style={styles.storageCardTop}>
+              <View style={styles.storageDot} />
+              <Text style={styles.storageTitle}>이 iPhone에 저장 중</Text>
+              <Text style={styles.storageInlineCode}>NO ACCOUNT</Text>
+            </View>
+            <Text style={styles.storageCopy}>앱을 닫거나 업데이트해도 기록은 유지돼. 다만 앱 삭제나 기기 변경 전에는 백업이 필요해.</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="현재 기록 백업하기"
+              style={styles.storageAction}
+              onPress={exportRecords}
+            >
+              <Text style={styles.storageActionText}>지금 기록 백업</Text>
+              <Text style={styles.linkArrow}>→</Text>
+            </Pressable>
           </View>
 
           <Text style={styles.sectionTitle}>최근 기록</Text>
@@ -601,4 +634,3 @@ export default function App() {
     </SafeAreaView>
   );
 }
-
