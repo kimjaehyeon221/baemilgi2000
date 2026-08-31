@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-08-31T14:57:38.384Z",
+  "checkedAt": "2026-08-31T14:59:49.436Z",
   "app": {
     "id": "6806938654",
     "name": "PUSH TOTAL",
@@ -15,6 +15,9 @@
     "expired": false
   },
   "betaTesterCountOnAccount": 1,
+  "appStoreConnectUserCount": 1,
+  "eligibleInternalUserCount": 1,
+  "eligibleUserWithExistingTesterCount": 1,
   "groups": [
     {
       "id": "2ac9dd12-3343-488a-9a7d-fb342d95ad33",
@@ -27,5 +30,5 @@
       "latestBuildAssigned": true
     }
   ],
-  "diagnosis": "NO_TESTERS_IN_ASSIGNED_INTERNAL_GROUP"
+  "diagnosis": "SAFE_TO_ASSIGN_MATCHED_INTERNAL_TESTER"
 }
