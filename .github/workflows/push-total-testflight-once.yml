@@ -49,6 +49,22 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
+      - name: Inject local ASC submit credentials
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+          config.submit ??= {};
+          config.submit.production ??= {};
+          config.submit.production.ios ??= {};
+          Object.assign(config.submit.production.ios, {
+            ascApiKeyPath: process.env.EXPO_ASC_API_KEY_PATH,
+            ascApiKeyIssuerId: process.env.EXPO_ASC_ISSUER_ID,
+            ascApiKeyId: process.env.EXPO_ASC_KEY_ID,
+          });
+          fs.writeFileSync('eas.json', `${JSON.stringify(config, null, 2)}\n`);
+          NODE
+
       - name: Setup Expo and EAS
         uses: expo/expo-github-action@v8
         with:
@@ -57,31 +73,21 @@ jobs:
           expo-cache: false
           eas-cache: false
 
-      - name: Wait for masonry production build
+      - name: Verify masonry production build
         shell: bash
         run: |
-          for attempt in $(seq 1 80); do
-            JSON="$(eas build:view "$BUILD_ID" --json)"
-            STATUS="$(printf '%s' "$JSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);process.stdout.write(j.status||"")})')"
-            echo "EAS build status: $STATUS"
-            if [ "$STATUS" = "FINISHED" ]; then
-              exit 0
-            fi
-            if [ "$STATUS" = "ERRORED" ] || [ "$STATUS" = "CANCELED" ]; then
-              echo "Build ended with $STATUS"
-              exit 1
-            fi
-            sleep 30
-          done
-          echo "Timed out waiting for EAS build"
-          exit 1
+          JSON="$(eas build:view "$BUILD_ID" --json)"
+          STATUS="$(printf '%s' "$JSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);process.stdout.write(j.status||"")})')"
+          echo "EAS build status: $STATUS"
+          test "$STATUS" = "FINISHED"
 
       - name: Submit build 9 to TestFlight
-        run: eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive --wait
+        run: eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive --wait --verbose
 
       - name: Remove one-time dispatcher
         if: success()
         run: |
+          git checkout -- eas.json
           rm .github/workflows/push-total-testflight-once.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
