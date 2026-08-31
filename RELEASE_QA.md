@@ -14,6 +14,8 @@ This checklist treats BAEMILGI 2000 as a real iOS product, not a design prototyp
 - [ ] Training completes the intended set count and stores one training record.
 - [ ] Delete/edit recalculates progression correctly.
 - [ ] No OTA-triggered reload occurs while a challenge/training session is active.
+- [ ] Backgrounding for 10–30 seconds reconciles elapsed/rest time from wall clock.
+- [ ] STOP HERE freezes challenge elapsed while entering the stopped-at count, and RETURN resumes it.
 - [ ] Privacy and support pages open from the shipping build.
 - [ ] App launches without a blank screen on the oldest supported iPhone size.
 

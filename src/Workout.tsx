@@ -99,19 +99,39 @@ export function Challenge({
   const [failedReps, setFailedReps] = useState('');
   const [flash, setFlash] = useState<'cleared' | 'recorded' | null>(null);
   const [flashValue, setFlashValue] = useState(target);
+  const runningSinceRef = useRef(Date.now());
+  const accumulatedMsRef = useRef(0);
+
+  const currentElapsedSeconds = () => Math.max(
+    0,
+    Math.floor((accumulatedMsRef.current + (Date.now() - runningSinceRef.current)) / 1000),
+  );
+
+  const pauseElapsedClock = () => {
+    accumulatedMsRef.current += Math.max(0, Date.now() - runningSinceRef.current);
+    setSeconds(Math.floor(accumulatedMsRef.current / 1000));
+  };
+
+  const resumeElapsedClock = () => {
+    runningSinceRef.current = Date.now();
+  };
 
   useEffect(() => {
     if (recordFailure || flash) return;
-    const id = setInterval(() => setSeconds((v) => v + 1), 1000);
+    const sync = () => setSeconds(currentElapsedSeconds());
+    sync();
+    const id = setInterval(sync, 500);
     return () => clearInterval(id);
   }, [recordFailure, flash]);
 
   const finishCleared = () => {
     if (flash) return;
+    const finalSeconds = currentElapsedSeconds();
+    pauseElapsedClock();
     setFlashValue(target);
     setFlash('cleared');
     Vibration.vibrate(35);
-    setTimeout(() => onFinish(true, seconds, target), 950);
+    setTimeout(() => onFinish(true, finalSeconds, target), 950);
   };
 
   const saveFailure = () => {
@@ -128,10 +148,11 @@ export function Challenge({
       return;
     }
     Keyboard.dismiss();
+    const finalSeconds = Math.floor(accumulatedMsRef.current / 1000);
     setFlashValue(reps);
     setFlash('recorded');
     Vibration.vibrate(20);
-    setTimeout(() => onFinish(false, seconds, reps), 850);
+    setTimeout(() => onFinish(false, finalSeconds, reps), 850);
   };
 
   if (flash) return <StampFlash kind={flash} value={flashValue} />;
@@ -145,7 +166,7 @@ export function Challenge({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={8}
         >
-          <FocusHeader code={`QUEST / ${String(level).padStart(3, '0')}`} onClose={() => setRecordFailure(false)} light />
+          <FocusHeader code={`QUEST / ${String(level).padStart(3, '0')}`} onClose={() => { resumeElapsedClock(); setRecordFailure(false); }} light />
 
           <View style={S.ledger}>
             <View style={S.ledgerBlueTop} />
@@ -188,7 +209,7 @@ export function Challenge({
             <Pressable style={({ pressed }) => [S.stitchedAction, pressed && S.pressed]} onPress={saveFailure}>
               <Text style={S.stitchedActionText}>SAVE RECORD</Text>
             </Pressable>
-            <Pressable style={({ pressed }) => [S.returnAction, pressed && S.pressed]} onPress={() => setRecordFailure(false)}>
+            <Pressable style={({ pressed }) => [S.returnAction, pressed && S.pressed]} onPress={() => { resumeElapsedClock(); setRecordFailure(false); }}>
               <Text style={S.returnActionText}>RETURN TO QUEST</Text>
             </Pressable>
           </View>
@@ -222,7 +243,12 @@ export function Challenge({
           <Pressable accessibilityRole="button" accessibilityLabel="퀘스트 완료 기록" style={({ pressed }) => [S.completeAction, pressed && S.pressed]} onPress={finishCleared}>
             <Text style={S.completeActionText}>COMPLETE</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="여기까지 기록" style={({ pressed }) => [S.stopAction, pressed && S.pressed]} onPress={() => setRecordFailure(true)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="여기까지 기록"
+            style={({ pressed }) => [S.stopAction, pressed && S.pressed]}
+            onPress={() => { pauseElapsedClock(); setRecordFailure(true); }}
+          >
             <Text style={S.stopActionText}>STOP HERE</Text>
           </Pressable>
         </View>
@@ -248,28 +274,53 @@ export function Training({
   const [seconds, setSeconds] = useState(0);
   const [rest, setRest] = useState(false);
   const [restLeft, setRestLeft] = useState(plan.rest);
+  const sessionStartedAtRef = useRef(Date.now());
+  const restDeadlineRef = useRef<number | null>(null);
+
+  const currentSessionSeconds = () => Math.max(0, Math.floor((Date.now() - sessionStartedAtRef.current) / 1000));
 
   useEffect(() => {
-    const id = setInterval(() => setSeconds((v) => v + 1), 1000);
+    const sync = () => setSeconds(currentSessionSeconds());
+    sync();
+    const id = setInterval(sync, 500);
     return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
     if (!rest) return;
-    if (restLeft <= 0) {
-      setRest(false);
-      setRestLeft(plan.rest);
-      return;
-    }
-    const id = setTimeout(() => setRestLeft((v) => v - 1), 1000);
-    return () => clearTimeout(id);
-  }, [rest, restLeft, plan.rest]);
+    const syncRest = () => {
+      const deadline = restDeadlineRef.current;
+      if (!deadline) return;
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRestLeft(remaining);
+      if (remaining <= 0) {
+        restDeadlineRef.current = null;
+        setRest(false);
+        setRestLeft(plan.rest);
+      }
+    };
+    syncRest();
+    const id = setInterval(syncRest, 250);
+    return () => clearInterval(id);
+  }, [rest, plan.rest]);
+
+  const beginRest = () => {
+    restDeadlineRef.current = Date.now() + plan.rest * 1000;
+    setRestLeft(plan.rest);
+    setRest(true);
+  };
+
+  const skipRest = () => {
+    restDeadlineRef.current = null;
+    setRest(false);
+    setRestLeft(plan.rest);
+  };
 
   const finishSet = () => {
-    if (setNumber >= plan.sets) onFinish(seconds);
+    if (setNumber >= plan.sets) onFinish(currentSessionSeconds());
     else {
       setSetNumber((v) => v + 1);
-      setRest(true);
+      beginRest();
     }
   };
 
@@ -300,7 +351,7 @@ export function Training({
           accessibilityRole="button"
           accessibilityLabel={rest ? '휴식 건너뛰기' : setNumber >= plan.sets ? '훈련 완료 기록' : `${setNumber}세트 완료`}
           style={({ pressed }) => [rest ? S.stopAction : S.completeAction, pressed && S.pressed]}
-          onPress={() => (rest ? (setRest(false), setRestLeft(plan.rest)) : finishSet())}
+          onPress={() => (rest ? skipRest() : finishSet())}
         >
           <Text style={rest ? S.stopActionText : S.completeActionText}>
             {rest ? 'SKIP REST' : setNumber >= plan.sets ? 'COMPLETE TRAINING' : 'COMPLETE SET'}

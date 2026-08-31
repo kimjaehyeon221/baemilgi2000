@@ -226,3 +226,8 @@ The current redesign is a real-device validation pass. If the Gi White / Judo Bl
 The release build uses sequential quests. The user's baseline/current max determines the starting point, and after that the only active challenge is `clearedLevel + 1` (or 200 after completion). Future quest cells and milestone rows are previews, not shortcuts. Completed levels may be reopened as training.
 
 Why: the product promise is a durable training path, not a level picker. Skilled users already skip irrelevant early stages through the onboarding baseline, so arbitrary future-jump controls add inconsistency without meaningful utility.
+
+
+### Interruption-safe timers
+
+Challenge elapsed time, Training elapsed time, and rest countdowns are derived from wall-clock timestamps rather than assuming JavaScript executes once per second. If iOS suspends the app during an incoming call, lock screen, app switch, or background interval, the next foreground tick reconciles to real elapsed time. The STOP HERE edit sheet intentionally pauses challenge elapsed time; returning to the quest resumes from that frozen value.
