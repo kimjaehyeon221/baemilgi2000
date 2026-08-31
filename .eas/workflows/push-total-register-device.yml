@@ -1,8 +1,16 @@
-name: PUSH TOTAL - Register iPhone
+name: PUSH TOTAL - Register iPhone and Build Preview
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   register_device:
     type: apple-device-registration-request
+
+  build_ios:
+    needs: [register_device]
+    type: build
+    params:
+      platform: ios
+      profile: preview
+      refresh_ad_hoc_provisioning_profile: true
