@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import * as KeepAwake from 'expo-keep-awake';
 import { DeviceMotion } from 'expo-sensors';
@@ -22,7 +21,7 @@ import {
 
 type EntrySource = 'pocket' | 'manual';
 type SensitivityKey = 'high' | 'medium' | 'low';
-type Screen = 'home' | 'session' | 'history';
+type Screen = 'home' | 'wall' | 'session' | 'history';
 type SessionStatus = 'countdown' | 'running';
 type MotionPhase = 'neutral' | 'positive';
 
@@ -44,15 +43,21 @@ type PersistedState = {
 const STORAGE_KEY = 'push-total-state-v1';
 const KEEP_AWAKE_TAG = 'push-total-pocket-session';
 
-const BG = '#F4F2EC';
-const INK = '#10100F';
-const MUTED = '#77746D';
-const LINE = '#D8D4CA';
+// PUSH TOTAL visual system: masonry / accumulated effort.
+const BG = '#F9F7F2';
+const SURFACE = '#F0EEE9';
+const SURFACE_HIGH = '#E4E2DD';
+const INK = '#121212';
+const MUTED = '#5F5E5E';
+const LINE = '#DCC1BA';
+const BRICK = '#A64B35';
+const BRICK_DARK = '#873420';
+const BRICK_LIGHT = '#B45A42';
+const SENSOR = '#00E5FF';
 const WHITE = '#FFFFFF';
-const ACCENT = '#315CFF';
-const ACCENT_SOFT = '#DDE5FF';
-const MINT = '#DCEFE6';
-const DANGER = '#A23A34';
+const DANGER = '#9B342F';
+const DARK_LINE = '#343434';
+const BRICK_REPS = 100;
 
 const UPDATE_MS = 40;
 const MAX_SESSION_MS = 90_000;
@@ -153,35 +158,63 @@ function lastSevenDays(entries: Entry[]) {
   });
 }
 
-function canUseGlass() {
-  try {
-    return Platform.OS === 'ios' && isGlassEffectAPIAvailable();
-  } catch {
-    return false;
-  }
+function BrickWall({ filledBricks, compact = false }: { filledBricks: number; compact?: boolean }) {
+  const visibleFilled = Math.min(Math.max(0, filledBricks), compact ? 16 : 160);
+  const minimumSlots = compact ? 16 : 28;
+  const capacity = Math.max(minimumSlots, Math.ceil((visibleFilled + (compact ? 4 : 12)) / 4) * 4);
+  const rows = Math.ceil(capacity / 4);
+  let index = 0;
+
+  return (
+    <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
+      {Array.from({ length: rows }, (_, rowIndex) => (
+        <View key={rowIndex} style={[styles.brickRow, rowIndex % 2 === 1 && styles.brickRowOffset]}>
+          {Array.from({ length: 4 }, (_, brickIndex) => {
+            const filled = index < visibleFilled;
+            const brickNumber = index;
+            index += 1;
+            return (
+              <View
+                key={`${rowIndex}-${brickIndex}`}
+                style={[
+                  styles.brick,
+                  compact && styles.brickCompact,
+                  filled ? styles.brickFilled : styles.brickEmpty,
+                  filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
+                  filled && brickNumber % 5 === 2 && styles.brickFilledDark,
+                ]}
+              />
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
 }
 
-function GlassSurface({ children, style, interactive = false }: { children: React.ReactNode; style?: any; interactive?: boolean }) {
-  if (canUseGlass()) {
+function BottomNav({ active, onNavigate }: { active: 'home' | 'wall' | 'history'; onNavigate: (screen: Screen) => void }) {
+  const item = (key: 'home' | 'wall' | 'history', label: string, glyph: string) => {
+    const selected = active === key;
     return (
-      <GlassView
-        isInteractive={interactive}
-        glassEffectStyle="regular"
-        tintColor="#FFFFFF22"
-        style={[styles.glassBase, style]}
-      >
-        {children}
-      </GlassView>
+      <Pressable key={key} onPress={() => onNavigate(key)} style={[styles.navItem, selected && styles.navItemActive]}>
+        <Text style={[styles.navGlyph, selected && styles.navTextActive]}>{glyph}</Text>
+        <Text style={[styles.navText, selected && styles.navTextActive]}>{label}</Text>
+      </Pressable>
     );
-  }
-  return <View style={[styles.glassBase, styles.glassFallback, style]}>{children}</View>;
+  };
+  return (
+    <View style={styles.bottomNav}>
+      {item('home', 'DASHBOARD', '▦')}
+      {item('wall', 'THE WALL', '▤')}
+      {item('history', 'HISTORY', '↺')}
+    </View>
+  );
 }
 
 export default function App() {
   const [state, setState] = useState<PersistedState>(initialState);
   const [loaded, setLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>('home');
-  const [manualOpen, setManualOpen] = useState(false);
   const [customValue, setCustomValue] = useState('');
   const [existingValue, setExistingValue] = useState('');
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -192,7 +225,6 @@ export default function App() {
   const [countdown, setCountdown] = useState(3);
   const [sessionCount, setSessionCount] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-
   const [toast, setToast] = useState<string | null>(null);
 
   const totalScale = useRef(new Animated.Value(1)).current;
@@ -277,27 +309,31 @@ export default function App() {
   const todayTotal = useMemo(() => todayEntries.reduce((sum, entry) => sum + entry.amount, 0), [todayEntries]);
   const weekTotal = useMemo(() => sumSince(state.entries, startOfWeek()), [state.entries]);
   const monthTotal = useMemo(() => sumSince(state.entries, startOfMonth()), [state.entries]);
-  const dailyHistory = useMemo(() => groupByDay(state.entries), [state.entries]);
   const sevenDays = useMemo(() => lastSevenDays(state.entries), [state.entries]);
   const maxSeven = Math.max(1, ...sevenDays.map((item) => item.amount));
   const recentEntries = useMemo(
     () => [...state.entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 40),
     [state.entries],
   );
+  const lastEntry = recentEntries[0];
+  const brickCount = Math.floor(lifetimeTotal / BRICK_REPS);
+  const brickProgress = lifetimeTotal % BRICK_REPS;
+  const toNextBrick = brickProgress === 0 ? BRICK_REPS : BRICK_REPS - brickProgress;
+  const bestSet = useMemo(() => state.entries.reduce((max, entry) => Math.max(max, entry.amount), 0), [state.entries]);
 
   const animateTotal = () => {
     totalScale.setValue(1);
     Animated.sequence([
-      Animated.spring(totalScale, { toValue: 1.045, useNativeDriver: true, speed: 28, bounciness: 8 }),
-      Animated.spring(totalScale, { toValue: 1, useNativeDriver: true, speed: 24, bounciness: 6 }),
+      Animated.spring(totalScale, { toValue: 1.035, useNativeDriver: true, speed: 28, bounciness: 7 }),
+      Animated.spring(totalScale, { toValue: 1, useNativeDriver: true, speed: 24, bounciness: 5 }),
     ]).start();
   };
 
   const animateRep = () => {
     repScale.setValue(1);
     Animated.sequence([
-      Animated.spring(repScale, { toValue: 1.10, useNativeDriver: true, speed: 34, bounciness: 8 }),
-      Animated.spring(repScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }),
+      Animated.spring(repScale, { toValue: 1.08, useNativeDriver: true, speed: 34, bounciness: 7 }),
+      Animated.spring(repScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 5 }),
     ]).start();
     livePulse.setValue(0);
     Animated.timing(livePulse, { toValue: 1, duration: 420, useNativeDriver: true }).start();
@@ -308,7 +344,7 @@ export default function App() {
     toastY.setValue(-18);
     Animated.sequence([
       Animated.spring(toastY, { toValue: 0, useNativeDriver: true, speed: 24, bounciness: 7 }),
-      Animated.delay(1800),
+      Animated.delay(1500),
       Animated.timing(toastY, { toValue: -18, duration: 180, useNativeDriver: true }),
     ]).start(() => setToast(null));
   };
@@ -325,7 +361,7 @@ export default function App() {
     };
     setState((current) => ({ ...current, entries: [...current.entries, entry] }));
     animateTotal();
-    showToast(`+${formatNumber(amount)} · ${source === 'pocket' ? 'Pocket' : '직접 기록'}`);
+    showToast(`+${formatNumber(amount)} RECORDED`);
   };
 
   const addManual = (amount: number) => {
@@ -341,7 +377,6 @@ export default function App() {
     }
     addManual(amount);
     setCustomValue('');
-    setManualOpen(false);
   };
 
   const finishSession = (automatic = false) => {
@@ -353,7 +388,7 @@ export default function App() {
       saveEntry(finalCount, 'pocket');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } else {
-      showToast('감지된 푸쉬업이 없어요');
+      showToast('NO REPS DETECTED');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
     }
     setScreen('home');
@@ -415,7 +450,7 @@ export default function App() {
     try {
       await KeepAwake.activateKeepAwakeAsync(KEEP_AWAKE_TAG);
     } catch {
-      // A failed keep-awake request should not block counting.
+      // Counting should continue even if keep-awake is unavailable.
     }
 
     DeviceMotion.setUpdateInterval(UPDATE_MS);
@@ -565,77 +600,131 @@ export default function App() {
   if (!state.onboarded) {
     return (
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" />
-        <View pointerEvents="none" style={styles.ambientBlue} />
-        <View pointerEvents="none" style={styles.ambientMint} />
+        <StatusBar barStyle="light-content" />
         <KeyboardAvoidingView style={styles.onboarding} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View>
-            <Text style={styles.wordmark}>PUSH TOTAL</Text>
-            <Text style={styles.onboardingKicker}>YOUR PUSH-UP PEDOMETER</Text>
-            <Text style={styles.onboardingTitle}>푸쉬업도{`\n`}걸음처럼 쌓이게.</Text>
-            <Text style={styles.onboardingBody}>세트를 시작하고 iPhone을 앞주머니에 넣으세요. 반복 움직임을 감지해 푸쉬업을 누적합니다.</Text>
+          <View style={styles.introHero}>
+            <View style={styles.introHeader}>
+              <Text style={styles.introWordmark}>PUSH TOTAL</Text>
+              <Text style={styles.introCode}>PT / 001</Text>
+            </View>
+            <View style={styles.introWallWrap}>
+              <BrickWall filledBricks={12} compact />
+            </View>
+            <Text style={styles.introTitle}>BUILD IT.</Text>
+            <Text style={styles.introTagline}>ONE REP AT A TIME.</Text>
           </View>
 
-          <GlassSurface style={styles.onboardingCard}>
-            <Text style={styles.cardLabel}>이미 해온 기록이 있다면</Text>
+          <View style={styles.onboardingForm}>
+            <Text style={styles.kicker}>YOUR PUSH-UP PEDOMETER</Text>
+            <Text style={styles.onboardingTitle}>푸쉬업을 쌓아{`\n`}나만의 벽을 만드세요.</Text>
+            <Text style={styles.onboardingBody}>100개의 푸쉬업이 벽돌 하나가 됩니다. 지금까지 해온 푸쉬업이 있다면 시작 숫자로 가져올 수 있어요.</Text>
+            <Text style={styles.fieldLabel}>EXISTING TOTAL / OPTIONAL</Text>
             <View style={styles.existingRow}>
               <TextInput
                 value={existingValue}
                 onChangeText={(value) => setExistingValue(value.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
-                placeholder="예: 12,500"
-                placeholderTextColor="#9C9992"
+                placeholder="0"
+                placeholderTextColor="#8E8B86"
                 style={styles.existingInput}
               />
-              <Text style={styles.existingUnit}>개</Text>
+              <Text style={styles.existingUnit}>PUSHES</Text>
             </View>
-            <Pressable onPress={finishOnboarding} style={({ pressed }) => [styles.onboardingButton, pressed && styles.pressScale]}>
-              <Text style={styles.onboardingButtonText}>시작하기</Text>
+            <Pressable onPress={finishOnboarding} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+              <Text style={styles.primaryButtonText}>START BUILDING</Text>
             </Pressable>
-            <Text style={styles.microcopy}>입력하지 않으면 0부터 시작합니다. 모든 기록은 이 iPhone에만 저장됩니다.</Text>
-          </GlassSurface>
+            <Text style={styles.microcopy}>기록과 센서 처리는 이 iPhone 안에서만 이루어집니다.</Text>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
 
   if (screen === 'session') {
-    const pulseOpacity = livePulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] });
-    const pulseScale = livePulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.8] });
+    const pulseOpacity = livePulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] });
+    const pulseScale = livePulse.interpolate({ inputRange: [0, 1], outputRange: [0.7, 2.4] });
     return (
       <SafeAreaView style={styles.sessionSafe}>
         <StatusBar barStyle="light-content" />
         <View style={styles.sessionWrap}>
           <View style={styles.sessionHeader}>
             <Text style={styles.sessionWordmark}>PUSH TOTAL</Text>
-            <Text style={styles.sessionStatusLabel}>{sessionStatus === 'countdown' ? 'READY' : 'POCKET COUNT'}</Text>
+            <Pressable onPress={cancelSession} hitSlop={12}>
+              <Text style={styles.endSetText}>{sessionStatus === 'running' && sessionCount > 0 ? 'END SET' : 'CANCEL'}</Text>
+            </Pressable>
           </View>
 
           <View style={styles.sessionCenter}>
             {sessionStatus === 'countdown' ? (
               <>
+                <View style={styles.pocketIllustration}>
+                  <View style={styles.phoneShape} />
+                  <View style={styles.pocketCurve} />
+                </View>
+                <Text style={styles.sessionKicker}>POCKET READY</Text>
                 <Text style={styles.countdownNumber}>{countdown}</Text>
-                <Text style={styles.sessionTitle}>앞주머니에 넣으세요</Text>
-                <Text style={styles.sessionBody}>진동이 한 번 오면 평소 속도로 시작하세요.</Text>
+                <Text style={styles.sessionTitle}>앞주머니에 넣으세요.</Text>
+                <Text style={styles.sessionBody}>진동이 한 번 오면 평소 속도로 푸쉬업을 시작하세요.</Text>
               </>
             ) : (
               <>
-                <View style={styles.liveHaloWrap}>
-                  <Animated.View style={[styles.liveHalo, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} />
-                  <View style={styles.liveDot} />
+                <View style={styles.sensorStatus}>
+                  <View style={styles.liveMarker}>
+                    <Animated.View style={[styles.liveHalo, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} />
+                    <View style={styles.liveDot} />
+                  </View>
+                  <Text style={styles.sensorText}>SENSOR ACTIVE</Text>
                 </View>
-                <Text style={styles.listeningText}>LISTENING</Text>
                 <Animated.Text style={[styles.sessionCount, { transform: [{ scale: repScale }] }]}>{sessionCount}</Animated.Text>
-                <Text style={styles.sessionBody}>마지막 푸쉬업 뒤 7초 동안 새 반복이 없으면 자동 저장됩니다.</Text>
-                <Text style={styles.elapsedText}>{(elapsed / 1000).toFixed(1)} SEC</Text>
+                <Text style={styles.sessionMetric}>CURRENT SET</Text>
+                <Text style={styles.sessionBody}>마지막 반복 뒤 7초 동안 새 움직임이 없으면 자동 저장됩니다.</Text>
               </>
             )}
           </View>
 
-          <Pressable onPress={cancelSession} style={({ pressed }) => [styles.sessionStop, pressed && styles.sessionStopPressed]}>
-            <Text style={styles.sessionStopText}>{sessionStatus === 'running' && sessionCount > 0 ? '지금 끝내기' : '취소'}</Text>
-          </Pressable>
+          <View style={styles.sessionBottomStats}>
+            <View>
+              <Text style={styles.sessionStatLabel}>TODAY</Text>
+              <Text style={styles.sessionStatValue}>{formatNumber(todayTotal)}</Text>
+            </View>
+            <View style={styles.sessionStatRight}>
+              <Text style={styles.sessionStatLabel}>LIFETIME</Text>
+              <Text style={styles.sessionStatValue}>{formatNumber(lifetimeTotal)}</Text>
+            </View>
+          </View>
+          {sessionStatus === 'running' && <Text style={styles.elapsedText}>{(elapsed / 1000).toFixed(1)} SEC</Text>}
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === 'wall') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView contentContainerStyle={styles.wallScreenContent}>
+          <View style={styles.pageHeader}>
+            <View>
+              <Text style={styles.pageKicker}>ARCHITECTURAL RECORD</Text>
+              <Text style={styles.pageTitle}>THE WALL</Text>
+            </View>
+            <Text style={styles.headerCode}>100 : 1</Text>
+          </View>
+
+          <View style={styles.wallMetricBlock}>
+            <Text style={styles.wallMetricLabel}>TOTAL VOLUME</Text>
+            <Text style={styles.wallMetricNumber}>{formatNumber(brickCount)}</Text>
+            <Text style={styles.wallMetricUnit}>BRICKS</Text>
+            <View style={styles.pushCountChip}><Text style={styles.pushCountChipText}>{formatNumber(lifetimeTotal)} PUSHES</Text></View>
+          </View>
+
+          <View style={styles.wallFrame}>
+            <BrickWall filledBricks={brickCount} />
+          </View>
+          {brickCount > 160 && <Text style={styles.wallNote}>최근 160개 벽돌을 표시합니다. 전체 벽돌 수는 위 숫자에 반영되어 있어요.</Text>}
+          <Text style={styles.wallLegend}>1 BRICK = 100 PUSHES · 빈 칸은 다음에 쌓일 자리입니다.</Text>
+        </ScrollView>
+        <BottomNav active="wall" onNavigate={setScreen} />
       </SafeAreaView>
     );
   }
@@ -644,29 +733,34 @@ export default function App() {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="dark-content" />
-        <View pointerEvents="none" style={styles.ambientBlueHistory} />
         <ScrollView contentContainerStyle={styles.historyContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.topRow}>
-            <Pressable onPress={() => setScreen('home')} hitSlop={14}><Text style={styles.textButton}>← 홈</Text></Pressable>
-            <Text style={styles.wordmark}>RECORD</Text>
+          <View style={styles.pageHeader}>
+            <View>
+              <Text style={styles.pageKicker}>MASONRY LOG</Text>
+              <Text style={styles.pageTitle}>HISTORY</Text>
+            </View>
+            <Text style={styles.headerCode}>{recentEntries.length} LOGS</Text>
           </View>
 
           <View style={styles.summaryGrid}>
-            <GlassSurface style={styles.summaryCell}>
-              <Text style={styles.summaryLabel}>이번 주</Text>
-              <Text style={styles.summaryValue}>{formatNumber(weekTotal)}</Text>
-            </GlassSurface>
-            <GlassSurface style={styles.summaryCell}>
-              <Text style={styles.summaryLabel}>이번 달</Text>
+            <View style={[styles.summaryCell, styles.summaryCellBrick]}>
+              <Text style={styles.summaryLabelLight}>THIS WEEK</Text>
+              <Text style={styles.summaryValueLight}>{formatNumber(weekTotal)}</Text>
+            </View>
+            <View style={styles.summaryCell}>
+              <Text style={styles.summaryLabel}>THIS MONTH</Text>
               <Text style={styles.summaryValue}>{formatNumber(monthTotal)}</Text>
-            </GlassSurface>
+            </View>
           </View>
 
           <View style={styles.chartSection}>
-            <Text style={styles.sectionLabel}>최근 7일</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>LAST 7 DAYS</Text>
+              <Text style={styles.sectionMeta}>DAILY PUSHES</Text>
+            </View>
             <View style={styles.chartRow}>
               {sevenDays.map((item) => {
-                const height = item.amount === 0 ? 5 : Math.max(12, (item.amount / maxSeven) * 92);
+                const height = item.amount === 0 ? 4 : Math.max(10, (item.amount / maxSeven) * 92);
                 return (
                   <View key={item.key} style={styles.barColumn}>
                     <Text style={styles.barValue}>{item.amount > 0 ? formatNumber(item.amount) : ''}</Text>
@@ -679,7 +773,10 @@ export default function App() {
           </View>
 
           <View style={styles.historySection}>
-            <Text style={styles.sectionLabel}>최근 기록</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>RECENT LOG</Text>
+              <Text style={styles.sectionMeta}>EDITABLE</Text>
+            </View>
             {recentEntries.length === 0 ? (
               <Text style={styles.emptyText}>아직 기록이 없어요.</Text>
             ) : recentEntries.map((entry) => (
@@ -693,22 +790,22 @@ export default function App() {
                       style={styles.editInput}
                       autoFocus
                     />
-                    <Text style={styles.editUnit}>개</Text>
-                    <Pressable onPress={saveEdit}><Text style={styles.saveEdit}>저장</Text></Pressable>
-                    <Pressable onPress={() => setEditingId(null)}><Text style={styles.cancelEdit}>취소</Text></Pressable>
+                    <Text style={styles.editUnit}>PUSHES</Text>
+                    <Pressable onPress={saveEdit}><Text style={styles.saveEdit}>SAVE</Text></Pressable>
+                    <Pressable onPress={() => setEditingId(null)}><Text style={styles.cancelEdit}>CANCEL</Text></Pressable>
                   </View>
                 ) : (
                   <>
                     <View style={styles.entryLeft}>
-                      <View style={styles.sourcePill}><Text style={styles.sourcePillText}>{entry.source === 'pocket' ? 'POCKET' : 'MANUAL'}</Text></View>
+                      <View style={[styles.entryBrick, entry.source === 'pocket' && styles.entryBrickSensor]} />
                       <View>
-                        <Text style={styles.entryAmount}>{formatNumber(entry.amount)}개</Text>
-                        <Text style={styles.entryTime}>{entry.date} · {new Date(entry.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
+                        <Text style={styles.entryAmount}>{formatNumber(entry.amount)}</Text>
+                        <Text style={styles.entryTime}>{entry.date} · {new Date(entry.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · {entry.source === 'pocket' ? 'POCKET' : 'MANUAL'}</Text>
                       </View>
                     </View>
                     <View style={styles.entryActions}>
-                      <Pressable onPress={() => beginEdit(entry)} hitSlop={10}><Text style={styles.entryEdit}>수정</Text></Pressable>
-                      <Pressable onPress={() => deleteEntry(entry)} hitSlop={10}><Text style={styles.entryDelete}>삭제</Text></Pressable>
+                      <Pressable onPress={() => beginEdit(entry)} hitSlop={10}><Text style={styles.entryEdit}>EDIT</Text></Pressable>
+                      <Pressable onPress={() => deleteEntry(entry)} hitSlop={10}><Text style={styles.entryDelete}>DELETE</Text></Pressable>
                     </View>
                   </>
                 )}
@@ -717,17 +814,13 @@ export default function App() {
           </View>
 
           <View style={styles.settingsSection}>
-            <Text style={styles.sectionLabel}>Pocket Count 민감도</Text>
-            <Text style={styles.settingsBody}>기본은 보통. 실제보다 적게 세면 민감, 많이 세면 둔감으로 조정하세요.</Text>
+            <Text style={styles.sectionLabel}>POCKET SENSITIVITY</Text>
+            <Text style={styles.settingsBody}>실제보다 적게 세면 민감, 많이 세면 둔감으로 조정하세요.</Text>
             <View style={styles.segmentRow}>
               {(Object.keys(SENSITIVITY) as SensitivityKey[]).map((key) => {
                 const selected = state.sensitivity === key;
                 return (
-                  <Pressable
-                    key={key}
-                    onPress={() => setState((current) => ({ ...current, sensitivity: key }))}
-                    style={[styles.segment, selected && styles.segmentSelected]}
-                  >
+                  <Pressable key={key} onPress={() => setState((current) => ({ ...current, sensitivity: key }))} style={[styles.segment, selected && styles.segmentSelected]}>
                     <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>{SENSITIVITY[key].label}</Text>
                   </Pressable>
                 );
@@ -736,17 +829,18 @@ export default function App() {
           </View>
 
           <View style={styles.dataSection}>
-            <Pressable onPress={exportData} style={styles.outlineButton}><Text style={styles.outlineButtonText}>전체 기록 내보내기</Text></Pressable>
+            <Pressable onPress={exportData} style={styles.outlineButton}><Text style={styles.outlineButtonText}>EXPORT ALL RECORDS</Text></Pressable>
             <Pressable onPress={() => setPrivacyOpen((value) => !value)} hitSlop={10}><Text style={styles.privacyLink}>개인정보 처리방침 {privacyOpen ? '접기' : '보기'}</Text></Pressable>
             {privacyOpen && (
               <View style={styles.privacyBox}>
                 <Text style={styles.privacyTitle}>PUSH TOTAL 개인정보 처리방침</Text>
-                <Text style={styles.privacyText}>PUSH TOTAL은 계정을 만들지 않으며 이름, 이메일, 위치, 연락처 또는 광고 식별자를 수집하지 않습니다. 동작 센서 데이터는 푸쉬업 횟수를 계산하기 위해 기기에서 실시간 처리되며 서버로 전송하거나 저장하지 않습니다. 푸쉬업 기록은 이 iPhone의 로컬 저장소에만 저장됩니다. 기록은 이 화면에서 내보내거나 모두 삭제할 수 있습니다.</Text>
+                <Text style={styles.privacyText}>PUSH TOTAL은 계정을 만들지 않으며 이름, 이메일, 위치, 연락처 또는 광고 식별자를 수집하지 않습니다. 동작 센서 데이터는 푸쉬업 횟수를 계산하기 위해 기기에서 실시간 처리되며 서버로 전송하거나 저장하지 않습니다. 푸쉬업 기록은 이 iPhone의 로컬 저장소에만 저장됩니다.</Text>
               </View>
             )}
             <Pressable onPress={resetAll} hitSlop={10}><Text style={styles.resetAll}>모든 기록 삭제</Text></Pressable>
           </View>
         </ScrollView>
+        <BottomNav active="history" onNavigate={setScreen} />
       </SafeAreaView>
     );
   }
@@ -754,76 +848,85 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
-      <View pointerEvents="none" style={styles.ambientBlue} />
-      <View pointerEvents="none" style={styles.ambientMintHome} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.homeContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.topRow}>
+          <View style={styles.homeHeader}>
             <Text style={styles.wordmark}>PUSH TOTAL</Text>
-            <Pressable onPress={() => setScreen('history')} hitSlop={14}><Text style={styles.textButton}>기록</Text></Pressable>
+            <Text style={styles.headerCode}>BUILD / {String(brickCount).padStart(3, '0')}</Text>
           </View>
 
-          <View style={styles.hero}>
-            <Text style={styles.heroLabel}>LIFETIME PUSH-UPS</Text>
-            <Animated.Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.48} style={[styles.heroNumber, { transform: [{ scale: totalScale }] }]}>
+          <View style={styles.heroCard}>
+            <Text style={styles.heroLabel}>LIFETIME PUSHES</Text>
+            <Animated.Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.42} style={[styles.heroNumber, { transform: [{ scale: totalScale }] }]}>
               {formatNumber(lifetimeTotal)}
             </Animated.Text>
-            <View style={styles.todayRow}>
-              <Text style={styles.todayStrong}>오늘 {formatNumber(todayTotal)}</Text>
-              <Text style={styles.todayDot}>·</Text>
-              <Text style={styles.todayMuted}>{todayEntries.length}세트</Text>
+            <Text style={styles.heroSub}>BUILD IT. ONE REP AT A TIME.</Text>
+          </View>
+
+          <View style={styles.bentoGrid}>
+            <Pressable onPress={() => setScreen('wall')} style={[styles.metricTile, styles.metricTileBrick]}>
+              <Text style={styles.metricLabelLight}>BRICKS</Text>
+              <Text style={styles.metricValueLight}>{formatNumber(brickCount)}</Text>
+              <Text style={styles.metricHintLight}>VIEW WALL →</Text>
+            </Pressable>
+            <View style={styles.metricTile}>
+              <Text style={styles.metricLabel}>TO NEXT BRICK</Text>
+              <Text style={styles.metricValue}>{toNextBrick}</Text>
+              <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${brickProgress}%` }]} /></View>
+            </View>
+            <View style={styles.metricTile}>
+              <Text style={styles.metricLabel}>BEST SET</Text>
+              <Text style={styles.metricValue}>{bestSet || '—'}</Text>
+              <Text style={styles.metricHint}>{bestSet ? `${bestSet}/100` : 'NO SET YET'}</Text>
+            </View>
+            <View style={styles.metricTile}>
+              <Text style={styles.metricLabel}>TODAY · {todayEntries.length} SETS</Text>
+              <Text style={styles.metricValue}>{formatNumber(todayTotal)}</Text>
+              <Text style={styles.metricHint}>PUSHES</Text>
             </View>
           </View>
 
-          <Pressable onPress={startPocket} style={({ pressed }) => [styles.pocketPressable, pressed && styles.pressScale]}>
-            <GlassSurface style={styles.pocketCard} interactive>
-              <View style={styles.pocketTop}>
-                <View>
-                  <Text style={styles.pocketKicker}>POCKET COUNT</Text>
-                  <Text style={styles.pocketTitle}>주머니에 넣고{`\n`}자동으로 세기</Text>
-                </View>
-                <View style={styles.startOrb}><Text style={styles.startOrbText}>▶</Text></View>
-              </View>
-              <Text style={styles.pocketBody}>3초 뒤 시작 · 세트가 끝나면 자동 저장</Text>
-            </GlassSurface>
+          <Pressable onPress={startPocket} style={({ pressed }) => [styles.pocketButton, pressed && styles.pressed]}>
+            <View>
+              <Text style={styles.pocketButtonKicker}>SENSOR MODE</Text>
+              <Text style={styles.pocketButtonText}>POCKET COUNT</Text>
+            </View>
+            <View style={styles.sensorOrb}><View style={styles.sensorOrbDot} /></View>
           </Pressable>
 
-          <Pressable onPress={() => setManualOpen((value) => !value)} style={styles.manualToggle}>
-            <Text style={styles.manualToggleText}>{manualOpen ? '직접 기록 닫기' : '직접 기록'}</Text>
-            <Text style={styles.manualToggleIcon}>{manualOpen ? '−' : '+'}</Text>
-          </Pressable>
-
-          {manualOpen && (
-            <GlassSurface style={styles.manualPanel}>
-              <Text style={styles.cardLabel}>방금 한 세트</Text>
-              <View style={styles.quickRow}>
-                {[10, 20, 30, 50].map((amount) => (
-                  <Pressable key={amount} onPress={() => { addManual(amount); setManualOpen(false); }} style={({ pressed }) => [styles.quickButton, pressed && styles.pressScale]}>
-                    <Text style={styles.quickButtonText}>{amount}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <View style={styles.customRow}>
-                <TextInput
-                  value={customValue}
-                  onChangeText={(value) => setCustomValue(value.replace(/[^0-9]/g, ''))}
-                  onSubmitEditing={submitCustom}
-                  keyboardType="number-pad"
-                  returnKeyType="done"
-                  placeholder="다른 개수"
-                  placeholderTextColor="#98958E"
-                  style={styles.customInput}
-                />
-                <Pressable onPress={submitCustom} style={({ pressed }) => [styles.customButton, pressed && styles.pressScale]}>
-                  <Text style={styles.customButtonText}>기록</Text>
+          <View style={styles.manualSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>MANUAL LOG</Text>
+              <Text style={styles.sectionMeta}>FAST INPUT</Text>
+            </View>
+            <View style={styles.quickRow}>
+              {[10, 20, 30, 50].map((amount) => (
+                <Pressable key={amount} onPress={() => addManual(amount)} style={({ pressed }) => [styles.quickButton, pressed && styles.quickButtonPressed]}>
+                  <Text style={styles.quickButtonText}>{amount}</Text>
                 </Pressable>
-              </View>
-            </GlassSurface>
-          )}
+              ))}
+            </View>
+            <View style={styles.customRow}>
+              <TextInput
+                value={customValue}
+                onChangeText={(value) => setCustomValue(value.replace(/[^0-9]/g, ''))}
+                onSubmitEditing={submitCustom}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                placeholder="다른 개수"
+                placeholderTextColor="#827D78"
+                style={styles.customInput}
+              />
+              <Pressable onPress={submitCustom} style={({ pressed }) => [styles.customButton, pressed && styles.pressed]}>
+                <Text style={styles.customButtonText}>LOG</Text>
+              </Pressable>
+            </View>
+          </View>
 
-          <Text style={styles.homeFootnote}>Pocket Count는 iPhone 동작 센서로 반복 움직임을 추정합니다. 기기 위치와 자세에 따라 오차가 생길 수 있으며 기록 화면에서 언제든 수정할 수 있어요.</Text>
+          <Text style={styles.homeFootnote}>푸쉬업을 걸음처럼 누적하고, 100개마다 벽돌 하나를 쌓습니다. Pocket Count는 iPhone 동작 센서로 반복 움직임을 추정합니다.</Text>
         </ScrollView>
       </KeyboardAvoidingView>
+      <BottomNav active="home" onNavigate={setScreen} />
 
       {toast && (
         <Animated.View pointerEvents="none" style={[styles.toast, { transform: [{ translateY: toastY }] }]}>
@@ -836,131 +939,182 @@ export default function App() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  safe: { flex: 1, backgroundColor: BG, overflow: 'hidden' },
-  sessionSafe: { flex: 1, backgroundColor: '#0C0C0D' },
+  safe: { flex: 1, backgroundColor: BG },
+  pressed: { transform: [{ scale: 0.985 }], opacity: 0.9 },
 
-  ambientBlue: { position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: ACCENT_SOFT, top: 70, right: -150, opacity: 0.82 },
-  ambientBlueHistory: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: ACCENT_SOFT, top: 120, right: -155, opacity: 0.55 },
-  ambientMint: { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: MINT, bottom: -110, left: -130, opacity: 0.8 },
-  ambientMintHome: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: MINT, bottom: 35, left: -150, opacity: 0.56 },
+  // Brick wall primitives
+  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2 },
+  wallCanvasCompact: { backgroundColor: '#2A2927', paddingVertical: 3, opacity: 0.95 },
+  brickRow: { width: '100%', flexDirection: 'row', gap: 2, paddingHorizontal: 2 },
+  brickRowOffset: { paddingHorizontal: 24 },
+  brick: { flex: 1, height: 40, borderRadius: 2, borderWidth: 1, borderColor: '#7D3526' },
+  brickCompact: { height: 24, borderColor: '#652B20' },
+  brickFilled: { backgroundColor: BRICK },
+  brickFilledAlt: { backgroundColor: BRICK_LIGHT },
+  brickFilledDark: { backgroundColor: BRICK_DARK },
+  brickEmpty: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: '#9F958A' },
 
-  glassBase: { overflow: 'hidden' },
-  glassFallback: { backgroundColor: 'rgba(255,255,255,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.86)' },
-  pressScale: { transform: [{ scale: 0.985 }] },
+  // Shared shell
+  homeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottomWidth: 2, borderColor: INK },
+  wordmark: { color: BRICK_DARK, fontSize: 21, fontWeight: '900', letterSpacing: -0.8 },
+  headerCode: { color: MUTED, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  pageHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 18, borderBottomWidth: 3, borderColor: INK },
+  pageKicker: { color: MUTED, fontSize: 10, fontWeight: '900', letterSpacing: 1.6 },
+  pageTitle: { marginTop: 4, color: INK, fontSize: 40, lineHeight: 42, fontWeight: '900', letterSpacing: -2.2 },
 
-  wordmark: { color: INK, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 1.7 },
-  textButton: { color: ACCENT, fontSize: 15, fontWeight: '800' },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // Onboarding / rebuild
+  onboarding: { flex: 1, backgroundColor: BG },
+  introHero: { flex: 1.05, backgroundColor: INK, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 22, justifyContent: 'space-between', overflow: 'hidden' },
+  introHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  introWordmark: { color: BRICK, fontSize: 16, fontWeight: '900', letterSpacing: 0.8 },
+  introCode: { color: '#77716D', fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
+  introWallWrap: { marginVertical: 18, borderWidth: 1, borderColor: '#3A3734', overflow: 'hidden' },
+  introTitle: { color: BG, fontSize: 55, lineHeight: 55, fontWeight: '900', letterSpacing: -3.2 },
+  introTagline: { marginTop: 4, alignSelf: 'flex-start', color: BRICK, fontSize: 11, fontWeight: '900', letterSpacing: 2.0, borderTopWidth: 1, borderBottomWidth: 1, borderColor: BRICK, paddingVertical: 5 },
+  onboardingForm: { flex: 1, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 20, justifyContent: 'center' },
+  kicker: { color: BRICK_DARK, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  onboardingTitle: { marginTop: 7, color: INK, fontSize: 30, lineHeight: 34, fontWeight: '900', letterSpacing: -1.3 },
+  onboardingBody: { marginTop: 10, color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  fieldLabel: { marginTop: 17, color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
+  existingRow: { marginTop: 5, minHeight: 48, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderColor: INK },
+  existingInput: { flex: 1, color: INK, fontSize: 27, fontWeight: '900', paddingVertical: 6 },
+  existingUnit: { color: MUTED, fontSize: 10, fontWeight: '900', letterSpacing: 1.0 },
+  primaryButton: { marginTop: 14, minHeight: 52, backgroundColor: INK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  primaryButtonText: { color: BG, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },
+  microcopy: { marginTop: 9, color: MUTED, fontSize: 9, lineHeight: 14, fontWeight: '600' },
 
-  onboarding: { flex: 1, paddingHorizontal: 24, paddingTop: 36, paddingBottom: 24, justifyContent: 'space-between' },
-  onboardingKicker: { marginTop: 58, color: ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
-  onboardingTitle: { marginTop: 12, color: INK, fontSize: 48, lineHeight: 52, fontWeight: '900', letterSpacing: -2.5 },
-  onboardingBody: { marginTop: 18, maxWidth: 340, color: MUTED, fontSize: 16, lineHeight: 24, fontWeight: '600' },
-  onboardingCard: { padding: 18, borderRadius: 28, borderWidth: 1, borderColor: 'rgba(255,255,255,0.65)' },
-  cardLabel: { color: MUTED, fontSize: 12, fontWeight: '800', letterSpacing: 0.2 },
-  existingRow: { marginTop: 10, minHeight: 54, borderBottomWidth: 1, borderColor: LINE, flexDirection: 'row', alignItems: 'center' },
-  existingInput: { flex: 1, color: INK, fontSize: 25, fontWeight: '900', paddingVertical: 8 },
-  existingUnit: { color: MUTED, fontSize: 14, fontWeight: '800' },
-  onboardingButton: { marginTop: 16, minHeight: 58, borderRadius: 18, backgroundColor: INK, alignItems: 'center', justifyContent: 'center' },
-  onboardingButtonText: { color: WHITE, fontSize: 17, fontWeight: '900' },
-  microcopy: { marginTop: 12, color: MUTED, fontSize: 11, lineHeight: 17, fontWeight: '600' },
+  // Dashboard
+  homeContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 118 },
+  heroCard: { marginTop: 18, minHeight: 196, backgroundColor: INK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  heroLabel: { color: '#9A9690', fontSize: 10, fontWeight: '900', letterSpacing: 1.7 },
+  heroNumber: { marginTop: 2, color: BG, fontSize: 86, lineHeight: 94, fontWeight: '900', letterSpacing: -5.5, fontVariant: ['tabular-nums'] },
+  heroSub: { marginTop: 4, color: BRICK, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  bentoGrid: { marginTop: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  metricTile: { width: '48.5%', minHeight: 126, backgroundColor: BG, borderWidth: 2, borderColor: INK, padding: 13, justifyContent: 'space-between' },
+  metricTileBrick: { backgroundColor: BRICK },
+  metricLabel: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.0 },
+  metricLabelLight: { color: '#F6DCD5', fontSize: 9, fontWeight: '900', letterSpacing: 1.0 },
+  metricValue: { color: INK, fontSize: 37, lineHeight: 40, fontWeight: '900', letterSpacing: -1.8, fontVariant: ['tabular-nums'] },
+  metricValueLight: { color: BG, fontSize: 37, lineHeight: 40, fontWeight: '900', letterSpacing: -1.8, fontVariant: ['tabular-nums'] },
+  metricHint: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 0.7 },
+  metricHintLight: { color: '#F6DCD5', fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  progressTrack: { height: 10, borderWidth: 2, borderColor: INK, backgroundColor: SURFACE_HIGH, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: BRICK, borderRightWidth: 1, borderColor: INK },
+  pocketButton: { marginTop: 18, minHeight: 86, paddingHorizontal: 18, backgroundColor: INK, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pocketButtonKicker: { color: SENSOR, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
+  pocketButtonText: { marginTop: 3, color: BG, fontSize: 21, fontWeight: '900', letterSpacing: 0.7 },
+  sensorOrb: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: SENSOR, alignItems: 'center', justifyContent: 'center' },
+  sensorOrbDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: SENSOR },
+  manualSection: { marginTop: 20, borderTopWidth: 2, borderColor: INK, paddingTop: 14 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionLabel: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  sectionMeta: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1.0 },
+  quickRow: { marginTop: 11, flexDirection: 'row', gap: 7 },
+  quickButton: { flex: 1, height: 48, backgroundColor: BG, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  quickButtonPressed: { backgroundColor: BRICK },
+  quickButtonText: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  customRow: { marginTop: 8, flexDirection: 'row', gap: 8 },
+  customInput: { flex: 1, minHeight: 48, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 12, color: INK, fontSize: 16, fontWeight: '800' },
+  customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },
+  homeFootnote: { marginTop: 17, color: MUTED, fontSize: 10, lineHeight: 16, fontWeight: '600' },
 
-  homeContent: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 18, paddingBottom: 32 },
-  hero: { marginTop: 52 },
-  heroLabel: { color: MUTED, fontSize: 11, fontWeight: '900', letterSpacing: 1.35 },
-  heroNumber: { marginTop: 1, color: INK, fontSize: 86, lineHeight: 98, fontWeight: '900', letterSpacing: -5, fontVariant: ['tabular-nums'] },
-  todayRow: { marginTop: 7, flexDirection: 'row', alignItems: 'baseline', gap: 7 },
-  todayStrong: { color: INK, fontSize: 17, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  todayDot: { color: MUTED, fontSize: 14, fontWeight: '700' },
-  todayMuted: { color: MUTED, fontSize: 14, fontWeight: '700' },
+  // Bottom navigation
+  bottomNav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 82, paddingBottom: 8, backgroundColor: INK, borderTopWidth: 4, borderColor: BRICK, flexDirection: 'row' },
+  navItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  navItemActive: { backgroundColor: BRICK },
+  navGlyph: { color: '#AAA49D', fontSize: 20, fontWeight: '900' },
+  navText: { marginTop: 3, color: '#AAA49D', fontSize: 8, fontWeight: '900', letterSpacing: 0.9 },
+  navTextActive: { color: BG },
 
-  pocketPressable: { marginTop: 42, borderRadius: 30 },
-  pocketCard: { minHeight: 222, padding: 22, borderRadius: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)', justifyContent: 'space-between' },
-  pocketTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  pocketKicker: { color: ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
-  pocketTitle: { marginTop: 10, color: INK, fontSize: 32, lineHeight: 37, fontWeight: '900', letterSpacing: -1.3 },
-  pocketBody: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  startOrb: { width: 55, height: 55, borderRadius: 28, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', shadowColor: ACCENT, shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
-  startOrbText: { marginLeft: 3, color: WHITE, fontSize: 16, fontWeight: '900' },
+  // The wall
+  wallScreenContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 116 },
+  wallMetricBlock: { paddingTop: 24, paddingBottom: 22 },
+  wallMetricLabel: { color: MUTED, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  wallMetricNumber: { marginTop: 2, color: INK, fontSize: 88, lineHeight: 88, fontWeight: '900', letterSpacing: -5, fontVariant: ['tabular-nums'] },
+  wallMetricUnit: { color: BRICK, fontSize: 34, lineHeight: 38, fontWeight: '900', letterSpacing: -1.2 },
+  pushCountChip: { marginTop: 14, alignSelf: 'flex-start', borderWidth: 1, borderColor: INK, paddingHorizontal: 11, paddingVertical: 7 },
+  pushCountChipText: { color: INK, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },
+  wallFrame: { backgroundColor: INK, borderWidth: 3, borderColor: INK, padding: 6, maxHeight: 540, overflow: 'hidden' },
+  wallLegend: { marginTop: 12, color: MUTED, fontSize: 9, lineHeight: 14, fontWeight: '700', letterSpacing: 0.3 },
+  wallNote: { marginTop: 9, color: BRICK_DARK, fontSize: 9, lineHeight: 14, fontWeight: '800' },
 
-  manualToggle: { marginTop: 18, minHeight: 54, borderTopWidth: 1, borderBottomWidth: 1, borderColor: LINE, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  manualToggleText: { color: INK, fontSize: 15, fontWeight: '800' },
-  manualToggleIcon: { color: MUTED, fontSize: 24, fontWeight: '500' },
-  manualPanel: { marginTop: 12, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.58)' },
-  quickRow: { marginTop: 12, flexDirection: 'row', gap: 8 },
-  quickButton: { flex: 1, height: 54, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.75)', borderWidth: 1, borderColor: LINE, alignItems: 'center', justifyContent: 'center' },
-  quickButtonText: { color: INK, fontSize: 20, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  customRow: { marginTop: 9, flexDirection: 'row', gap: 8 },
-  customInput: { flex: 1, minHeight: 52, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.78)', borderWidth: 1, borderColor: LINE, paddingHorizontal: 14, color: INK, fontSize: 17, fontWeight: '800' },
-  customButton: { width: 78, minHeight: 52, borderRadius: 16, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' },
-  customButtonText: { color: WHITE, fontSize: 15, fontWeight: '900' },
-  homeFootnote: { marginTop: 20, color: MUTED, fontSize: 11, lineHeight: 17, fontWeight: '600' },
-
-  toast: { position: 'absolute', top: 14, alignSelf: 'center', minHeight: 42, paddingHorizontal: 16, borderRadius: 21, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 7 } },
-  toastText: { color: WHITE, fontSize: 13, fontWeight: '900' },
-
-  sessionWrap: { flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 26 },
-  sessionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sessionWordmark: { color: '#F7F7F5', fontSize: 13, fontWeight: '900', letterSpacing: 1.7 },
-  sessionStatusLabel: { color: '#727276', fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
+  // Session
+  sessionSafe: { flex: 1, backgroundColor: INK },
+  sessionWrap: { flex: 1, paddingHorizontal: 22, paddingTop: 17, paddingBottom: 24 },
+  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 14, borderBottomWidth: 1, borderColor: DARK_LINE },
+  sessionWordmark: { color: BRICK, fontSize: 15, fontWeight: '900', letterSpacing: 0.8 },
+  endSetText: { color: '#8B8782', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
   sessionCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  countdownNumber: { color: WHITE, fontSize: 152, lineHeight: 166, fontWeight: '900', letterSpacing: -8, fontVariant: ['tabular-nums'] },
-  sessionTitle: { marginTop: 12, color: WHITE, fontSize: 28, lineHeight: 34, fontWeight: '900', letterSpacing: -1 },
-  sessionBody: { marginTop: 10, maxWidth: 310, color: '#8C8C91', fontSize: 13, lineHeight: 20, fontWeight: '600', textAlign: 'center' },
-  listeningText: { marginTop: 18, color: '#6E82FF', fontSize: 10, fontWeight: '900', letterSpacing: 1.6 },
-  sessionCount: { marginTop: 6, color: WHITE, fontSize: 148, lineHeight: 162, fontWeight: '900', letterSpacing: -7, fontVariant: ['tabular-nums'] },
-  elapsedText: { marginTop: 14, color: '#5E5E63', fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  liveHaloWrap: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  liveHalo: { position: 'absolute', width: 24, height: 24, borderRadius: 12, backgroundColor: ACCENT },
-  liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#7187FF' },
-  sessionStop: { minHeight: 58, borderRadius: 20, borderWidth: 1, borderColor: '#2D2D30', backgroundColor: '#18181A', alignItems: 'center', justifyContent: 'center' },
-  sessionStopPressed: { transform: [{ scale: 0.985 }], backgroundColor: '#202023' },
-  sessionStopText: { color: '#F4F4F3', fontSize: 16, fontWeight: '900' },
+  pocketIllustration: { width: 130, height: 142, borderWidth: 2, borderColor: '#6F6A65', borderTopWidth: 0, borderBottomLeftRadius: 38, borderBottomRightRadius: 38, alignItems: 'center', overflow: 'hidden', marginBottom: 18 },
+  phoneShape: { marginTop: 8, width: 62, height: 112, borderWidth: 2, borderColor: BG, borderRadius: 14, backgroundColor: '#292929' },
+  pocketCurve: { position: 'absolute', bottom: -42, width: 170, height: 78, borderTopWidth: 2, borderColor: '#6F6A65', borderRadius: 80, backgroundColor: INK },
+  sessionKicker: { color: SENSOR, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  countdownNumber: { marginTop: 4, color: BG, fontSize: 118, lineHeight: 126, fontWeight: '900', letterSpacing: -7, fontVariant: ['tabular-nums'] },
+  sessionTitle: { color: BG, fontSize: 24, lineHeight: 29, fontWeight: '900', letterSpacing: -0.8 },
+  sessionBody: { marginTop: 8, maxWidth: 300, color: '#8E8984', fontSize: 11, lineHeight: 17, fontWeight: '600', textAlign: 'center' },
+  sensorStatus: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  liveMarker: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+  liveHalo: { position: 'absolute', width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: SENSOR },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SENSOR },
+  sensorText: { color: SENSOR, fontSize: 9, fontWeight: '900', letterSpacing: 1.6 },
+  sessionCount: { color: BG, fontSize: 160, lineHeight: 170, fontWeight: '900', letterSpacing: -8, fontVariant: ['tabular-nums'] },
+  sessionMetric: { color: '#77726E', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  sessionBottomStats: { borderTopWidth: 1, borderColor: DARK_LINE, paddingTop: 13, flexDirection: 'row', justifyContent: 'space-between' },
+  sessionStatRight: { alignItems: 'flex-end' },
+  sessionStatLabel: { color: '#77726E', fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
+  sessionStatValue: { marginTop: 2, color: BG, fontSize: 15, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  elapsedText: { marginTop: 8, color: '#5E5A56', fontSize: 8, fontWeight: '900', letterSpacing: 1.0, textAlign: 'center' },
 
-  historyContent: { paddingHorizontal: 22, paddingTop: 18, paddingBottom: 54 },
-  summaryGrid: { flexDirection: 'row', gap: 10, marginTop: 28 },
-  summaryCell: { flex: 1, minHeight: 112, padding: 17, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.58)', justifyContent: 'space-between' },
-  summaryLabel: { color: MUTED, fontSize: 12, fontWeight: '800' },
-  summaryValue: { color: INK, fontSize: 31, fontWeight: '900', letterSpacing: -1.1, fontVariant: ['tabular-nums'] },
-  chartSection: { marginTop: 32 },
-  sectionLabel: { color: MUTED, fontSize: 12, fontWeight: '900', letterSpacing: 0.4 },
-  chartRow: { marginTop: 16, height: 146, flexDirection: 'row', gap: 7, alignItems: 'flex-end' },
+  // History
+  historyContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  summaryGrid: { marginTop: 20, flexDirection: 'row', gap: 10 },
+  summaryCell: { flex: 1, minHeight: 116, backgroundColor: BG, borderWidth: 2, borderColor: INK, padding: 13, justifyContent: 'space-between' },
+  summaryCellBrick: { backgroundColor: BRICK },
+  summaryLabel: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.0 },
+  summaryLabelLight: { color: '#F6DCD5', fontSize: 9, fontWeight: '900', letterSpacing: 1.0 },
+  summaryValue: { color: INK, fontSize: 31, fontWeight: '900', letterSpacing: -1.4, fontVariant: ['tabular-nums'] },
+  summaryValueLight: { color: BG, fontSize: 31, fontWeight: '900', letterSpacing: -1.4, fontVariant: ['tabular-nums'] },
+  chartSection: { marginTop: 27, paddingTop: 15, borderTopWidth: 2, borderColor: INK },
+  chartRow: { marginTop: 14, height: 140, flexDirection: 'row', gap: 6, alignItems: 'flex-end' },
   barColumn: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  barValue: { height: 16, color: MUTED, fontSize: 9, fontWeight: '800' },
-  barTrack: { width: '72%', height: 96, borderRadius: 7, backgroundColor: '#E2DFD7', justifyContent: 'flex-end', overflow: 'hidden' },
-  barFill: { width: '100%', borderRadius: 7, backgroundColor: ACCENT },
-  barLabel: { marginTop: 7, color: MUTED, fontSize: 10, fontWeight: '800' },
-  historySection: { marginTop: 34 },
-  emptyText: { marginTop: 16, color: MUTED, fontSize: 14, fontWeight: '600' },
-  entryRow: { minHeight: 72, borderBottomWidth: 1, borderColor: LINE, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  entryLeft: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  sourcePill: { minWidth: 62, height: 25, borderRadius: 13, backgroundColor: '#E7E4DC', alignItems: 'center', justifyContent: 'center' },
-  sourcePillText: { color: MUTED, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  barValue: { height: 15, color: MUTED, fontSize: 8, fontWeight: '800' },
+  barTrack: { width: '70%', height: 94, backgroundColor: SURFACE_HIGH, justifyContent: 'flex-end', overflow: 'hidden', borderWidth: 1, borderColor: INK },
+  barFill: { width: '100%', backgroundColor: BRICK },
+  barLabel: { marginTop: 6, color: MUTED, fontSize: 9, fontWeight: '900' },
+  historySection: { marginTop: 28, paddingTop: 15, borderTopWidth: 2, borderColor: INK },
+  emptyText: { marginTop: 14, color: MUTED, fontSize: 12, fontWeight: '600' },
+  entryRow: { minHeight: 68, borderBottomWidth: 1, borderColor: LINE, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  entryLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  entryBrick: { width: 30, height: 15, backgroundColor: BRICK, borderWidth: 1, borderColor: BRICK_DARK },
+  entryBrickSensor: { borderColor: SENSOR, borderWidth: 2 },
   entryAmount: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  entryTime: { marginTop: 3, color: MUTED, fontSize: 10, fontWeight: '600' },
-  entryActions: { flexDirection: 'row', gap: 14 },
-  entryEdit: { color: ACCENT, fontSize: 12, fontWeight: '800' },
-  entryDelete: { color: DANGER, fontSize: 12, fontWeight: '800' },
-  editRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  editInput: { width: 90, height: 42, borderRadius: 12, borderWidth: 1, borderColor: LINE, backgroundColor: WHITE, paddingHorizontal: 12, color: INK, fontSize: 18, fontWeight: '900' },
-  editUnit: { color: MUTED, fontSize: 13, fontWeight: '700' },
-  saveEdit: { marginLeft: 'auto', color: ACCENT, fontSize: 13, fontWeight: '900' },
-  cancelEdit: { color: MUTED, fontSize: 13, fontWeight: '800' },
+  entryTime: { marginTop: 2, color: MUTED, fontSize: 8, fontWeight: '600' },
+  entryActions: { flexDirection: 'row', gap: 10 },
+  entryEdit: { color: BRICK_DARK, fontSize: 9, fontWeight: '900' },
+  entryDelete: { color: DANGER, fontSize: 9, fontWeight: '900' },
+  editRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  editInput: { width: 80, height: 40, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 10, color: INK, fontSize: 17, fontWeight: '900' },
+  editUnit: { color: MUTED, fontSize: 9, fontWeight: '800' },
+  saveEdit: { marginLeft: 'auto', color: BRICK_DARK, fontSize: 9, fontWeight: '900' },
+  cancelEdit: { color: MUTED, fontSize: 9, fontWeight: '900' },
+  settingsSection: { marginTop: 28, paddingTop: 15, borderTopWidth: 2, borderColor: INK },
+  settingsBody: { marginTop: 6, color: MUTED, fontSize: 10, lineHeight: 16, fontWeight: '600' },
+  segmentRow: { marginTop: 11, flexDirection: 'row', borderWidth: 2, borderColor: INK },
+  segment: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderColor: INK },
+  segmentSelected: { backgroundColor: BRICK },
+  segmentText: { color: MUTED, fontSize: 10, fontWeight: '900' },
+  segmentTextSelected: { color: BG },
+  dataSection: { marginTop: 28, gap: 15, alignItems: 'center' },
+  outlineButton: { width: '100%', minHeight: 50, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  outlineButtonText: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.0 },
+  privacyLink: { color: BRICK_DARK, fontSize: 10, fontWeight: '800', textDecorationLine: 'underline' },
+  privacyBox: { width: '100%', padding: 14, backgroundColor: SURFACE, borderLeftWidth: 4, borderColor: BRICK },
+  privacyTitle: { color: INK, fontSize: 11, fontWeight: '900' },
+  privacyText: { marginTop: 7, color: MUTED, fontSize: 9, lineHeight: 15, fontWeight: '600' },
+  resetAll: { color: DANGER, fontSize: 10, fontWeight: '800', textDecorationLine: 'underline' },
 
-  settingsSection: { marginTop: 36, paddingTop: 24, borderTopWidth: 1, borderColor: LINE },
-  settingsBody: { marginTop: 7, color: MUTED, fontSize: 12, lineHeight: 18, fontWeight: '600' },
-  segmentRow: { marginTop: 14, flexDirection: 'row', padding: 4, borderRadius: 17, backgroundColor: '#E6E2DA' },
-  segment: { flex: 1, minHeight: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  segmentSelected: { backgroundColor: WHITE, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 7, shadowOffset: { width: 0, height: 2 } },
-  segmentText: { color: MUTED, fontSize: 13, fontWeight: '800' },
-  segmentTextSelected: { color: INK },
-
-  dataSection: { marginTop: 36, gap: 18, alignItems: 'center' },
-  outlineButton: { width: '100%', minHeight: 54, borderRadius: 17, borderWidth: 1, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
-  outlineButtonText: { color: INK, fontSize: 14, fontWeight: '900' },
-  privacyLink: { color: ACCENT, fontSize: 12, fontWeight: '800', textDecorationLine: 'underline' },
-  privacyBox: { width: '100%', padding: 16, borderRadius: 18, backgroundColor: '#EAE7DF' },
-  privacyTitle: { color: INK, fontSize: 13, fontWeight: '900' },
-  privacyText: { marginTop: 8, color: MUTED, fontSize: 11, lineHeight: 18, fontWeight: '600' },
-  resetAll: { color: DANGER, fontSize: 12, fontWeight: '800', textDecorationLine: 'underline' },
+  // Toast
+  toast: { position: 'absolute', top: 12, alignSelf: 'center', minHeight: 40, paddingHorizontal: 15, backgroundColor: INK, borderBottomWidth: 3, borderColor: BRICK, alignItems: 'center', justifyContent: 'center' },
+  toastText: { color: BG, fontSize: 10, fontWeight: '900', letterSpacing: 1.0 },
 });
