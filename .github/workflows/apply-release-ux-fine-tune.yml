@@ -44,3 +44,5 @@ jobs:
             git commit -m "Fine tune BAEMILGI release UX"
             git push origin main
           fi
+
+# release-qa-trigger: 2
