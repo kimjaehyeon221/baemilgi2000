@@ -1,0 +1,83 @@
+name: Apply PUSH TOTAL Start Sound
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/push-total-start-sound-apply.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PUSH TOTAL RC
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install existing dependencies
+        run: npm install
+
+      - name: Install Expo audio
+        run: npx expo install expo-audio
+
+      - name: Generate local start signal
+        run: |
+          mkdir -p assets
+          node <<'NODE'
+          const fs = require('fs');
+          const sampleRate = 22050;
+          const duration = 0.18;
+          const samples = Math.floor(sampleRate * duration);
+          const data = Buffer.alloc(samples * 2);
+          for (let i = 0; i < samples; i++) {
+            const fadeIn = Math.min(1, i / 200);
+            const fadeOut = Math.min(1, (samples - i - 1) / 300);
+            const env = Math.max(0, Math.min(fadeIn, fadeOut));
+            const value = Math.round(0.35 * 32767 * env * Math.sin(2 * Math.PI * 880 * i / sampleRate));
+            data.writeInt16LE(value, i * 2);
+          }
+          const header = Buffer.alloc(44);
+          header.write('RIFF', 0);
+          header.writeUInt32LE(36 + data.length, 4);
+          header.write('WAVE', 8);
+          header.write('fmt ', 12);
+          header.writeUInt32LE(16, 16);
+          header.writeUInt16LE(1, 20);
+          header.writeUInt16LE(1, 22);
+          header.writeUInt32LE(sampleRate, 24);
+          header.writeUInt32LE(sampleRate * 2, 28);
+          header.writeUInt16LE(2, 32);
+          header.writeUInt16LE(16, 34);
+          header.write('data', 36);
+          header.writeUInt32LE(data.length, 40);
+          fs.writeFileSync('assets/start.wav', Buffer.concat([header, data]));
+          NODE
+
+      - name: Apply audio patch
+        run: node scripts/apply-push-total-start-sound.js
+
+      - name: Validate iOS bundle
+        run: npx expo export --platform ios --output-dir dist-release-check
+
+      - name: Commit validated RC
+        run: |
+          rm -rf dist-release-check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add App.tsx package.json package-lock.json assets/start.wav
+          git commit -m 'Add audible PUSH TOTAL start signal'
+          git push origin HEAD:push-total-rc
