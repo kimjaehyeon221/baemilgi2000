@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-08-31T15:04:03.740Z",
+  "appId": "6806938654",
+  "latestBuild": {
+    "buildNumber": "9",
+    "processingState": "VALID",
+    "expired": false
+  },
+  "tester": {
+    "state": null,
+    "inviteType": "EMAIL",
+    "hasTargetAppRelationship": false,
+    "appRelationshipCount": 1,
+    "betaGroupRelationshipCount": 1,
+    "alreadyInTargetInternalGroup": false
+  },
+  "appStoreConnectUser": {
+    "roles": [
+      "ACCOUNT_HOLDER",
+      "ADMIN"
+    ],
+    "allAppsVisible": true,
+    "provisioningAllowed": true,
+    "visibleAppCount": 2,
+    "targetAppVisible": true
+  },
+  "internalGroups": [
+    {
+      "name": "Team (Expo)",
+      "hasAccessToAllBuilds": true,
+      "isInternalGroup": true
+    }
+  ]
+}
