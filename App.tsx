@@ -30,6 +30,7 @@ type Entry = {
   id: string;
   amount: number;
   source: EntrySource;
+  detectedAmount?: number;
   date: string;
   createdAt: string;
 };
@@ -62,10 +63,11 @@ const BRICK_REPS = 100;
 
 const UPDATE_MS = 40;
 const MAX_SESSION_MS = 90_000;
-const AUTO_FINISH_MS = 7_000;
-const IGNORE_START_MS = 1_100;
-const MIN_REP_MS = 480;
-const MAX_HALF_CYCLE_MS = 2_300;
+const CADENCE_HALF_MS = 1_500;
+const AUTO_FINISH_MS = 4_000;
+const IGNORE_START_MS = 300;
+const MIN_REP_MS = 1_900;
+const MAX_HALF_CYCLE_MS = 2_100;
 
 const SENSITIVITY: Record<SensitivityKey, { label: string; threshold: number }> = {
   high: { label: '민감', threshold: 0.42 },
@@ -110,6 +112,7 @@ function safeEntry(raw: any): Entry | null {
       : `${created.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
     amount,
     source: raw?.source === 'pocket' ? 'pocket' : 'manual',
+    detectedAmount: Number.isFinite(Number(raw?.detectedAmount)) ? Math.max(0, Math.floor(Number(raw.detectedAmount))) : undefined,
     date: typeof raw?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.date)
       ? raw.date
       : localDateKey(created),
@@ -215,6 +218,8 @@ function BottomNav({ active, onNavigate }: { active: 'home' | 'wall' | 'history'
 
 export default function App() {
   const startSignalPlayer = useAudioPlayer(require('./assets/start.wav'));
+  const cadenceDownPlayer = useAudioPlayer(require('./assets/cadence-down.wav'));
+  const cadenceUpPlayer = useAudioPlayer(require('./assets/cadence-up.wav'));
   const [state, setState] = useState<PersistedState>(initialState);
   const [loaded, setLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>('home');
@@ -252,6 +257,8 @@ export default function App() {
   const finishingRef = useRef(false);
   const sensitivityRef = useRef<SensitivityKey>('medium');
   const finishSessionRef = useRef<(automatic?: boolean) => void>(() => undefined);
+  const cadenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cadencePhaseRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -300,9 +307,12 @@ export default function App() {
     if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    if (cadenceTimerRef.current) clearInterval(cadenceTimerRef.current);
     maxTimerRef.current = null;
     idleTimerRef.current = null;
     elapsedTimerRef.current = null;
+    cadenceTimerRef.current = null;
+    cadencePhaseRef.current = 0;
     void KeepAwake.deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => undefined);
   };
 
@@ -355,13 +365,14 @@ export default function App() {
     ]).start(() => setToast(null));
   };
 
-  const saveEntry = (amount: number, source: EntrySource) => {
+  const saveEntry = (amount: number, source: EntrySource, detectedAmount?: number) => {
     if (!Number.isFinite(amount) || amount <= 0) return;
     const now = new Date();
     const entry: Entry = {
       id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
       amount: Math.floor(amount),
       source,
+      detectedAmount: source === 'pocket' && Number.isFinite(detectedAmount) ? Math.max(0, Math.floor(Number(detectedAmount))) : undefined,
       date: localDateKey(now),
       createdAt: now.toISOString(),
     };
@@ -401,7 +412,7 @@ export default function App() {
 
   const confirmPocketCount = () => {
     if (confirmedCount <= 0) return;
-    saveEntry(confirmedCount, 'pocket');
+    saveEntry(confirmedCount, 'pocket', detectedCount);
     setScreen('home');
     setSessionStatus('countdown');
     setDetectedCount(0);
@@ -491,6 +502,26 @@ export default function App() {
     })();
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
     subscriptionRef.current = DeviceMotion.addListener(processMotion);
+
+    const playCadenceCue = () => {
+      const player = cadencePhaseRef.current % 2 === 0 ? cadenceDownPlayer : cadenceUpPlayer;
+      void (async () => {
+        try {
+          await player.seekTo(0);
+          player.play();
+        } catch {
+          // Motion counting continues even if a cadence cue cannot play.
+        }
+      })();
+      cadencePhaseRef.current += 1;
+    };
+    cadencePhaseRef.current = 0;
+    const firstCadenceCue = setTimeout(() => {
+      playCadenceCue();
+      cadenceTimerRef.current = setInterval(playCadenceCue, CADENCE_HALF_MS);
+    }, CADENCE_HALF_MS);
+    countdownTimersRef.current.push(firstCadenceCue);
+
     maxTimerRef.current = setTimeout(() => finishSessionRef.current(true), MAX_SESSION_MS);
     elapsedTimerRef.current = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 200);
   };
