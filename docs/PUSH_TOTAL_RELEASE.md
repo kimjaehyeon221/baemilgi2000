@@ -1,80 +1,76 @@
 # PUSH TOTAL — Release Candidate Checklist
 
 ## Product status
-Target: iOS App Store release candidate, version 0.9.0.
+Target: iOS App Store public release after TestFlight validation.
+Current TestFlight build: #12 (staging / STORE / preview OTA channel).
 
-## Code / device checks
-- [ ] `npm run typecheck` passes.
-- [ ] `npm run doctor` passes.
-- [ ] Release build launches on a physical iPhone.
-- [ ] Motion permission prompt appears only after Pocket Count is tapped.
-- [ ] Pocket Count works with screen kept awake.
-- [ ] Manual logging works when motion permission is denied.
-- [ ] Local records survive app restart.
-- [ ] Edit/delete/export work.
-- [ ] Large lifetime totals do not clip.
-- [ ] iOS 26 Liquid Glass renders correctly.
-- [ ] Older supported iOS version uses the fallback surface correctly.
+## Code / build checks
+- [x] TypeScript check passes.
+- [x] Expo Doctor passes.
+- [x] Expo config check passes.
+- [x] TestFlight build #12 is VALID in App Store Connect.
+- [x] Internal tester is assigned to build #12.
+- [x] Motion permission description is configured in iOS metadata.
+- [x] Privacy manifest declares no tracking and no collected-data categories for the current architecture.
+- [x] Pocket Count keeps the session awake while counting.
+- [x] Unrestricted manual push-up entry is removed.
+- [ ] Physical iPhone test confirms local records survive app restart.
+- [ ] Physical iPhone test confirms delete/export behavior.
+- [ ] Physical iPhone test confirms large lifetime totals do not clip.
 
-## Sensor validation before submission
-Do not describe Pocket Count as highly accurate until validated.
+## Current Pocket Count UX
+1. User taps Pocket Count.
+2. First 5 seconds: place iPhone fully in a front pants pocket.
+3. Next 5 seconds: get into and hold the push-up start position.
+4. Start sound + strong haptic signals measurement start.
+5. Motion sensor estimates repetitive push-up movement.
+6. Five seconds without repetitive movement ends the set automatically.
+7. User verifies the detected count and may adjust only within ±10 before saving.
+
+## Sensor validation before public submission
+Do not describe Pocket Count as highly accurate until real-device validation is complete.
 
 Minimum quick test:
 - 30 real sets total.
-- Include 10, 15, 20 rep sets.
+- Include 10, 15 and 20 rep sets.
 - Include slow / normal / fast cadence.
-- Test at least two front-pocket positions if practical.
-- Record detected count and actual count.
+- Test at least two practical front-pocket positions.
+- Record actual count and detected count.
 - Track exact-count rate and mean absolute error.
 
-Decision:
-- Good accuracy: keep Pocket Count as primary CTA.
-- Moderate accuracy: label `Pocket Count · Beta` in App Store copy and keep editing prominent.
-- Poor accuracy: make manual logging primary for v1 and continue sensor tuning after launch.
+Decision rule:
+- Good accuracy: keep Pocket Count as the primary CTA.
+- Moderate accuracy: consider `Pocket Count · Beta` in store copy and keep the pre-save correction explanation prominent.
+- Poor accuracy: do not ship publicly until the sensor algorithm is improved. Do not reintroduce unrestricted manual logging just to bypass measurement quality.
 
-## Apple requirements noted for 2026
-- App Store uploads require iOS 26 SDK / Xcode 26 or later.
-- App must be complete, useful, stable, and have working metadata/URLs.
-- Privacy policy URL is required for iOS apps.
-- Privacy policy must also be easily accessible inside the app.
-- App Privacy response for current design: `No, we do not collect data from this app`, assuming no analytics/ads/back-end SDK is added before submission.
+## App privacy / metadata
+Current architecture assumption: no account, analytics, ads, cloud sync, or back-end collection.
 
-## App Store metadata draft
-**Name:** PUSH TOTAL
+- [x] Privacy policy source exists in `PRIVACY.md`.
+- [x] Web privacy page source exists in `docs/privacy.html`.
+- [x] Web support page source exists in `docs/support.html`.
+- [x] App Store copy is aligned with the current no-manual-entry Pocket Count flow.
+- [x] App Review notes include exact reviewer test instructions.
+- [ ] Privacy policy has a public HTTPS URL.
+- [ ] Support page has a public HTTPS URL and a usable developer contact method.
+- [ ] App Store Connect App Privacy answers match the current architecture.
+- [ ] Age rating questionnaire is completed.
+- [ ] Final screenshots are uploaded.
 
-**Subtitle:** 푸쉬업을 위한 만보기
+## Screenshot story
+1. Lifetime total — `평생 한 푸쉬업, 하나의 숫자로.`
+2. Brick wall — `100개마다 벽돌 하나.`
+3. Pocket setup — `5초 넣고, 5초 자세 잡기.`
+4. Live count — `주머니 속에서 자동으로 세기.`
+5. Verification — `5초 멈추면 세트 종료.`
+6. History — `오늘·이번 주·평생을 한눈에.`
 
-**Promotional idea:** 폰을 앞주머니에 넣고 푸쉬업하세요. 한 세트가 끝날 때마다 평생 누적 숫자가 올라갑니다.
+## Final public binary
+Build #12 is a staging binary that listens to the `preview` OTA channel. Do not use it as the public production binary.
 
-**Keywords (KR):** 푸쉬업,팔굽혀펴기,운동,카운터,피트니스,홈트,기록
-
-**Category:** Health & Fitness
-
-**Price:** Free
-
-**Data collection:** None (current architecture)
-
-## Review notes draft
-PUSH TOTAL counts repetitive push-up motion using the iPhone motion sensor while the device is placed in a front pants pocket. Motion samples are processed live on-device and are not uploaded or retained. The user can manually correct any estimated count. Manual logging remains fully usable if motion permission is declined.
-
-## Required outside the binary before App Review
-- [ ] Public privacy policy URL
-- [ ] App Store screenshots
-- [ ] App Store Connect app record / bundle ID match
-- [ ] Updated age rating questionnaire
-- [ ] Physical-device sensor validation
-- [ ] Production EAS build
-- [ ] Final archive uploaded to App Store Connect
-
-## Commands for the final build step
-```bash
-npm install
-npm run typecheck
-npm run doctor
-npx eas-cli@latest build --platform ios --profile production
-```
-
-Submission (only after reviewing the build in App Store Connect):
-```bash
-npx eas-cli@latest submit --platform ios --profile production
-```
+Before public submission:
+- [ ] Finish physical-device sensor validation.
+- [ ] Bump app/runtime version when final native runtime is frozen.
+- [ ] Build with the `production` profile / `production` update channel.
+- [ ] Upload the final production build to App Store Connect.
+- [ ] Attach the production build to the App Store version and submit for review.
