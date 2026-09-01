@@ -1,0 +1,67 @@
+name: Finalize Baemilgi Onboarding
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-onboarding-finalize.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Simplify onboarding hero
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/Onboarding.tsx')
+          text = p.read_text()
+          text = text.replace('blurRadius={2}', 'blurRadius={12}')
+          text = text.replace('전통 전신 운동 · 200 QUESTS', '배밀기 · DAND')
+          text = text.replace(
+            '엉덩이를 높인 자세에서 가슴을 앞으로 밀어낸 뒤, 다시 뒤·위로 돌아오는 전신 운동입니다.',
+            '엉덩이를 높인 자세에서 가슴을 앞으로 밀어내고, 다시 뒤·위로 돌아오는 전신 운동입니다.'
+          )
+          text = text.replace('200개의 퀘스트. 마지막은 2,000개.', '1개부터 시작해, 200개의 퀘스트 끝에 2,000개까지.')
+          origin = '''            <Text style={O.heroOrigin}>\n              2,000은 전설적인 레슬러 Great Gama의 배밀기(Dand) 고반복 기록에서 가져온 상징적인 목표입니다.\n            </Text>\n'''
+          text = text.replace(origin, '')
+          text = text.replace(
+            '              운동 권장량이 아닙니다. 체력에 맞게 진행하고 통증이나 어지럼이 있으면 중단하세요.',
+            '              목표는 기록일 뿐이에요. 체력에 맞게 진행하고 통증이 있으면 멈추세요.'
+          )
+          text = text.replace("backgroundColor: '#07090C66'", "backgroundColor: '#07090C7A'")
+          text = text.replace("heroCopy: { flex: 1, justifyContent: 'flex-start', paddingTop: 64 }", "heroCopy: { flex: 1, justifyContent: 'center', paddingBottom: 24 }")
+          text = text.replace("fontSize: 58,\n    lineHeight: 61", "fontSize: 56,\n    lineHeight: 59")
+          text = text.replace("  heroOrigin: {\n    color: '#C9CDD2',\n    fontSize: 11,\n    lineHeight: 17,\n    fontWeight: '700',\n    maxWidth: 330,\n    marginTop: 8,\n  },\n", '')
+          p.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate core progression invariants
+        run: bash scripts/check-core.sh
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-ci
+      - name: Commit validated onboarding
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/Onboarding.tsx
+          git commit -m 'Simplify Baemilgi onboarding hero' || exit 0
+          git push origin HEAD:main
