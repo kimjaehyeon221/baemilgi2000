@@ -1,0 +1,55 @@
+name: PUSH TOTAL Set Free Price Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-set-free-price-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  price:
+    runs-on: ubuntu-latest
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Set app price to free
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function asc(path,opts={}){const h={Authorization:`Bearer ${jwt()}`};if(opts.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:opts.method||'GET',headers:h,body:opts.body?JSON.stringify(opts.body):undefined});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok){const e=new Error(`${r.status} ${opts.method||'GET'} ${path}`);e.body=j;throw e}return j}
+          (async()=>{
+            let sched=null;
+            try{sched=(await asc(`/v1/apps/${appId}/appPriceSchedule?include=baseTerritory,manualPrices&limit%5BmanualPrices%5D=50`)).data;}catch(e){if(!String(e.message).startsWith('404'))throw e;}
+            let hasBase=false;
+            if(sched){
+              try{const base=await asc(`/v1/appPriceSchedules/${sched.id}/baseTerritory`);hasBase=Boolean(base?.data?.id);console.log('BASE_TERRITORY_BEFORE='+(base?.data?.id||''));}catch(e){if(!String(e.message).startsWith('404'))throw e;}
+            }
+            if(hasBase){console.log('PRICE_ALREADY_CONFIGURED=true');return;}
+            const pts=await asc(`/v1/apps/${appId}/appPricePoints?filter%5Bterritory%5D=KOR&include=territory&limit=200`);
+            const free=(pts.data||[]).find(p=>Number(p.attributes?.customerPrice)===0);
+            if(!free) throw new Error('Free KOR price point not found');
+            console.log('FREE_PRICE_POINT='+free.id);
+            const placeholder='${newprice-0}';
+            const payload={data:{type:'appPriceSchedules',relationships:{app:{data:{type:'apps',id:appId}},manualPrices:{data:[{type:'appPrices',id:placeholder}]},baseTerritory:{data:{type:'territories',id:'KOR'}}}},included:[{type:'appPrices',id:placeholder,attributes:{startDate:null,endDate:null},relationships:{appPricePoint:{data:{type:'appPricePoints',id:free.id}}}}]};
+            await asc('/v1/appPriceSchedules',{method:'POST',body:payload});
+            const verify=(await asc(`/v1/apps/${appId}/appPriceSchedule?include=baseTerritory,manualPrices&limit%5BmanualPrices%5D=50`));
+            const base=(verify.included||[]).find(x=>x.type==='territories');
+            console.log('BASE_TERRITORY_AFTER='+(base?.id||''));
+            console.log('FREE_PRICE_SET=true');
+          })().catch(e=>{console.error(e.stack||e);if(e.body)console.error(JSON.stringify(e.body));process.exit(1)});
+          NODE
