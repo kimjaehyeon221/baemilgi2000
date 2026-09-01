@@ -73,7 +73,6 @@ jobs:
             if (!info) throw new Error('App Info not found');
 
             const before = await asc(`/v1/appInfos/${info.id}/ageRatingDeclaration`);
-            console.log('AGE_BEFORE', JSON.stringify(before.data?.attributes || {}));
             const declarationId = before.data?.id;
             if (!declarationId) throw new Error('Age rating declaration not found');
 
@@ -122,10 +121,10 @@ jobs:
               ugc: a.userGeneratedContent === false,
               unrestrictedWeb: a.unrestrictedWebAccess === false,
               gambling: a.gambling === false && a.gamblingSimulated === 'NONE',
+              ageInfoUrl: a.developerAgeRatingInfoUrl === infoUrl,
             };
-            const appInfo = await asc(`/v1/appInfos/${info.id}?fields%5BappInfos%5D=appStoreAgeRating,koreaAgeRating,kidsAgeBand,state`);
             console.log('AGE_CHECKS', JSON.stringify(checks));
-            console.log('AGE_RESULT', JSON.stringify(appInfo.data?.attributes || {}));
+            console.log('AGE_DECLARATION', JSON.stringify(a));
             if (Object.values(checks).some(v => !v)) process.exit(1);
           })().catch(error => { console.error(error.stack || error); process.exit(1); });
           NODE
