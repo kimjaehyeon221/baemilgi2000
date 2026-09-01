@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-01T08:59:17.419Z",
+  "checkedAt": "2026-09-01T09:36:22.270Z",
   "appId": "6806588875",
   "detail": {
     "version": {
@@ -7,11 +7,11 @@
       "versionString": "1.0",
       "state": "PREPARE_FOR_SUBMISSION",
       "releaseType": "AFTER_APPROVAL",
-      "copyright": "© 2026 Jaehyeon Kim"
+      "copyright": "2026 Jaehyeon Kim"
     },
     "selectedBuild": {
-      "id": "af6cf308-6238-4c5d-b921-26860dd7ba39",
-      "buildNumber": "6",
+      "id": "365dc77b-2587-4b8a-bdb7-f14da06e8a48",
+      "buildNumber": "10",
       "processingState": "VALID"
     },
     "localizations": [
@@ -20,10 +20,15 @@
         "locale": "en-US",
         "descriptionPresent": true,
         "keywordsPresent": true,
-        "supportUrl": null,
+        "supportUrl": "https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/support",
         "marketingUrl": null,
         "promotionalTextPresent": true,
-        "screenshotSets": []
+        "screenshotSets": [
+          {
+            "type": "APP_IPHONE_67",
+            "screenshotCount": 0
+          }
+        ]
       }
     ],
     "reviewDetail": {
@@ -35,7 +40,42 @@
       "notesPresent": true,
       "demoAccountRequired": false
     },
-    "ageRatingPresent": false
+    "ageRatingPresent": true,
+    "ageRating": {
+      "id": "737f43a4-13bc-45b3-a886-358812650ba8",
+      "appStoreAgeRating": "FOUR_PLUS",
+      "attributes": {
+        "advertising": false,
+        "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+        "contests": "NONE",
+        "gambling": false,
+        "gamblingSimulated": "NONE",
+        "gunsOrOtherWeapons": "NONE",
+        "healthOrWellnessTopics": true,
+        "kidsAgeBand": null,
+        "lootBox": false,
+        "medicalOrTreatmentInformation": "NONE",
+        "messagingAndChat": false,
+        "parentalControls": false,
+        "profanityOrCrudeHumor": "NONE",
+        "ageAssurance": false,
+        "sexualContentGraphicAndNudity": "NONE",
+        "sexualContentOrNudity": "NONE",
+        "socialMedia": false,
+        "socialMediaAgeRestricted": false,
+        "horrorOrFearThemes": "NONE",
+        "matureOrSuggestiveThemes": "NONE",
+        "unrestrictedWebAccess": false,
+        "userGeneratedContent": false,
+        "violenceCartoonOrFantasy": "NONE",
+        "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+        "violenceRealistic": "NONE",
+        "ageRatingOverride": "NONE",
+        "ageRatingOverrideV2": "NONE",
+        "koreaAgeRatingOverride": "NONE",
+        "developerAgeRatingInfoUrl": null
+      }
+    }
   },
   "build10": [
     {
@@ -50,8 +90,8 @@
     {
       "locale": "en-US",
       "name": "배밀기 2000",
-      "subtitle": null,
-      "privacyPolicyUrl": null,
+      "subtitle": "200개의 퀘스트, 마지막은 2000",
+      "privacyPolicyUrl": "https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/privacy",
       "privacyChoicesUrl": null
     }
   ]
