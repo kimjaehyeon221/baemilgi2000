@@ -1,0 +1,108 @@
+name: Baemilgi App Store Release Readiness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-release-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Inspect App Store Connect release state
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806588875'
+        run: |
+          node <<'NODE'
+          const fs=require('fs'), crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url');
+          const now=Math.floor(Date.now()/1000);
+          const head=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const body=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=head+'.'+body;
+          const sig=crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const token=input+'.'+sig;
+          const api=async path=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com'+path,{headers:{Authorization:'Bearer '+token}});
+            const j=await r.json();
+            if(!r.ok) throw new Error(path+' '+r.status+' '+JSON.stringify(j));
+            return j;
+          };
+          const rel=async(type,id,name)=>{
+            try{return await api('/v1/'+type+'/'+id+'/'+name);}catch(e){return {error:String(e)}}
+          };
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&sort=-createdDate&limit=10');
+            const version=(versions.data||[])[0]||null;
+            const builds=await api('/v1/builds?filter%5Bapp%5D='+appId+'&filter%5Bversion%5D=10&sort=-uploadedDate&limit=5&include=preReleaseVersion');
+            let detail={};
+            if(version){
+              const [build,localizations,review,age]=await Promise.all([
+                rel('appStoreVersions',version.id,'build'),
+                rel('appStoreVersions',version.id,'appStoreVersionLocalizations?limit=50'),
+                rel('appStoreVersions',version.id,'appStoreReviewDetail'),
+                rel('appStoreVersions',version.id,'ageRatingDeclaration')
+              ]);
+              const localeRows=[];
+              for(const loc of (localizations.data||[])){
+                const sets=await rel('appStoreVersionLocalizations',loc.id,'appScreenshotSets?include=appScreenshots&limit=50');
+                const included=sets.included||[];
+                localeRows.push({
+                  id:loc.id,
+                  locale:loc.attributes?.locale,
+                  descriptionPresent:Boolean(loc.attributes?.description),
+                  keywordsPresent:Boolean(loc.attributes?.keywords),
+                  supportUrl:loc.attributes?.supportUrl||null,
+                  marketingUrl:loc.attributes?.marketingUrl||null,
+                  promotionalTextPresent:Boolean(loc.attributes?.promotionalText),
+                  screenshotSets:(sets.data||[]).map(s=>({
+                    type:s.attributes?.screenshotDisplayType||null,
+                    screenshotCount:included.filter(x=>x.type==='appScreenshots' && x.relationships?.appScreenshotSet?.data?.id===s.id).length
+                  }))
+                });
+              }
+              detail={
+                version:{id:version.id,versionString:version.attributes?.versionString,state:version.attributes?.appStoreState,releaseType:version.attributes?.releaseType,copyright:version.attributes?.copyright||null},
+                selectedBuild:build.data?{id:build.data.id,buildNumber:build.data.attributes?.version,processingState:build.data.attributes?.processingState}:null,
+                localizations:localeRows,
+                reviewDetail:review.data?{id:review.data.id,contactFirstName:review.data.attributes?.contactFirstName||null,contactLastName:review.data.attributes?.contactLastName||null,contactPhonePresent:Boolean(review.data.attributes?.contactPhone),contactEmailPresent:Boolean(review.data.attributes?.contactEmail),notesPresent:Boolean(review.data.attributes?.notes),demoAccountRequired:Boolean(review.data.attributes?.demoAccountRequired)}:null,
+                ageRatingPresent:Boolean(age.data)
+              };
+            }
+            let appInfos={data:[]};
+            try{appInfos=await api('/v1/apps/'+appId+'/appInfos?limit=10');}catch{}
+            const latestInfo=(appInfos.data||[])[0]||null;
+            let infoLocs={data:[]};
+            if(latestInfo) infoLocs=await rel('appInfos',latestInfo.id,'appInfoLocalizations?limit=50');
+            const includedVersions=versions.data||[];
+            const buildList=(builds.data||[]).map(b=>({id:b.id,buildNumber:b.attributes?.version,processingState:b.attributes?.processingState,uploadedDate:b.attributes?.uploadedDate,expired:Boolean(b.attributes?.expired)}));
+            const report={checkedAt:new Date().toISOString(),appId,detail,build10:buildList,appInfoLocalizations:(infoLocs.data||[]).map(x=>({locale:x.attributes?.locale,name:x.attributes?.name||null,subtitle:x.attributes?.subtitle||null,privacyPolicyUrl:x.attributes?.privacyPolicyUrl||null,privacyChoicesUrl:x.attributes?.privacyChoicesUrl||null}))};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_APP_STORE_READINESS.json',JSON.stringify(report,null,2)+'\n');
+            console.log(JSON.stringify(report,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist sanitized report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_APP_STORE_READINESS.json
+          git commit -m 'Record Baemilgi App Store readiness' || exit 0
+          git push origin HEAD:main
