@@ -48,18 +48,8 @@ jobs:
       # against its embedded runtime. Any native dependency/config change requires a new build.
       - name: Resolve TestFlight build 10 runtime
         run: |
-          KNOWN_BUILD10_RUNTIME='b12b6591130964d0702aae7e8e15f3d1c31fbd15'
-          RUNTIME=''
-          if npx eas-cli@latest build:view 9c14fcf7-6a78-4557-bffa-a44e3c19884b --json > build10.json; then
-            RUNTIME=$(jq -r '.runtime.version // empty' build10.json)
-          else
-            echo '::warning::Expo build lookup failed; using the last verified build 10 runtime.'
-          fi
-          RUNTIME=${RUNTIME:-$KNOWN_BUILD10_RUNTIME}
-          echo "BAEMILGI_RUNTIME=$RUNTIME" >> "$GITHUB_ENV"
-          echo "Targeting build 10 runtime: $RUNTIME"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          echo 'BAEMILGI_RUNTIME=b12b6591130964d0702aae7e8e15f3d1c31fbd15' >> "$GITHUB_ENV"
+          echo 'Targeting the verified TestFlight build 10 runtime.'
 
       - name: Target TestFlight build 10 runtime
         run: |
@@ -71,6 +61,17 @@ jobs:
           NODE
 
       - name: Publish production OTA update
-        run: npx eas-cli@latest update --channel production --platform ios --environment production --non-interactive --message "${{ github.event.head_commit.message || 'Manual BAEMILGI production OTA update' }}"
+        run: |
+          for attempt in 1 2 3; do
+            echo "Production OTA publish attempt $attempt/3"
+            if npx eas-cli@latest update --channel production --platform ios --environment production --non-interactive --message "${{ github.event.head_commit.message || 'Manual BAEMILGI production OTA update' }}"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo 'Expo update service is unavailable; retrying in 20 seconds.'
+              sleep 20
+            fi
+          done
+          exit 1
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
