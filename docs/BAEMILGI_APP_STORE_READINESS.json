@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-09-01T08:59:17.419Z",
+  "appId": "6806588875",
+  "detail": {
+    "version": {
+      "id": "8698e177-b678-44c3-9c36-2e483be9ad73",
+      "versionString": "1.0",
+      "state": "PREPARE_FOR_SUBMISSION",
+      "releaseType": "AFTER_APPROVAL",
+      "copyright": "© 2026 Jaehyeon Kim"
+    },
+    "selectedBuild": {
+      "id": "af6cf308-6238-4c5d-b921-26860dd7ba39",
+      "buildNumber": "6",
+      "processingState": "VALID"
+    },
+    "localizations": [
+      {
+        "id": "b6b95ed8-525a-4002-8783-85e480390ab7",
+        "locale": "en-US",
+        "descriptionPresent": true,
+        "keywordsPresent": true,
+        "supportUrl": null,
+        "marketingUrl": null,
+        "promotionalTextPresent": true,
+        "screenshotSets": []
+      }
+    ],
+    "reviewDetail": {
+      "id": "0c30b92e-7e4b-46a9-9cfc-ad24f6dd1ebb",
+      "contactFirstName": null,
+      "contactLastName": null,
+      "contactPhonePresent": false,
+      "contactEmailPresent": false,
+      "notesPresent": true,
+      "demoAccountRequired": false
+    },
+    "ageRatingPresent": false
+  },
+  "build10": [
+    {
+      "id": "365dc77b-2587-4b8a-bdb7-f14da06e8a48",
+      "buildNumber": "10",
+      "processingState": "VALID",
+      "uploadedDate": "2026-08-31T18:54:44-07:00",
+      "expired": false
+    }
+  ],
+  "appInfoLocalizations": [
+    {
+      "locale": "en-US",
+      "name": "배밀기 2000",
+      "subtitle": null,
+      "privacyPolicyUrl": null,
+      "privacyChoicesUrl": null
+    }
+  ]
+}
