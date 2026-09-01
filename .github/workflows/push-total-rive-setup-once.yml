@@ -1,0 +1,61 @@
+name: PUSH TOTAL Rive Setup Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-rive-setup-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Install current dependencies
+        run: npm ci
+
+      - name: Install Rive React Native runtime
+        run: npx expo install @rive-app/react-native react-native-nitro-modules
+
+      - name: Add local .riv asset support
+        run: |
+          cat > metro.config.js <<'EOF'
+          const { getDefaultConfig } = require('expo/metro-config');
+
+          const config = getDefaultConfig(__dirname);
+
+          if (!config.resolver.assetExts.includes('riv')) {
+            config.resolver.assetExts.push('riv');
+          }
+
+          module.exports = config;
+          EOF
+
+      - name: Validate Rive-ready project
+        run: |
+          npm run typecheck
+          npm run doctor
+          npx expo config --type public >/dev/null
+
+      - name: Commit Rive runtime foundation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json metro.config.js
+          git diff --cached --check
+          git commit -m "Prepare PUSH TOTAL for Rive launch animation"
+          git push origin push-total-rc
