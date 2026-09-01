@@ -1,5 +1,6 @@
 name: Capture Baemilgi UI Audit
 
+# Post-polish visual check: render the current main branch at iPhone dimensions.
 on:
   push:
     branches: [main]
