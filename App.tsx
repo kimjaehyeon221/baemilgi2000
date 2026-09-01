@@ -88,7 +88,17 @@ export default function App() {
     );
   }
   if (!state) return <SafeAreaView style={styles.root} />;
-  if (!state.onboarded) return <Onboarding onDone={commit} />;
+  if (!state.onboarded) {
+    return (
+      <Onboarding
+        onDone={async (next, firstChallengeLevel) => {
+          const saved = await commit(next);
+          if (saved) setChallengeLevel(firstChallengeLevel);
+          return saved;
+        }}
+      />
+    );
+  }
 
   if (challengeLevel !== null) {
     return (

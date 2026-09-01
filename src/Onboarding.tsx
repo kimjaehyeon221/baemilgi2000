@@ -15,12 +15,25 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AppState, FORM_VIDEO_URL, initialState, levelForReps } from './core';
+import { AppState, FORM_VIDEO_URL, initialState, TARGETS, targetForLevel } from './core';
 import { C, styles } from './styles';
 import { Button } from './ui';
 
 const digitsOnly = (value: string, maxLength = 4) =>
   value.replace(/[^0-9]/g, '').slice(0, maxLength);
+
+const closestQuestLevel = (reps: number) => {
+  let closestLevel = 1;
+  for (let level = 2; level <= 200; level += 1) {
+    if (
+      Math.abs(TARGETS[level] - reps) <
+      Math.abs(TARGETS[closestLevel] - reps)
+    ) {
+      closestLevel = level;
+    }
+  }
+  return closestLevel;
+};
 
 function SetupTop({ step, onBack }: { step: number; onBack?: () => void }) {
   return (
@@ -184,19 +197,26 @@ function Intro({ onContinue }: { onContinue: () => void }) {
   );
 }
 
-export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
+export function Onboarding({
+  onDone,
+}: {
+  onDone: (next: AppState, firstChallengeLevel: number) => Promise<boolean> | boolean | void;
+}) {
   const [step, setStep] = useState<'intro' | 'experience' | 'form' | 'experienced'>('intro');
-  const [baemilgi, setBaemilgi] = useState('');
+  const [firstTarget, setFirstTarget] = useState('');
   const [formFrame, setFormFrame] = useState(0);
 
   const startBeginner = () => {
-    onDone({
-      ...initialState,
-      onboarded: true,
-      firstBaemilgiMax: null,
-      clearedLevel: 0,
-      selectedLevel: 1,
-    });
+    onDone(
+      {
+        ...initialState,
+        onboarded: true,
+        firstBaemilgiMax: null,
+        clearedLevel: 0,
+        selectedLevel: 1,
+      },
+      1,
+    );
   };
 
   if (step === 'intro') return <Intro onContinue={() => setStep('experience')} />;
@@ -221,7 +241,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
               />
               <ChoiceRow
                 title="해본 적 있어요"
-                body="현재 최고 기록에서 시작"
+                body="첫 도전 횟수를 고르고 바로 도전"
                 onPress={() => setStep('experienced')}
               />
             </View>
@@ -261,7 +281,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
           </View>
           <View style={O.guideActions}>
             <Button
-              label={lastFrame ? '1개 퀘스트 시작' : '다음 동작'}
+              label={lastFrame ? '1개 퀘스트 도전' : '다음 동작'}
               onPress={() =>
                 lastFrame ? startBeginner() : setFormFrame((current) => current + 1)
               }
@@ -277,18 +297,23 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
     );
   }
 
-  const startFromRecord = () => {
-    if (!baemilgi.trim()) return;
-    const reps = Math.max(0, Math.min(2000, Number(baemilgi) || 0));
-    const level = reps > 0 ? levelForReps(reps) : 0;
+  const requestedTarget = Math.max(1, Math.min(2000, Number(firstTarget) || 1));
+  const firstChallengeLevel = closestQuestLevel(requestedTarget);
+  const firstChallengeTarget = targetForLevel(firstChallengeLevel);
+
+  const startFirstChallenge = () => {
+    if (!firstTarget.trim()) return;
     Keyboard.dismiss();
-    onDone({
-      ...initialState,
-      onboarded: true,
-      firstBaemilgiMax: reps,
-      clearedLevel: level,
-      selectedLevel: level >= 200 ? 200 : level + 1,
-    });
+    onDone(
+      {
+        ...initialState,
+        onboarded: true,
+        firstBaemilgiMax: null,
+        clearedLevel: 0,
+        selectedLevel: 1,
+      },
+      firstChallengeLevel,
+    );
   };
 
   return (
@@ -301,33 +326,41 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
       >
         <SetupTop step={2} onBack={() => setStep('experience')} />
         <View style={styles.setupBody}>
-          <Text style={styles.question}>지금 최고 기록은?</Text>
-          <Text style={styles.copy}>공식 자세로 쉬지 않고 이어서 해낸 최고 횟수를 적어주세요.</Text>
-          <View style={styles.inputRow}>
+          <Text style={styles.question}>첫 퀘스트를{`\n`}몇 개로 시작할까?</Text>
+          <Text style={styles.copy}>
+            해낼 수 있을 것 같은 횟수를 골라요. 아직 완료로 처리하지 않고, 바로 그 퀘스트에 도전합니다.
+          </Text>
+          <View style={O.targetInputRow}>
             <TextInput
-              value={baemilgi}
-              onChangeText={(value) => setBaemilgi(digitsOnly(value))}
+              value={firstTarget}
+              onChangeText={(value) => setFirstTarget(digitsOnly(value))}
               keyboardType="number-pad"
               inputMode="numeric"
-              placeholder="0"
+              placeholder="10"
               placeholderTextColor="#9F978B"
-              style={styles.bigInput}
+              style={O.targetInput}
               maxFontSizeMultiplier={1.2}
               maxLength={4}
-              accessibilityLabel="배밀기 최고 기록"
+              accessibilityLabel="첫 도전 횟수"
             />
-            <Text style={styles.inputUnit}>개</Text>
+            <Text style={O.targetInputUnit}>개</Text>
           </View>
-          <Text style={styles.inputHint}>이 기록 이하의 단계는 완료된 것으로 표시됩니다.</Text>
+          <Text style={styles.inputHint}>
+            {firstTarget.trim()
+              ? firstChallengeTarget === requestedTarget
+                ? `성공하면 ${firstChallengeTarget}개 단계까지 완료돼요.`
+                : `가장 가까운 공식 퀘스트인 ${firstChallengeTarget}개로 연결돼요.`
+              : '성공해야 선택한 단계까지 완료돼요.'}
+          </Text>
         </View>
         <Button
           label={
-            baemilgi.trim()
-              ? `${Math.max(0, Math.min(2000, Number(baemilgi) || 0))}개에서 시작`
-              : '현재 최고 기록을 입력해주세요'
+            firstTarget.trim()
+              ? `${firstChallengeTarget}개 퀘스트 도전`
+              : '첫 도전 횟수를 입력해주세요'
           }
-          disabled={!baemilgi.trim()}
-          onPress={startFromRecord}
+          disabled={!firstTarget.trim()}
+          onPress={startFirstChallenge}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -441,4 +474,33 @@ const O = StyleSheet.create({
   motionLabelTextActive: { color: '#FAF9F6' },
   guideNote: { color: C.muted, fontSize: 12, lineHeight: 19, marginTop: 15 },
   guideActions: { gap: 9 },
+  targetInputRow: {
+    minHeight: 94,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderColor: C.blue,
+    marginTop: 22,
+  },
+  targetInput: {
+    flex: 1,
+    height: 90,
+    color: C.ink,
+    fontSize: 64,
+    lineHeight: 76,
+    fontWeight: '900',
+    letterSpacing: -2.5,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    fontVariant: ['tabular-nums'],
+  },
+  targetInputUnit: {
+    color: C.blue,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '900',
+    marginLeft: 8,
+  },
 });
