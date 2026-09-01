@@ -1,4 +1,5 @@
 name: Baemilgi App Store Release Readiness
+# Fresh pre-submission audit — 2026-09-02
 
 on:
   push:
@@ -96,7 +97,6 @@ jobs:
               detail.ageRatingPresent=Boolean(age.data);
               detail.ageRating=age.data?{id:age.data.id,appStoreAgeRating:latestInfo.attributes?.appStoreAgeRating||null,attributes:age.data.attributes||{}}:null;
             }
-            const includedVersions=versions.data||[];
             const buildList=(builds.data||[]).map(b=>({id:b.id,buildNumber:b.attributes?.version,processingState:b.attributes?.processingState,uploadedDate:b.attributes?.uploadedDate,expired:Boolean(b.attributes?.expired)}));
             const report={checkedAt:new Date().toISOString(),appId,detail,build10:buildList,appInfoLocalizations:(infoLocs.data||[]).map(x=>({locale:x.attributes?.locale,name:x.attributes?.name||null,subtitle:x.attributes?.subtitle||null,privacyPolicyUrl:x.attributes?.privacyPolicyUrl||null,privacyChoicesUrl:x.attributes?.privacyChoicesUrl||null}))};
             fs.mkdirSync('docs',{recursive:true});
