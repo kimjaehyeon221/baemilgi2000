@@ -571,7 +571,7 @@ const S = StyleSheet.create({
   readyTargetRow: { minHeight: 104, flexDirection: 'row', alignItems: 'flex-end' },
   readyTarget: { color: '#121212', fontFamily: metric, fontSize: 88, lineHeight: 108, fontWeight: '800', letterSpacing: -2, fontVariant: ['tabular-nums'] },
   readyTargetUnit: { color: '#1B365D', fontFamily: headline, fontSize: 20, lineHeight: 36, fontWeight: '900', marginLeft: 8, marginBottom: 10 },
-  readyCopy: { color: '#686A68', fontFamily: body, fontSize: 14, lineHeight: 22, marginTop: 22, maxWidth: 350 },
+  readyCopy: { color: '#686A68', fontFamily: body, fontSize: 14, lineHeight: 22, marginTop: 22 },
   readyAction: { minHeight: 62, backgroundColor: '#1B365D', borderWidth: 2, borderColor: '#1B365D', alignItems: 'center', justifyContent: 'center' },
   readyActionText: { color: '#FAF9F6', fontFamily: headline, fontSize: 17, fontWeight: '900', letterSpacing: 0.4 },
   countdownPage: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
