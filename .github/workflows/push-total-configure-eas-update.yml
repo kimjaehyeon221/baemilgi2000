@@ -1,0 +1,56 @@
+name: PUSH TOTAL Configure EAS Update
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-configure-eas-update.yml
+
+permissions:
+  contents: write
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Expo Updates
+        run: npx expo install expo-updates
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Configure EAS Update
+        run: eas update:configure --platform ios --non-interactive
+
+      - name: Validate generated configuration
+        run: |
+          npm run typecheck
+          npm run doctor
+          npx expo config --type public >/dev/null
+
+      - name: Commit EAS Update configuration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json app.json eas.json
+          git diff --cached --check
+          git commit -m "Configure EAS Update for PUSH TOTAL"
+          git push origin push-total-rc
