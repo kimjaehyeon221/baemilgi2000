@@ -1,0 +1,210 @@
+name: Apply Baemilgi Visual Polish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-visual-polish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply visual polish from rendered audit
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p=Path(path)
+              text=p.read_text()
+              n=text.count(old)
+              if n != 1:
+                  raise SystemExit(f'{path}: expected one match, found {n}')
+              p.write_text(text.replace(old,new,1))
+
+          # First screen: remove the visually dead disabled CTA and make the first action explicit.
+          replace_once(
+              'src/Onboarding.tsx',
+              "        <Button\n          label={opened ? '내 기록으로 시작' : '먼저 화면을 눌러'}\n          disabled={!opened}\n          onPress={onContinue}\n        />",
+              "        <Button\n          label={opened ? '내 기록으로 시작' : '첫 퀘스트 열기'}\n          onPress={opened ? onContinue : openQuest}\n          accessibilityHint={opened ? '시작 방식 선택으로 이동합니다' : '첫 퀘스트를 열고 시작 기록 준비 상태로 전환합니다'}\n        />",
+          )
+
+          replace_once(
+              'src/Onboarding.tsx',
+              "  launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },\n  launchBrand: { color: '#121212', fontFamily: 'Menlo', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },\n  launchMeta: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },\n  launchStage: { flex: 1, minHeight: 360, alignItems: 'center', justifyContent: 'center' },\n  launchPressed: { opacity: 0.82 },\n  launchMark: { width: 218, height: 218, marginBottom: 8, borderRadius: 48, overflow: 'hidden' },\n  launchIcon: { width: '100%', height: '100%' },\n  launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 62, lineHeight: 70, fontWeight: '800', letterSpacing: -1.8, fontVariant: ['tabular-nums'] },\n  launchPrompt: { color: '#686A68', fontSize: 12, fontWeight: '800', letterSpacing: -0.1, marginTop: 2 },\n  launchCopyArea: { minHeight: 104, justifyContent: 'flex-end', paddingBottom: 18 },",
+              "  launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#D7D3CA' },\n  launchBrand: { color: '#121212', fontFamily: 'Menlo', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },\n  launchMeta: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },\n  launchStage: { flex: 1, minHeight: 390, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#D7D3CA' },\n  launchPressed: { opacity: 0.82 },\n  launchMark: { width: 184, height: 184, marginBottom: 14, borderRadius: 42, overflow: 'hidden' },\n  launchIcon: { width: '100%', height: '100%' },\n  launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 72, lineHeight: 80, fontWeight: '800', letterSpacing: -2.2, fontVariant: ['tabular-nums'] },\n  launchPrompt: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.05, marginTop: 3 },\n  launchCopyArea: { minHeight: 104, justifyContent: 'center', paddingVertical: 16 },",
+          )
+
+          # Render audit exposed a white-on-white kicker on the quest hero.
+          replace_once(
+              'App.tsx',
+              "            <Text style={[styles.kicker, styles.kickerOnAccent]}>현재 위치</Text>",
+              "            <Text style={styles.kicker}>현재 위치</Text>",
+          )
+
+          old_info = '''      <Modal visible={infoOpen} transparent animationType="slide" onRequestClose={() => setInfoOpen(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>배밀기 2000</Text>
+            <Text style={styles.sheetCopy}>2,000은 운동 권장량이 아니라 20세기 초 레슬러 Great Gama의 역사적 Dand 고반복 기록에서 가져온 마지막 퀘스트야.</Text>
+            <Text style={styles.sheetCopy}>현재 기록은 이 iPhone에 저장돼. 기기를 바꿀 때는 백업을 내보낸 뒤 새 기기에서 복원할 수 있어.</Text>
+            <View style={{ gap: 9 }}>
+              <Button label="전체 기록 백업" secondary onPress={exportRecords} />
+              <Button label="백업 복원" secondary onPress={() => { setInfoOpen(false); setRestoreOpen(true); }} />
+              <Button label="배밀기와 무도" secondary onPress={() => Alert.alert('배밀기와 무도', BAEMILGI_MARTIAL_COPY)} />
+              <Button label="5색 훈련 챕터" secondary onPress={() => Alert.alert('5색 훈련 챕터', CHAPTER_GUIDE_COPY)} />
+              <Button label="배밀기 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
+              <Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} />
+              <Button label="개인정보 처리방침" secondary onPress={() => openExternal(PRIVACY_URL, '개인정보 처리방침')} />
+              <Button label="지원" secondary onPress={() => openExternal(SUPPORT_URL, '지원 페이지')} />
+              <Button label="기록 초기화" danger onPress={reset} />
+              <Button label="닫기" onPress={() => setInfoOpen(false)} />
+            </View>
+          </View>
+        </View>
+      </Modal>'''
+          new_info = '''      <Modal visible={infoOpen} transparent animationType="slide" onRequestClose={() => setInfoOpen(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.infoSheet}>
+            <View style={styles.infoSheetHeader}>
+              <View>
+                <Text style={styles.infoSheetEyebrow}>ABOUT / LOCAL</Text>
+                <Text style={styles.sheetTitle}>배밀기 2000</Text>
+              </View>
+              <Pressable
+                onPress={() => setInfoOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="정보 닫기"
+                style={({ pressed }) => [styles.infoSheetClose, pressed && { opacity: 0.55 }]}
+              >
+                <Text style={styles.infoSheetCloseText}>×</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              style={styles.infoSheetScrollView}
+              contentContainerStyle={styles.infoSheetScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.sheetCopy}>2,000은 운동 권장량이 아니라 20세기 초 레슬러 Great Gama의 역사적 Dand 고반복 기록에서 가져온 마지막 퀘스트야.</Text>
+              <Text style={styles.sheetCopy}>현재 기록은 이 iPhone에 저장돼. 기기를 바꿀 때는 백업을 내보낸 뒤 새 기기에서 복원할 수 있어.</Text>
+              <Text style={styles.infoSheetSectionLabel}>DATA</Text>
+              <View style={{ gap: 9 }}>
+                <Button label="전체 기록 백업" secondary onPress={exportRecords} />
+                <Button label="백업 복원" secondary onPress={() => { setInfoOpen(false); setRestoreOpen(true); }} />
+              </View>
+              <Text style={styles.infoSheetSectionLabel}>GUIDE</Text>
+              <View style={{ gap: 9 }}>
+                <Button label="배밀기와 무도" secondary onPress={() => Alert.alert('배밀기와 무도', BAEMILGI_MARTIAL_COPY)} />
+                <Button label="5색 훈련 챕터" secondary onPress={() => Alert.alert('5색 훈련 챕터', CHAPTER_GUIDE_COPY)} />
+                <Button label="배밀기 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
+                <Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} />
+              </View>
+              <Text style={styles.infoSheetSectionLabel}>SUPPORT</Text>
+              <View style={{ gap: 9 }}>
+                <Button label="개인정보 처리방침" secondary onPress={() => openExternal(PRIVACY_URL, '개인정보 처리방침')} />
+                <Button label="지원" secondary onPress={() => openExternal(SUPPORT_URL, '지원 페이지')} />
+                <Button label="기록 초기화" danger onPress={reset} />
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>'''
+          replace_once('App.tsx', old_info, new_info)
+
+          # Keep generic sheets untouched; the info panel gets a real bounded, scrollable sheet.
+          marker = "  sheet: { backgroundColor: C.gi, borderTopWidth: 5, borderColor: C.blue, padding: 22, maxHeight: '90%' },\n"
+          addition = marker + "  infoSheet: { height: '88%', maxHeight: '88%', backgroundColor: C.gi, borderTopWidth: 5, borderColor: C.blue, overflow: 'hidden' },\n  infoSheetHeader: { minHeight: 78, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, borderBottomWidth: 1, borderColor: C.line },\n  infoSheetEyebrow: { color: C.stamp, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.2, marginBottom: 4 },\n  infoSheetClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },\n  infoSheetCloseText: { color: C.ink, fontSize: 32, lineHeight: 34, fontFamily: headlineFont, fontWeight: '500' },\n  infoSheetScrollView: { flex: 1 },\n  infoSheetScroll: { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 40 },\n  infoSheetSectionLabel: { color: C.blue, fontSize: 9, fontFamily: labelFont, fontWeight: '900', letterSpacing: 1.2, marginTop: 10, marginBottom: 8 },\n"
+          replace_once('src/styles.ts', marker, addition)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate core progression invariants
+        run: bash scripts/check-core.sh
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-ci
+
+      - name: Install screenshot runtime
+        run: |
+          npm install --no-save playwright react-dom@19.2.3 react-native-web@0.21.2 @expo/metro-runtime@57.0.14
+          npx playwright install --with-deps chromium
+      - name: Start polished preview
+        env:
+          BROWSER: none
+          EXPO_NO_TELEMETRY: '1'
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.platforms=['ios','web'];
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
+          NODE
+          npx expo start --web --port 8093 > /tmp/baemilgi-polish.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8093 >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/baemilgi-polish.log
+          exit 1
+      - name: Capture polished screens
+        run: |
+          mkdir -p /tmp/baemilgi-polished
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const base={viewport:{width:440,height:956},deviceScaleFactor:2,isMobile:true,hasTouch:true,colorScheme:'light'};
+            let context=await browser.newContext(base);
+            let page=await context.newPage();
+            await page.goto('http://127.0.0.1:8093',{waitUntil:'networkidle'});
+            await page.screenshot({path:'/tmp/baemilgi-polished/01-onboarding.png'});
+            await context.close();
+
+            context=await browser.newContext(base);
+            const state={onboarded:true,firstBaemilgiMax:35,clearedLevel:35,selectedLevel:36,sessions:[{at:'2026-08-30T01:00:00.000Z',type:'challenge',level:35,target:35,success:true,seconds:164,actualReps:35},{at:'2026-08-31T01:00:00.000Z',type:'training',level:36,target:36,success:true,seconds:420,trainingSets:4,trainingRepsPerSet:16,trainingRestSeconds:90}]};
+            await context.addInitScript(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:'baemilgi2000-ios-v1',value:state});
+            page=await context.newPage();
+            await page.goto('http://127.0.0.1:8093',{waitUntil:'networkidle'});
+            await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
+            await page.getByRole('tab',{name:'퀘스트'}).click();
+            await page.getByText('QUEST MAP',{exact:true}).waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-polished/02-quests.png'});
+            await page.getByRole('button',{name:'정보 및 설정'}).click();
+            await page.getByRole('button',{name:'정보 닫기'}).waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-polished/03-info.png'});
+            await context.close();
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Upload polished screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: baemilgi-polished-ui
+          path: /tmp/baemilgi-polished/*.png
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Commit validated polish
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add App.tsx src/Onboarding.tsx src/styles.ts
+          git commit -m 'Polish Baemilgi onboarding and info sheet'
+          git push origin HEAD:main
