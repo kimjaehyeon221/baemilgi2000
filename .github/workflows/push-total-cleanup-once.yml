@@ -48,15 +48,9 @@ jobs:
           );
 
           replaceOnce(
-          `function parsePositiveInt(value: string) {
-            const number = Number(value.replace(/[^0-9]/g, ''));
-            if (!Number.isFinite(number) || number <= 0) return null;
-            return Math.floor(number);
-          }
-
-          `,
-          '',
-          'unused manual parser',
+            "function parsePositiveInt(value: string) {\n  const number = Number(value.replace(/[^0-9]/g, ''));\n  if (!Number.isFinite(number) || number <= 0) return null;\n  return Math.floor(number);\n}\n\n",
+            "",
+            'unused manual parser',
           );
 
           replaceOnce(
@@ -66,110 +60,49 @@ jobs:
           );
 
           replaceOnce(
-          `  const [screen, setScreen] = useState<Screen>('home');
-            const [customValue, setCustomValue] = useState('');
-            const [existingValue, setExistingValue] = useState('');
-            const [privacyOpen, setPrivacyOpen] = useState(false);
-            const [editingId, setEditingId] = useState<string | null>(null);
-            const [editingValue, setEditingValue] = useState('');`,
-          `  const [screen, setScreen] = useState<Screen>('home');
-            const [privacyOpen, setPrivacyOpen] = useState(false);`,
-          'unused manual input state',
+            "  const [screen, setScreen] = useState<Screen>('home');\n  const [customValue, setCustomValue] = useState('');\n  const [existingValue, setExistingValue] = useState('');\n  const [privacyOpen, setPrivacyOpen] = useState(false);\n  const [editingId, setEditingId] = useState<string | null>(null);\n  const [editingValue, setEditingValue] = useState('');",
+            "  const [screen, setScreen] = useState<Screen>('home');\n  const [privacyOpen, setPrivacyOpen] = useState(false);",
+            'unused manual input state',
           );
 
-          const oldBrickWall = `function BrickWall({ filledBricks, compact = false }: { filledBricks: number; compact?: boolean }) {
-            const visibleFilled = Math.min(Math.max(0, filledBricks), compact ? 16 : 160);
-            const minimumSlots = compact ? 16 : 28;
-            const capacity = Math.max(minimumSlots, Math.ceil((visibleFilled + (compact ? 4 : 12)) / 4) * 4);
-            const rows = Math.ceil(capacity / 4);
-
-            return (
-              <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
-                {Array.from({ length: rows }, (_, visualRow) => {
-                  const rowFromBottom = rows - 1 - visualRow;
-                  return (
-                    <View key={visualRow} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
-                      {Array.from({ length: 4 }, (_, brickIndex) => {
-                        const brickNumber = rowFromBottom * 4 + brickIndex;
-                        const filled = brickNumber < visibleFilled;
-                        return (
-                          <View
-                            key={\`${visualRow}-\${brickIndex}\`}
-                            style={[
-                              styles.brick,
-                              compact && styles.brickCompact,
-                              filled ? styles.brickFilled : styles.brickEmpty,
-                              filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
-                              filled && brickNumber % 5 === 2 && styles.brickFilledDark,
-                            ]}
-                          />
-                        );
-                      })}
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          }`;
-
-          const newBrickWall = `function BrickWall({ filledBricks, compact = false }: { filledBricks: number; compact?: boolean }) {
-            const visibleFilled = Math.min(Math.max(0, filledBricks), compact ? 16 : 160);
-            const minimumSlots = compact ? 16 : 28;
-            const capacity = Math.max(minimumSlots, Math.ceil((visibleFilled + (compact ? 4 : 12)) / 4) * 4);
-            const rows = Math.ceil(capacity / 4);
-
-            return (
-              <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
-                {Array.from({ length: rows }, (_, rowFromBottom) => (
-                  <View key={rowFromBottom} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
-                    {Array.from({ length: 4 }, (_, brickIndex) => {
-                      const brickNumber = rowFromBottom * 4 + brickIndex;
-                      const filled = brickNumber < visibleFilled;
-                      return (
-                        <View
-                          key={\`${rowFromBottom}-\${brickIndex}\`}
-                          style={[
-                            styles.brick,
-                            compact && styles.brickCompact,
-                            filled ? styles.brickFilled : styles.brickEmpty,
-                            filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
-                            filled && brickNumber % 5 === 2 && styles.brickFilledDark,
-                          ]}
-                        />
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-            );
-          }`;
-          replaceOnce(oldBrickWall, newBrickWall, 'bottom-up brick wall');
-
+          replaceOnce(
+            "      {Array.from({ length: rows }, (_, visualRow) => {",
+            "      {Array.from({ length: rows }, (_, rowFromBottom) => {",
+            'brick row index',
+          );
+          replaceOnce(
+            "        const rowFromBottom = rows - 1 - visualRow;\n",
+            "",
+            'old visual row inversion',
+          );
+          replaceOnce(
+            "          <View key={visualRow} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>",
+            "          <View key={rowFromBottom} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>",
+            'brick row key',
+          );
+          replaceOnce(
+            "                  key={`${visualRow}-${brickIndex}`}",
+            "                  key={`${rowFromBottom}-${brickIndex}`}",
+            'brick key',
+          );
           replaceOnce(
             "  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2 },",
             "  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2, flexDirection: 'column-reverse' },",
             'bottom-up wall layout',
           );
 
-          const obsoleteManualStyles = `  manualSection: { marginTop: 20, borderTopWidth: 2, borderColor: INK, paddingTop: 14 },
-            sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-            sectionLabel: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-            sectionMeta: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1.0 },
-            quickRow: { marginTop: 11, flexDirection: 'row', gap: 7 },
-            quickButton: { flex: 1, height: 48, backgroundColor: BG, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
-            quickButtonPressed: { backgroundColor: BRICK },
-            quickButtonText: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
-            customRow: { marginTop: 8, flexDirection: 'row', gap: 8 },
-            customInput: { flex: 1, minHeight: 48, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 12, color: INK, fontSize: 16, fontWeight: '800' },
-            customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
-            customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },`;
-
-          if (s.includes(obsoleteManualStyles)) {
-            s = s.replace(obsoleteManualStyles,
-          `  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-            sectionLabel: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-            sectionMeta: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1.0 },`);
-          }
+          const manualStyles = [
+            "  manualSection: { marginTop: 20, borderTopWidth: 2, borderColor: INK, paddingTop: 14 },\n",
+            "  quickRow: { marginTop: 11, flexDirection: 'row', gap: 7 },\n",
+            "  quickButton: { flex: 1, height: 48, backgroundColor: BG, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },\n",
+            "  quickButtonPressed: { backgroundColor: BRICK },\n",
+            "  quickButtonText: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },\n",
+            "  customRow: { marginTop: 8, flexDirection: 'row', gap: 8 },\n",
+            "  customInput: { flex: 1, minHeight: 48, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 12, color: INK, fontSize: 16, fontWeight: '800' },\n",
+            "  customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },\n",
+            "  customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },\n",
+          ];
+          for (const style of manualStyles) s = s.replace(style, '');
 
           if (s === original) throw new Error('No cleanup changes were applied');
           fs.writeFileSync(path, s);
