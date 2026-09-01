@@ -16,11 +16,10 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
-type EntrySource = 'pocket' | 'manual';
+type EntrySource = 'pocket' | 'legacy';
 type SensitivityKey = 'high' | 'medium' | 'low';
 type Screen = 'home' | 'wall' | 'session' | 'history';
 type SessionStatus = 'countdown' | 'running' | 'confirm';
@@ -111,7 +110,7 @@ function safeEntry(raw: any): Entry | null {
       ? raw.id
       : `${created.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
     amount,
-    source: raw?.source === 'pocket' ? 'pocket' : 'manual',
+    source: raw?.source === 'pocket' ? 'pocket' : 'legacy',
     detectedAmount: Number.isFinite(Number(raw?.detectedAmount)) ? Math.max(0, Math.floor(Number(raw.detectedAmount))) : undefined,
     date: typeof raw?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.date)
       ? raw.date
@@ -170,16 +169,16 @@ function BrickWall({ filledBricks, compact = false }: { filledBricks: number; co
 
   return (
     <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
-      {Array.from({ length: rows }, (_, visualRow) => {
+      {Array.from({ length: rows }, (_, rowFromBottom) => {
         const rowFromBottom = rows - 1 - visualRow;
         return (
-          <View key={visualRow} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
+          <View key={rowFromBottom} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
             {Array.from({ length: 4 }, (_, brickIndex) => {
               const brickNumber = rowFromBottom * 4 + brickIndex;
               const filled = brickNumber < visibleFilled;
               return (
                 <View
-                  key={`${visualRow}-${brickIndex}`}
+                  key={`${rowFromBottom}-${brickIndex}`}
                   style={[
                     styles.brick,
                     compact && styles.brickCompact,
@@ -223,11 +222,7 @@ export default function App() {
   const [state, setState] = useState<PersistedState>(initialState);
   const [loaded, setLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>('home');
-  const [customValue, setCustomValue] = useState('');
-  const [existingValue, setExistingValue] = useState('');
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState('');
 
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('countdown');
   const [countdown, setCountdown] = useState(10);
@@ -1001,7 +996,7 @@ const styles = StyleSheet.create({
   pressed: { transform: [{ scale: 0.985 }], opacity: 0.9 },
 
   // Brick wall primitives
-  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2 },
+  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2, flexDirection: 'column-reverse' },
   wallCanvasCompact: { backgroundColor: '#2A2927', paddingVertical: 3, opacity: 0.95 },
   brickRow: { width: '100%', flexDirection: 'row', gap: 2, paddingHorizontal: 2 },
   brickRowOffset: { paddingHorizontal: 24 },
@@ -1081,18 +1076,9 @@ const styles = StyleSheet.create({
   pocketButtonText: { marginTop: 3, color: BG, fontSize: 21, fontWeight: '900', letterSpacing: 0.7 },
   sensorOrb: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: SENSOR, alignItems: 'center', justifyContent: 'center' },
   sensorOrbDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: SENSOR },
-  manualSection: { marginTop: 20, borderTopWidth: 2, borderColor: INK, paddingTop: 14 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionLabel: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
   sectionMeta: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1.0 },
-  quickRow: { marginTop: 11, flexDirection: 'row', gap: 7 },
-  quickButton: { flex: 1, height: 48, backgroundColor: BG, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
-  quickButtonPressed: { backgroundColor: BRICK },
-  quickButtonText: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  customRow: { marginTop: 8, flexDirection: 'row', gap: 8 },
-  customInput: { flex: 1, minHeight: 48, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 12, color: INK, fontSize: 16, fontWeight: '800' },
-  customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
-  customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },
   homeFootnote: { marginTop: 17, color: MUTED, fontSize: 10, lineHeight: 16, fontWeight: '600' },
   trustedRecordNote: { marginTop: 20, paddingTop: 18, borderTopWidth: 1, borderColor: LINE },
   trustedRecordLabel: { color: BRICK_DARK, fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
