@@ -1,0 +1,86 @@
+name: Fix Baemilgi App Availability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-fix-availability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  availability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ASC_BYPASS_KEYCHAIN: '1'
+      ASC_NO_UPDATE: '1'
+      ASC_APP_ID: '6806588875'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: rudrankriyam/setup-asc@v1
+      - name: Configure asc credentials
+        run: |
+          echo "ASC_PRIVATE_KEY_B64=$(printf '%s' "$ASC_API_KEY_P8" | base64 -w0)" >> "$GITHUB_ENV"
+      - name: Bootstrap worldwide availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          asc territories list --paginate --output json > /tmp/territories.json
+          TERRITORIES=$(node <<'NODE'
+          const fs=require('fs');
+          const root=JSON.parse(fs.readFileSync('/tmp/territories.json','utf8'));
+          const found=new Set();
+          const walk=v=>{
+            if(Array.isArray(v)) return v.forEach(walk);
+            if(!v||typeof v!=='object') return;
+            if(typeof v.id==='string' && /^[A-Z]{3}$/.test(v.id)) found.add(v.id);
+            for(const x of Object.values(v)) walk(x);
+          };
+          walk(root);
+          const ids=[...found].sort();
+          if(ids.length<100) throw new Error('Unexpected territory count '+ids.length);
+          process.stdout.write(ids.join(','));
+          NODE
+          )
+          echo "Territory count: $(printf '%s' "$TERRITORIES" | tr ',' '\n' | wc -l)"
+          if asc pricing availability view --app "$ASC_APP_ID" --output json >/tmp/current.json 2>/tmp/current.err; then
+            asc pricing availability edit --app "$ASC_APP_ID" --territory "$TERRITORIES" --available true --available-in-new-territories true
+          else
+            asc pricing availability create --app "$ASC_APP_ID" --territory "$TERRITORIES" --available true --available-in-new-territories true
+          fi
+      - name: Re-run submission health
+        shell: bash
+        run: |
+          set +e
+          mkdir -p docs
+          {
+            echo '# availability'
+            asc pricing availability view --app "$ASC_APP_ID" --output table
+            echo "EXIT=$?"
+            echo
+            echo '# validate'
+            asc validate --app "$ASC_APP_ID" --version 1.0 --platform IOS --output table
+            echo "EXIT=$?"
+            echo
+            echo '# review doctor'
+            asc review doctor --app "$ASC_APP_ID" --version 1.0 --platform IOS --output table
+            echo "EXIT=$?"
+          } > docs/BAEMILGI_AVAILABILITY_AND_HEALTH.txt 2>&1
+          cat docs/BAEMILGI_AVAILABILITY_AND_HEALTH.txt
+          exit 0
+      - name: Persist result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_AVAILABILITY_AND_HEALTH.txt
+          git commit -m 'Record Baemilgi availability readiness' || exit 0
+          git push origin HEAD:main
