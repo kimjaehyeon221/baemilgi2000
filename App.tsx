@@ -92,12 +92,6 @@ function formatNumber(value: number) {
   return Math.max(0, Math.round(value)).toLocaleString('en-US');
 }
 
-function parsePositiveInt(value: string) {
-  const number = Number(value.replace(/[^0-9]/g, ''));
-  if (!Number.isFinite(number) || number <= 0) return null;
-  return Math.floor(number);
-}
-
 function safeEntry(raw: any): Entry | null {
   const amount = Math.floor(Number(raw?.amount));
   const createdAt = typeof raw?.createdAt === 'string' && !Number.isNaN(Date.parse(raw.createdAt))
@@ -170,7 +164,6 @@ function BrickWall({ filledBricks, compact = false }: { filledBricks: number; co
   return (
     <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
       {Array.from({ length: rows }, (_, rowFromBottom) => {
-        const rowFromBottom = rows - 1 - visualRow;
         return (
           <View key={rowFromBottom} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
             {Array.from({ length: 4 }, (_, brickIndex) => {
