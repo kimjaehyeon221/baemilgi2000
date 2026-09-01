@@ -1,0 +1,80 @@
+name: Complete Baemilgi Store Configuration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-store-configuration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Set category, content rights, and free pricing
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806588875'
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url'),now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const api=async(route,method='GET',body)=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com'+route,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+            const text=await r.text();const j=text?JSON.parse(text):{};
+            if(!r.ok)throw new Error(method+' '+route+' '+r.status+' '+JSON.stringify(j));
+            return j;
+          };
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            await api('/v1/apps/'+appId,'PATCH',{data:{type:'apps',id:appId,attributes:{contentRightsDeclaration:'DOES_NOT_USE_THIRD_PARTY_CONTENT'}}});
+            const infos=await api('/v1/apps/'+appId+'/appInfos?limit=10');
+            const cats=await api('/v1/appCategories?filter%5Bplatforms%5D=IOS&limit=200');
+            const category=(cats.data||[]).find(c=>c.id==='HEALTH_AND_FITNESS');
+            if(!category)throw new Error('HEALTH_AND_FITNESS category not found');
+            for(const info of (infos.data||[])){
+              await api('/v1/appInfos/'+info.id,'PATCH',{data:{type:'appInfos',id:info.id,relationships:{primaryCategory:{data:{type:'appCategories',id:category.id}}}}});
+            }
+            let pricing='existing';
+            let schedule;
+            try{schedule=await api('/v1/apps/'+appId+'/appPriceSchedule');}catch(e){
+              const points=await api('/v1/apps/'+appId+'/appPricePoints?filter%5Bterritory%5D=KOR&limit=200');
+              const free=(points.data||[]).find(p=>Number(p.attributes?.customerPrice)===0);
+              if(!free)throw new Error('Free KOR price point not found');
+              schedule=await api('/v1/appPriceSchedules','POST',{data:{type:'appPriceSchedules',relationships:{
+                app:{data:{type:'apps',id:appId}},
+                baseTerritory:{data:{type:'territories',id:'KOR'}},
+                manualPrices:{data:[{type:'appPrices',id:'${free-price}'}]}
+              }},included:[{type:'appPrices',id:'${free-price}',attributes:{startDate:null},relationships:{appPricePoint:{data:{type:'appPricePoints',id:free.id}}}}]});
+              pricing='created-free';
+            }
+            const result={configuredAt:new Date().toISOString(),appId,primaryCategory:category.id,contentRightsDeclaration:'DOES_NOT_USE_THIRD_PARTY_CONTENT',pricing,priceScheduleId:schedule.data?.id||null};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_STORE_CONFIGURATION.json',JSON.stringify(result,null,2)+'\n');
+            console.log(JSON.stringify(result,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist configuration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_STORE_CONFIGURATION.json
+          git commit -m 'Record Baemilgi store configuration' || exit 0
+          git push origin HEAD:main
