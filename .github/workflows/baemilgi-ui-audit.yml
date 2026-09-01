@@ -1,10 +1,12 @@
 name: Capture Baemilgi UI Audit
 
-# Render actual 440x956 phone viewport frames, including the automatic brand intro.
+# Render the current onboarding and release screens at the target phone viewport.
 on:
   push:
     branches: [main]
     paths:
+      - 'src/Onboarding.tsx'
+      - 'assets/onboarding-dojo-v1.jpg'
       - '.github/workflows/baemilgi-ui-audit.yml'
   workflow_dispatch:
 
@@ -60,15 +62,14 @@ jobs:
             let context=await browser.newContext(base);
             let page=await context.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
-            await page.waitForTimeout(250);
-            await page.screenshot({path:'docs/ui-audit/01-intro-logo.png'});
-            await page.waitForTimeout(500);
-            await page.screenshot({path:'docs/ui-audit/02-intro-gi.png'});
-            await page.waitForTimeout(500);
-            await page.screenshot({path:'docs/ui-audit/03-intro-motion.png'});
-            await page.waitForTimeout(800);
-            await page.getByText('어디서 시작할까?', {exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/04-onboarding-choice.png'});
+            await page.getByRole('button',{name:'시작하기'}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/01-onboarding-intro.png'});
+            await page.getByRole('button',{name:'시작하기'}).click();
+            await page.getByText(/배밀기를/).waitFor();
+            await page.screenshot({path:'docs/ui-audit/02-onboarding-choice.png'});
+            await page.getByRole('button',{name:/처음이에요/}).click();
+            await page.getByText('엉덩이를 높여 시작해.',{exact:true}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/03-onboarding-form.png'});
             await context.close();
 
             context=await browser.newContext(base);
@@ -86,21 +87,21 @@ jobs:
             page=await context.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
             await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/05-home.png'});
+            await page.screenshot({path:'docs/ui-audit/04-home.png'});
             await page.getByRole('tab',{name:'퀘스트'}).click();
             await page.getByText('QUEST MAP',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/06-quests.png'});
+            await page.screenshot({path:'docs/ui-audit/05-quests.png'});
             await page.getByRole('tab',{name:'홈'}).click();
             await page.getByRole('button',{name:'START CHALLENGE'}).click();
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/07-challenge.png'});
+            await page.screenshot({path:'docs/ui-audit/06-challenge.png'});
             await page.getByRole('button',{name:'닫기'}).click();
             await page.getByRole('tab',{name:'기록'}).click();
             await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
-            await page.screenshot({path:'docs/ui-audit/08-records.png'});
+            await page.screenshot({path:'docs/ui-audit/07-records.png'});
             await page.getByRole('button',{name:'정보 및 설정'}).click();
             await page.getByRole('button',{name:'정보 닫기'}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/09-info.png'});
+            await page.screenshot({path:'docs/ui-audit/08-info.png'});
             await context.close();
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
@@ -118,5 +119,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/ui-audit/*.png
-          git commit -m 'Refresh Baemilgi brand intro screenshots' || exit 0
+          git commit -m 'Refresh Baemilgi onboarding screenshots' || exit 0
           git push origin HEAD:main
