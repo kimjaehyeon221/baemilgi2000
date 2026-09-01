@@ -1,6 +1,7 @@
 name: EAS OTA Update
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -65,6 +66,6 @@ jobs:
           NODE
 
       - name: Publish production OTA update
-        run: npx eas-cli@latest update --channel production --platform ios --environment production --non-interactive --message "${{ github.event.head_commit.message }}"
+        run: npx eas-cli@latest update --channel production --platform ios --environment production --non-interactive --message "${{ github.event.head_commit.message || 'Manual BAEMILGI production OTA update' }}"
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
