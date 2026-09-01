@@ -1,0 +1,26 @@
+name: PUSH TOTAL Category Once
+on:
+  push:
+    branches: [push-total-rc]
+    paths: ['.github/workflows/push-total-category-once.yml']
+permissions:
+  contents: read
+jobs:
+  category:
+    runs-on: ubuntu-24.04
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Set Health and Fitness
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"; printf '%s' "$ASC_API_KEY_P8" > "$KEY"; chmod 600 "$KEY"; export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b=v=>Buffer.from(v).toString('base64url');function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function a(p,o={}){const h={Authorization:`Bearer ${jwt()}`};if(o.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${p}`,{method:o.method||'GET',headers:h,body:o.body?JSON.stringify(o.body):undefined});const t=await r.text(),j=t?JSON.parse(t):null;if(!r.ok){console.error(JSON.stringify(j));throw Error(`${r.status} ${p}`)}return j}
+          (async()=>{const rel=await a(`/v1/apps/${appId}/relationships/appInfos`),id=rel.data?.[0]?.id;if(!id)throw Error('appInfo missing');await a(`/v1/appInfos/${id}`,{method:'PATCH',body:{data:{type:'appInfos',id,relationships:{primaryCategory:{data:{type:'appCategories',id:'HEALTH_AND_FITNESS'}}}}}});const v=await a(`/v1/appInfos/${id}/relationships/primaryCategory`);console.log('PRIMARY_CATEGORY_ID='+v.data?.id);if(v.data?.id!=='HEALTH_AND_FITNESS')throw Error('category verify failed');console.log('CATEGORY_OK=true')})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
