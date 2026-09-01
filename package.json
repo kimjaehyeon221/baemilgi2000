@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@rive-app/react-native": "^0.4.20",
     "expo": "^57.0.9",
     "expo-asset": "~57.0.15",
     "expo-audio": "57.0.4",
@@ -20,7 +21,8 @@
     "expo-sensors": "~57.0.2",
     "expo-updates": "~57.0.19",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "react-native-nitro-modules": "^0.35.10"
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
