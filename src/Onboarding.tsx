@@ -16,7 +16,6 @@ import {
   Text,
   TextInput,
   View,
-  Vibration,
 } from 'react-native';
 import { useKeepAwake } from 'expo-keep-awake';
 import {
@@ -151,74 +150,113 @@ function MotionSketch({ frame }: { frame: number }) {
 }
 
 function IntroLaunch({ onContinue }: { onContinue: () => void }) {
-  const [opened, setOpened] = useState(false);
-  const press = useRef(new Animated.Value(0)).current;
-  const reveal = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
+  const finishedRef = useRef(false);
 
-  const openQuest = () => {
-    if (opened) return;
-    setOpened(true);
-    Vibration.vibrate(18);
-    Animated.parallel([
-      Animated.spring(press, {
-        toValue: 1,
-        useNativeDriver: true,
-        damping: 10,
-        stiffness: 150,
-        mass: 0.7,
-      }),
-      Animated.timing(reveal, {
-        toValue: 1,
-        duration: 360,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
+  const finish = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    onContinue();
   };
 
-  const markScale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] });
-  const markShift = press.interpolate({ inputRange: [0, 1], outputRange: [0, 16] });
-  const copyShift = reveal.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+  useEffect(() => {
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: 1750,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: true,
+    });
+    animation.start(({ finished }) => {
+      if (finished) finish();
+    });
+    const fallback = setTimeout(finish, 1900);
+    return () => {
+      clearTimeout(fallback);
+      animation.stop();
+    };
+  }, [progress]);
+
+  const logoOpacity = progress.interpolate({
+    inputRange: [0, 0.15, 0.36, 0.48],
+    outputRange: [0, 1, 1, 0],
+    extrapolate: 'clamp',
+  });
+  const logoScale = progress.interpolate({
+    inputRange: [0, 0.2, 0.48],
+    outputRange: [0.86, 1, 0.92],
+    extrapolate: 'clamp',
+  });
+  const giOpacity = progress.interpolate({
+    inputRange: [0.28, 0.45, 0.7, 0.8],
+    outputRange: [0, 1, 1, 0],
+    extrapolate: 'clamp',
+  });
+  const giScale = progress.interpolate({
+    inputRange: [0.28, 0.54, 0.8],
+    outputRange: [0.9, 1.03, 0.95],
+    extrapolate: 'clamp',
+  });
+  const reelOpacity = progress.interpolate({
+    inputRange: [0.48, 0.58, 0.94, 1],
+    outputRange: [0, 1, 1, 0],
+    extrapolate: 'clamp',
+  });
+  const reelX = progress.interpolate({
+    inputRange: [0.5, 1],
+    outputRange: [88, -214],
+    extrapolate: 'clamp',
+  });
+  const titleOpacity = progress.interpolate({
+    inputRange: [0.7, 0.84, 1],
+    outputRange: [0, 1, 1],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.onboarding}>
-        <View style={O.launchTop}>
-          <Text style={O.launchBrand}>BAEMILGI 2000</Text>
-          <Text style={O.launchMeta}>첫 움직임</Text>
+    <SafeAreaView style={O.brandIntroRoot}>
+      <StatusBar barStyle="light-content" />
+      <Pressable
+        onPress={finish}
+        accessibilityRole="button"
+        accessibilityLabel="브랜드 인트로, 탭하여 건너뛰기"
+        style={O.brandIntroPress}
+      >
+        <View style={O.brandIntroTop}>
+          <Text style={O.brandIntroCode}>BAEMILGI / 2000</Text>
+          <Text style={O.brandIntroSkip}>TAP TO SKIP</Text>
         </View>
 
-        <Pressable
-          onPress={openQuest}
-          accessibilityRole="button"
-          accessibilityLabel={opened ? '첫 퀘스트 열림' : '눌러서 첫 퀘스트 열기'}
-          style={({ pressed }) => [O.launchStage, pressed && O.launchPressed]}
-        >
-          <Animated.View style={[O.launchMark, { transform: [{ translateY: markShift }, { scale: markScale }] }]}>
-            <Image source={require('../assets/icon.png')} style={O.launchIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
+        <View style={O.brandIntroStage}>
+          <Animated.View style={[O.brandLogoLockup, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+            <View style={O.brandLogoBar} />
+            <Text style={O.brandLogoWord}>BAEMILGI</Text>
+            <Text style={O.brandLogoNumber}>2000</Text>
           </Animated.View>
-          <Text style={O.launchCounter}>{opened ? '001' : '000'}</Text>
-          <Text style={O.launchPrompt}>{opened ? '첫 기록 준비' : '눌러서 시작'}</Text>
-        </Pressable>
 
-        <View style={O.launchCopyArea}>
-          {opened ? (
-            <Animated.View style={{ opacity: reveal, transform: [{ translateY: copyShift }] }}>
-              <Text style={O.launchTitle}>한 번이 열렸어.</Text>
-              <Text style={O.launchCopy}>지금 가능한 횟수에서 시작해, 다음 한 번으로 이어가.</Text>
-            </Animated.View>
-          ) : (
-            <Text style={O.launchHint}>설명보다 먼저, 화면을 눌러 움직임을 시작해봐.</Text>
-          )}
+          <Animated.View style={[O.giMark, { opacity: giOpacity, transform: [{ scale: giScale }] }]}>
+            <View style={O.giShoulder} />
+            <View style={[O.giLapel, O.giLapelLeft]} />
+            <View style={[O.giLapel, O.giLapelRight]} />
+            <View style={O.giBelt} />
+            <Text style={O.giLabel}>DOJO TRAINING</Text>
+          </Animated.View>
+
+          <Animated.View style={[O.motionReel, { opacity: reelOpacity, transform: [{ translateX: reelX }] }]}>
+            {FORM_ARTWORK.map((source, index) => (
+              <View key={index} style={O.motionReelFrame}>
+                <Image source={source} style={O.motionReelImage} resizeMode="cover" accessibilityIgnoresInvertColors />
+                <View style={O.motionReelShade} />
+                <Text style={O.motionReelIndex}>0{index + 1}</Text>
+              </View>
+            ))}
+          </Animated.View>
         </View>
 
-        <Button
-          label={opened ? '내 기록으로 시작' : '첫 퀘스트 열기'}
-          onPress={opened ? onContinue : openQuest}
-          accessibilityHint={opened ? '시작 방식 선택으로 이동합니다' : '첫 퀘스트를 열고 시작 기록 준비 상태로 전환합니다'}
-        />
-      </View>
+        <Animated.View style={[O.brandIntroBottom, { opacity: titleOpacity }]}>
+          <Text style={O.brandIntroTitle}>한 번씩, 2,000까지.</Text>
+          <Text style={O.brandIntroSub}>HINDU PUSH-UP · QUEST 001—200</Text>
+        </Animated.View>
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -454,19 +492,31 @@ function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinis
 
 
 const O = StyleSheet.create({
-  launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#D7D3CA' },
-  launchBrand: { color: '#121212', fontFamily: 'Menlo', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
-  launchMeta: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
-  launchStage: { flex: 1, minHeight: 390, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#D7D3CA' },
-  launchPressed: { opacity: 0.82 },
-  launchMark: { width: 184, height: 184, marginBottom: 14, borderRadius: 42, overflow: 'hidden' },
-  launchIcon: { width: '100%', height: '100%' },
-  launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 72, lineHeight: 80, fontWeight: '800', letterSpacing: -2.2, fontVariant: ['tabular-nums'] },
-  launchPrompt: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.05, marginTop: 3 },
-  launchCopyArea: { minHeight: 104, justifyContent: 'center', paddingVertical: 16 },
-  launchTitle: { color: '#121212', fontSize: 31, lineHeight: 40, fontWeight: '800', letterSpacing: -0.8 },
-  launchCopy: { color: '#686A68', fontSize: 14, lineHeight: 22, marginTop: 7, maxWidth: 310 },
-  launchHint: { color: '#686A68', fontSize: 13, lineHeight: 21, maxWidth: 300 },
+  brandIntroRoot: { flex: 1, backgroundColor: '#111317' },
+  brandIntroPress: { flex: 1, paddingHorizontal: 22, paddingBottom: 24, overflow: 'hidden' },
+  brandIntroTop: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#34383E' },
+  brandIntroCode: { color: '#FAF9F6', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.25 },
+  brandIntroSkip: { color: '#777D86', fontFamily: 'Menlo', fontSize: 8, fontWeight: '900', letterSpacing: 1.15 },
+  brandIntroStage: { flex: 1, minHeight: 520, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  brandLogoLockup: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  brandLogoBar: { width: 54, height: 5, backgroundColor: '#1B365D', marginBottom: 18 },
+  brandLogoWord: { color: '#FAF9F6', fontFamily: 'Menlo', fontSize: 16, fontWeight: '900', letterSpacing: 3 },
+  brandLogoNumber: { color: '#FAF9F6', fontFamily: 'Avenir Next', fontSize: 76, lineHeight: 84, fontWeight: '800', letterSpacing: -3, marginTop: 2 },
+  giMark: { position: 'absolute', width: 210, height: 230, alignItems: 'center', justifyContent: 'center' },
+  giShoulder: { position: 'absolute', top: 25, width: 158, height: 162, backgroundColor: '#F3F1EA', borderRadius: 9 },
+  giLapel: { position: 'absolute', top: 36, width: 34, height: 126, backgroundColor: '#DDD8CE', borderRadius: 4 },
+  giLapelLeft: { left: 75, transform: [{ rotate: '30deg' }] },
+  giLapelRight: { right: 75, transform: [{ rotate: '-30deg' }] },
+  giBelt: { position: 'absolute', top: 155, width: 178, height: 20, backgroundColor: '#1B365D' },
+  giLabel: { position: 'absolute', bottom: 16, color: '#AAB4C1', fontFamily: 'Menlo', fontSize: 9, fontWeight: '900', letterSpacing: 1.25 },
+  motionReel: { position: 'absolute', left: 0, right: -240, height: 236, flexDirection: 'row', gap: 10, alignItems: 'center' },
+  motionReelFrame: { width: 206, height: 230, overflow: 'hidden', backgroundColor: '#0A0B0D', position: 'relative' },
+  motionReelImage: { width: '100%', height: '100%' },
+  motionReelShade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#06101D38' },
+  motionReelIndex: { position: 'absolute', left: 12, bottom: 10, color: '#FAF9F6', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  brandIntroBottom: { minHeight: 104, borderTopWidth: 1, borderTopColor: '#34383E', justifyContent: 'center' },
+  brandIntroTitle: { color: '#FAF9F6', fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.6 },
+  brandIntroSub: { color: '#7F8FA4', fontFamily: 'Menlo', fontSize: 9, fontWeight: '900', letterSpacing: 1.05, marginTop: 8 },
   guideBody: { flex: 1, paddingTop: 28 },
   guideProgress: { flexDirection: 'row', gap: 6, marginBottom: 25 },
   guideProgressItem: { flex: 1, height: 3, backgroundColor: '#D7D3CA' },
