@@ -1,0 +1,65 @@
+name: PUSH TOTAL EAS Submit Direct Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-eas-submit-direct-once.yml
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BUILD_ID: 0a9267da-d525-445e-a271-e196c6e7483a
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.13.1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Prepare local App Store Connect key and submit profile
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          export KEY_PATH
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'eas.json';
+          const cfg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          cfg.submit ||= {};
+          cfg.submit.production ||= {};
+          cfg.submit.production.ios ||= {};
+          Object.assign(cfg.submit.production.ios, {
+            ascAppId: '6806938654',
+            ascApiKeyPath: process.env.KEY_PATH,
+            ascApiKeyIssuerId: process.env.ASC_ISSUER_ID,
+            ascApiKeyId: process.env.ASC_KEY_ID,
+          });
+          fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+          console.log('LOCAL_ASC_SUBMIT_PROFILE_READY');
+          NODE
+
+      - name: Submit production build through EAS
+        run: eas submit --platform ios --id "$BUILD_ID" --profile production --non-interactive --wait --verbose
