@@ -150,7 +150,7 @@ function Intro({ onContinue }: { onContinue: () => void }) {
       <StatusBar barStyle="light-content" />
       <Image
         source={require('../assets/onboarding-dojo-v1.jpg')}
-        style={StyleSheet.absoluteFill}
+        style={O.heroImage}
         resizeMode="cover"
         blurRadius={2}
         accessibilityIgnoresInvertColors
@@ -170,6 +170,9 @@ function Intro({ onContinue }: { onContinue: () => void }) {
               엉덩이를 높인 자세에서 가슴을 앞으로 밀어낸 뒤, 다시 뒤·위로 돌아오는 전신 운동입니다.
             </Text>
             <Text style={O.heroGoal}>200개의 퀘스트. 마지막은 2,000개.</Text>
+            <Text style={O.heroOrigin}>
+              2,000은 전설적인 레슬러 Great Gama의 배밀기(Dand) 고반복 기록에서 가져온 상징적인 목표입니다.
+            </Text>
           </View>
 
           <View style={O.heroAction}>
@@ -333,6 +336,7 @@ export function Onboarding({ onDone }: { onDone: (next: AppState) => void }) {
 
 const O = StyleSheet.create({
   heroRoot: { flex: 1, backgroundColor: '#0A0C0F' },
+  heroImage: { position: 'absolute', top: -76, right: 0, bottom: 76, left: 0 },
   heroShade: {
     position: 'absolute',
     top: 0,
@@ -388,6 +392,14 @@ const O = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '900',
     marginTop: 14,
+  },
+  heroOrigin: {
+    color: '#C9CDD2',
+    fontSize: 11,
+    lineHeight: 17,
+    fontWeight: '700',
+    maxWidth: 330,
+    marginTop: 8,
   },
   heroAction: { paddingTop: 16, borderTopWidth: 1, borderTopColor: '#FFFFFF2E' },
   guideBody: { flex: 1, paddingTop: 28 },
