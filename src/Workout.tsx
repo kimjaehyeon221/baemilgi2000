@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   Alert,
   Animated,
+  Easing,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -145,6 +146,7 @@ export function Challenge({
   const [flash, setFlash] = useState<'cleared' | 'recorded' | null>(null);
   const [flashValue, setFlashValue] = useState(target);
   const [saveFailed, setSaveFailed] = useState(false);
+  const countdownPulse = useRef(new Animated.Value(0)).current;
   const runningSinceRef = useRef<number | null>(null);
   const resultLockedRef = useRef(false);
   const savingRef = useRef(false);
@@ -180,21 +182,31 @@ export function Challenge({
 
   useEffect(() => {
     if (phase !== 'countdown') return;
+    countdownPulse.setValue(0);
+    Animated.timing(countdownPulse, {
+      toValue: 1,
+      duration: countdown === 0 ? 620 : 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
     const id = setTimeout(() => {
-      if (countdown <= 1) {
+      if (countdown <= 0) {
         accumulatedMsRef.current = 0;
         runningSinceRef.current = Date.now();
         setSeconds(0);
-        setCountdown(0);
         setPhase('active');
         Vibration.vibrate(35);
         return;
       }
       setCountdown(countdown - 1);
       Vibration.vibrate(15);
-    }, 850);
-    return () => clearTimeout(id);
-  }, [phase, countdown]);
+    }, countdown === 0 ? 650 : 1000);
+    return () => {
+      clearTimeout(id);
+      countdownPulse.stopAnimation();
+    };
+  }, [phase, countdown, countdownPulse]);
 
   const beginCountdown = () => {
     setCountdown(3);
@@ -311,11 +323,32 @@ export function Challenge({
             style={S.countdownCenter}
             accessible
             accessibilityLiveRegion="assertive"
-            accessibilityLabel={`${countdown}초 뒤 시작`}
+            accessibilityLabel={countdown === 0 ? '시작' : `${countdown}초 뒤 시작`}
           >
             <Text style={S.countdownLabel}>목표 {target}개</Text>
-            <Text style={S.countdownValue}>{countdown}</Text>
-            <Text style={S.countdownHint}>자세를 잡아.</Text>
+            <Animated.Text
+              style={[
+                S.countdownValue,
+                countdown === 0 && S.countdownStart,
+                {
+                  opacity: countdownPulse.interpolate({
+                    inputRange: [0, 0.14, 0.84, 1],
+                    outputRange: [0, 1, 1, 0],
+                  }),
+                  transform: [
+                    {
+                      scale: countdownPulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.72, 1.08],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {countdown === 0 ? 'START' : countdown}
+            </Animated.Text>
+            <Text style={S.countdownHint}>{countdown === 0 ? '도전 시작.' : '자세를 잡아.'}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -578,6 +611,7 @@ const S = StyleSheet.create({
   countdownCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 64 },
   countdownLabel: { color: '#A9B9CF', fontFamily: mono, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },
   countdownValue: { color: '#FAF9F6', fontFamily: metric, fontSize: 160, lineHeight: 190, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  countdownStart: { fontFamily: headline, fontSize: 70, lineHeight: 94, fontWeight: '900', letterSpacing: 4 },
   countdownHint: { color: '#8D9192', fontFamily: body, fontSize: 14, lineHeight: 22 },
 
   matFrame: { flex: 1, maxHeight: 460, minHeight: 360, marginTop: 16, backgroundColor: 'transparent', position: 'relative', justifyContent: 'center', alignItems: 'center' },

@@ -79,7 +79,11 @@ jobs:
             await page.screenshot({path:'docs/ui-audit/04-beginner-ready.png'});
             await page.getByRole('button',{name:'3 2 1 뒤 도전 시작'}).click();
             await page.getByText('자세를 잡아.',{exact:true}).waitFor();
+            await page.waitForTimeout(240);
             await page.screenshot({path:'docs/ui-audit/04a-beginner-countdown.png'});
+            await page.getByText('START',{exact:true}).waitFor();
+            await page.waitForTimeout(180);
+            await page.screenshot({path:'docs/ui-audit/04b-beginner-start.png'});
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
             await page.screenshot({path:'docs/ui-audit/05-beginner-first-challenge.png'});
             await context.close();
