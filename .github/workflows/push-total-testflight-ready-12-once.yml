@@ -1,0 +1,146 @@
+name: PUSH TOTAL TestFlight Ready 12 Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-testflight-ready-12-once.yml
+
+jobs:
+  ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_BUILD_NUMBER: '12'
+      ASC_EXPECTED_BUNDLE_ID: 'com.magpie221.pushtotal'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          test -n "$ASC_API_KEY_P8"
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_ISSUER_ID"
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Wait for build 12 and assign internal tester
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          async function main() {
+            const appId = process.env.ASC_APP_ID;
+            const buildNumber = process.env.ASC_BUILD_NUMBER;
+            const expectedBundleId = process.env.ASC_EXPECTED_BUNDLE_ID;
+            const keyId = process.env.ASC_KEY_ID;
+            const issuerId = process.env.ASC_ISSUER_ID;
+            const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+
+            const b64url = value => Buffer.from(value).toString('base64url');
+            const now = Math.floor(Date.now() / 1000);
+            const unsigned = `${b64url(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' }))}.${b64url(JSON.stringify({ iss: issuerId, iat: now - 5, exp: now + 1190, aud: 'appstoreconnect-v1' }))}`;
+            const signature = crypto.sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+            const token = `${unsigned}.${signature}`;
+
+            async function asc(path, options = {}) {
+              const method = options.method || 'GET';
+              const headers = { Authorization: `Bearer ${token}` };
+              if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+                method,
+                headers,
+                body: options.body === undefined ? undefined : JSON.stringify(options.body),
+              });
+              const text = await res.text();
+              let body = null;
+              if (text) {
+                try { body = JSON.parse(text); } catch { body = { raw: text }; }
+              }
+              if (!res.ok) throw new Error(`ASC ${res.status} ${method} ${path}\n${JSON.stringify(body)}`);
+              return body;
+            }
+
+            const app = await asc(`/v1/apps/${appId}?fields%5Bapps%5D=name,bundleId`);
+            const appSummary = { id: app.data.id, name: app.data.attributes.name, bundleId: app.data.attributes.bundleId };
+            console.log('APP', JSON.stringify(appSummary));
+            if (appSummary.bundleId !== expectedBundleId) throw new Error(`Bundle ID mismatch: expected ${expectedBundleId}, got ${appSummary.bundleId}`);
+
+            let build = null;
+            for (let attempt = 1; attempt <= 36; attempt++) {
+              const builds = await asc(`/v1/builds?filter%5Bapp%5D=${appId}&filter%5Bversion%5D=${encodeURIComponent(buildNumber)}&fields%5Bbuilds%5D=version,processingState,expired&limit=10`);
+              build = builds.data?.[0] || null;
+              if (!build) {
+                console.log(`BUILD_WAIT ${attempt}/36 not-visible`);
+              } else {
+                console.log(`BUILD_WAIT ${attempt}/36 ${build.attributes.processingState}`);
+                if (build.attributes.expired) throw new Error('PUSH TOTAL build 12 is expired');
+                if (build.attributes.processingState === 'VALID') break;
+                if (build.attributes.processingState === 'INVALID') throw new Error('PUSH TOTAL build 12 is INVALID');
+              }
+              if (attempt < 36) await sleep(15000);
+            }
+
+            if (!build || build.attributes.processingState !== 'VALID') {
+              throw new Error(`PUSH TOTAL build 12 did not become VALID: ${build?.attributes?.processingState || 'not-visible'}`);
+            }
+            console.log('BUILD_VALID', JSON.stringify({ id: build.id, version: build.attributes.version }));
+
+            const users = await asc(`/v1/users?fields%5Busers%5D=username,roles,allAppsVisible&limit=200`);
+            const holders = (users.data || []).filter(u => (u.attributes?.roles || []).includes('ACCOUNT_HOLDER'));
+            if (holders.length !== 1) throw new Error(`Expected one Account Holder, found ${holders.length}`);
+            const holder = holders[0];
+            if (!holder.attributes?.allAppsVisible) throw new Error('Account Holder does not have access to all apps');
+
+            const testers = await asc(`/v1/betaTesters?filter%5Bemail%5D=${encodeURIComponent(holder.attributes.username)}&fields%5BbetaTesters%5D=state,inviteType,email&limit=10`);
+            const tester = testers.data?.[0];
+            if (!tester) throw new Error('Existing beta tester for Account Holder not found');
+
+            const current = await asc(`/v1/builds/${build.id}/individualTesters?fields%5BbetaTesters%5D=state,inviteType&limit=200`);
+            const alreadyAssigned = (current.data || []).some(t => t.id === tester.id);
+            if (!alreadyAssigned) {
+              await asc(`/v1/builds/${build.id}/relationships/individualTesters`, {
+                method: 'POST',
+                body: { data: [{ type: 'betaTesters', id: tester.id }] },
+              });
+              console.log('INDIVIDUAL_TESTER_ASSIGN_REQUEST_ACCEPTED');
+            } else {
+              console.log('INDIVIDUAL_TESTER_ALREADY_ASSIGNED');
+            }
+
+            const after = await asc(`/v1/builds/${build.id}/individualTesters?fields%5BbetaTesters%5D=state,inviteType&limit=200`);
+            const assigned = (after.data || []).find(t => t.id === tester.id);
+            if (!assigned) throw new Error('Account Holder beta tester is still not assigned to build 12');
+            console.log('TESTFLIGHT_READY', JSON.stringify({
+              buildId: build.id,
+              buildNumber: build.attributes.version,
+              testerCount: (after.data || []).length,
+              testerState: assigned.attributes?.state || null,
+              inviteType: assigned.attributes?.inviteType || null,
+            }));
+          }
+
+          main().catch(error => {
+            console.error(error.stack || error.message || String(error));
+            process.exit(1);
+          });
+          NODE
