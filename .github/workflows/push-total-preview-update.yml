@@ -1,0 +1,74 @@
+name: PUSH TOTAL Preview Update
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - App.tsx
+      - index.js
+      - src/**
+      - assets/**
+      - '!assets/icon.png'
+
+concurrency:
+  group: push-total-preview-update
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check OTA safety
+        id: safety
+        shell: bash
+        run: |
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          git diff --name-only "$BEFORE" "$AFTER" | tee /tmp/changed-files.txt
+
+          if grep -Eq '^(app\.json|eas\.json|package\.json|package-lock\.json|ios/|android/|assets/icon\.png$)' /tmp/changed-files.txt; then
+            echo "safe=false" >> "$GITHUB_OUTPUT"
+            echo "Native/config dependency change detected; skipping OTA update."
+          else
+            echo "safe=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.safety.outputs.safe == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.safety.outputs.safe == 'true'
+        run: npm ci
+
+      - name: Validate update
+        if: steps.safety.outputs.safe == 'true'
+        run: |
+          npm run typecheck
+          npm run doctor
+          npx expo config --type public >/dev/null
+
+      - name: Setup Expo and EAS
+        if: steps.safety.outputs.safe == 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish preview update
+        if: steps.safety.outputs.safe == 'true'
+        env:
+          CI: '1'
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          eas update --channel preview --platform ios --message "push-total-rc ${SHORT_SHA}" --non-interactive
