@@ -7,6 +7,7 @@ on:
     paths:
       - 'App.tsx'
       - 'src/Onboarding.tsx'
+      - 'src/Workout.tsx'
       - 'assets/onboarding-dojo-v1.jpg'
       - '.github/workflows/baemilgi-ui-audit.yml'
   workflow_dispatch:
@@ -74,8 +75,11 @@ jobs:
             await page.getByRole('button',{name:'다음 동작'}).click();
             await page.getByRole('button',{name:'다음 동작'}).click();
             await page.getByRole('button',{name:'1개 퀘스트 도전'}).click();
+            await page.getByText('아직 시작 전',{exact:true}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/04-beginner-ready.png'});
+            await page.getByRole('button',{name:'3 2 1 뒤 도전 시작'}).click();
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/04-beginner-first-challenge.png'});
+            await page.screenshot({path:'docs/ui-audit/05-beginner-first-challenge.png'});
             await context.close();
 
             context=await browser.newContext(base);
@@ -85,10 +89,13 @@ jobs:
             await page.getByRole('button',{name:/해본 적 있어요/}).click();
             await page.getByRole('textbox',{name:'첫 도전 횟수'}).fill('1350');
             await page.getByRole('button',{name:/개 퀘스트 도전/}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/05-experienced-target-input.png'});
+            await page.screenshot({path:'docs/ui-audit/06-experienced-target-input.png'});
             await page.getByRole('button',{name:/개 퀘스트 도전/}).click();
+            await page.getByText('아직 시작 전',{exact:true}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/07-experienced-ready.png'});
+            await page.getByRole('button',{name:'3 2 1 뒤 도전 시작'}).click();
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/06-experienced-first-challenge.png'});
+            await page.screenshot({path:'docs/ui-audit/08-experienced-first-challenge.png'});
             await context.close();
 
             context=await browser.newContext(base);
@@ -106,21 +113,23 @@ jobs:
             page=await context.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
             await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/07-home.png'});
+            await page.screenshot({path:'docs/ui-audit/09-home.png'});
             await page.getByRole('tab',{name:'퀘스트'}).click();
             await page.getByText('QUEST MAP',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/08-quests.png'});
+            await page.screenshot({path:'docs/ui-audit/10-quests.png'});
             await page.getByRole('tab',{name:'홈'}).click();
             await page.getByRole('button',{name:'START CHALLENGE'}).click();
+            await page.getByText('아직 시작 전',{exact:true}).waitFor();
+            await page.getByRole('button',{name:'3 2 1 뒤 도전 시작'}).click();
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/09-challenge.png'});
+            await page.screenshot({path:'docs/ui-audit/11-challenge.png'});
             await page.getByRole('button',{name:'닫기'}).click();
             await page.getByRole('tab',{name:'기록'}).click();
             await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
-            await page.screenshot({path:'docs/ui-audit/10-records.png'});
+            await page.screenshot({path:'docs/ui-audit/12-records.png'});
             await page.getByRole('button',{name:'정보 및 설정'}).click();
             await page.getByRole('button',{name:'정보 닫기'}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/11-info.png'});
+            await page.screenshot({path:'docs/ui-audit/13-info.png'});
             await context.close();
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});

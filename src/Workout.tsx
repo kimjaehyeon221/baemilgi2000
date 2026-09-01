@@ -137,25 +137,32 @@ export function Challenge({
 }) {
   useKeepAwake();
   const target = targetForLevel(level);
+  const [phase, setPhase] = useState<'ready' | 'countdown' | 'active'>('ready');
+  const [countdown, setCountdown] = useState(3);
   const [seconds, setSeconds] = useState(0);
   const [recordFailure, setRecordFailure] = useState(false);
   const [failedReps, setFailedReps] = useState('');
   const [flash, setFlash] = useState<'cleared' | 'recorded' | null>(null);
   const [flashValue, setFlashValue] = useState(target);
   const [saveFailed, setSaveFailed] = useState(false);
-  const runningSinceRef = useRef(Date.now());
+  const runningSinceRef = useRef<number | null>(null);
   const resultLockedRef = useRef(false);
   const savingRef = useRef(false);
   const pendingResultRef = useRef<{ success: boolean; seconds: number; reps: number } | null>(null);
   const accumulatedMsRef = useRef(0);
 
-  const currentElapsedSeconds = () => Math.max(
-    0,
-    Math.floor((accumulatedMsRef.current + (Date.now() - runningSinceRef.current)) / 1000),
-  );
+  const currentElapsedSeconds = () => {
+    const runningMs = runningSinceRef.current === null
+      ? 0
+      : Math.max(0, Date.now() - runningSinceRef.current);
+    return Math.max(0, Math.floor((accumulatedMsRef.current + runningMs) / 1000));
+  };
 
   const pauseElapsedClock = () => {
-    accumulatedMsRef.current += Math.max(0, Date.now() - runningSinceRef.current);
+    if (runningSinceRef.current !== null) {
+      accumulatedMsRef.current += Math.max(0, Date.now() - runningSinceRef.current);
+      runningSinceRef.current = null;
+    }
     setSeconds(Math.floor(accumulatedMsRef.current / 1000));
   };
 
@@ -164,12 +171,36 @@ export function Challenge({
   };
 
   useEffect(() => {
-    if (recordFailure || flash) return;
+    if (phase !== 'active' || recordFailure || flash) return;
     const sync = () => setSeconds(currentElapsedSeconds());
     sync();
     const id = setInterval(sync, 500);
     return () => clearInterval(id);
-  }, [recordFailure, flash]);
+  }, [phase, recordFailure, flash]);
+
+  useEffect(() => {
+    if (phase !== 'countdown') return;
+    const id = setTimeout(() => {
+      if (countdown <= 1) {
+        accumulatedMsRef.current = 0;
+        runningSinceRef.current = Date.now();
+        setSeconds(0);
+        setCountdown(0);
+        setPhase('active');
+        Vibration.vibrate(35);
+        return;
+      }
+      setCountdown(countdown - 1);
+      Vibration.vibrate(15);
+    }, 850);
+    return () => clearTimeout(id);
+  }, [phase, countdown]);
+
+  const beginCountdown = () => {
+    setCountdown(3);
+    setPhase('countdown');
+    Vibration.vibrate(15);
+  };
 
   const persistPendingResult = async () => {
     const pending = pendingResultRef.current;
@@ -227,6 +258,67 @@ export function Challenge({
         saveFailed={saveFailed}
         onRetry={persistPendingResult}
       />
+    );
+  }
+
+  if (phase === 'ready') {
+    return (
+      <SafeAreaView style={S.readyRoot}>
+        <StatusBar barStyle="dark-content" />
+        <View style={S.readyPage}>
+          <FocusHeader
+            code={`QUEST / ${String(level).padStart(3, '0')}`}
+            onClose={onCancel}
+            light
+          />
+          <View style={S.readyBody}>
+            <Text style={S.readyEyebrow}>아직 시작 전</Text>
+            <Text style={S.readyTitle}>이번에 도전할{`\n`}목표를 확인해.</Text>
+            <View style={S.readyTargetCard}>
+              <Text style={S.readyTargetLabel}>이번 퀘스트 목표</Text>
+              <View style={S.readyTargetRow}>
+                <Text style={S.readyTarget} maxFontSizeMultiplier={1.1}>{target}</Text>
+                <Text style={S.readyTargetUnit}>개</Text>
+              </View>
+            </View>
+            <Text style={S.readyCopy}>
+              아직 완료된 기록이 아니야. 시작을 누르면 3·2·1 뒤 타이머가 켜지고, 직접 횟수를 세며 도전해.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="3 2 1 뒤 도전 시작"
+            style={({ pressed }) => [S.readyAction, pressed && S.pressed]}
+            onPress={beginCountdown}
+          >
+            <Text style={S.readyActionText}>3·2·1 뒤 도전 시작</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (phase === 'countdown') {
+    return (
+      <SafeAreaView style={S.activeRoot}>
+        <StatusBar barStyle="light-content" />
+        <View style={S.countdownPage}>
+          <FocusHeader
+            code={`QUEST / ${String(level).padStart(3, '0')}`}
+            onClose={onCancel}
+          />
+          <View
+            style={S.countdownCenter}
+            accessible
+            accessibilityLiveRegion="assertive"
+            accessibilityLabel={`${countdown}초 뒤 시작`}
+          >
+            <Text style={S.countdownLabel}>목표 {target}개</Text>
+            <Text style={S.countdownValue}>{countdown}</Text>
+            <Text style={S.countdownHint}>자세를 잡아.</Text>
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -304,6 +396,7 @@ export function Challenge({
             <View style={S.matDot} />
           </View>
           <View style={S.targetCenter}>
+            <Text style={S.activeGoalLabel}>이번 퀘스트 목표</Text>
             <Text style={S.target} maxFontSizeMultiplier={1.15}>{target}</Text>
             <Text style={S.targetLabel}>TARGET REPS</Text>
           </View>
@@ -468,10 +561,30 @@ const S = StyleSheet.create({
   close: { fontFamily: body, color: '#A8ADAE', fontSize: 34, lineHeight: 36, fontWeight: '300' },
   closeLight: { color: '#121212' },
 
+  readyRoot: { flex: 1, backgroundColor: '#FAF9F6' },
+  readyPage: { flex: 1, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#FAF9F6' },
+  readyBody: { flex: 1, paddingTop: 42 },
+  readyEyebrow: { color: '#1B365D', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.4, marginBottom: 14 },
+  readyTitle: { color: '#121212', fontFamily: headline, fontSize: 40, lineHeight: 47, fontWeight: '900', letterSpacing: -1.4 },
+  readyTargetCard: { marginTop: 34, borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#121212', paddingVertical: 22 },
+  readyTargetLabel: { color: '#686A68', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
+  readyTargetRow: { minHeight: 104, flexDirection: 'row', alignItems: 'flex-end' },
+  readyTarget: { color: '#121212', fontFamily: metric, fontSize: 88, lineHeight: 108, fontWeight: '800', letterSpacing: -2, fontVariant: ['tabular-nums'] },
+  readyTargetUnit: { color: '#1B365D', fontFamily: headline, fontSize: 20, lineHeight: 36, fontWeight: '900', marginLeft: 8, marginBottom: 10 },
+  readyCopy: { color: '#686A68', fontFamily: body, fontSize: 14, lineHeight: 22, marginTop: 22, maxWidth: 350 },
+  readyAction: { minHeight: 62, backgroundColor: '#1B365D', borderWidth: 2, borderColor: '#1B365D', alignItems: 'center', justifyContent: 'center' },
+  readyActionText: { color: '#FAF9F6', fontFamily: headline, fontSize: 17, fontWeight: '900', letterSpacing: 0.4 },
+  countdownPage: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
+  countdownCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 64 },
+  countdownLabel: { color: '#A9B9CF', fontFamily: mono, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },
+  countdownValue: { color: '#FAF9F6', fontFamily: metric, fontSize: 160, lineHeight: 190, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  countdownHint: { color: '#8D9192', fontFamily: body, fontSize: 14, lineHeight: 22 },
+
   matFrame: { flex: 1, maxHeight: 460, minHeight: 360, marginTop: 16, backgroundColor: 'transparent', position: 'relative', justifyContent: 'center', alignItems: 'center' },
   matDots: { display: 'none' },
   matDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#5D6263' },
   targetCenter: { alignItems: 'center' },
+  activeGoalLabel: { color: '#A9B9CF', fontFamily: body, fontSize: 13, lineHeight: 20, fontWeight: '800', marginBottom: 2 },
   target: { color: '#FAF9F6', fontFamily: metric, fontSize: 110, lineHeight: 138, fontWeight: '800', letterSpacing: -2, fontVariant: ['tabular-nums'] },
   targetLabel: { color: '#8B9091', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 2.2, marginTop: 8 },
   elapsed: { position: 'absolute', bottom: 16, right: 16, color: '#A9B9CF', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
