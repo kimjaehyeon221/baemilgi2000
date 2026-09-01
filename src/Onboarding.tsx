@@ -165,7 +165,7 @@ function Intro({ onContinue }: { onContinue: () => void }) {
         source={require('../assets/onboarding-dojo-v1.jpg')}
         style={O.heroImage}
         resizeMode="cover"
-        blurRadius={2}
+        blurRadius={12}
         accessibilityIgnoresInvertColors
       />
       <View style={O.heroShade} />
@@ -177,17 +177,14 @@ function Intro({ onContinue }: { onContinue: () => void }) {
           </View>
 
           <View style={O.heroCopy}>
-            <Text style={O.heroEyebrow}>전통 전신 운동 · 200 QUESTS</Text>
+            <Text style={O.heroEyebrow}>배밀기 · DAND</Text>
             <Text style={O.heroTitle}>배밀기{`\n`}2000</Text>
             <Text style={O.heroDescription}>
-              엉덩이를 높인 자세에서 가슴을 앞으로 밀어낸 뒤, 다시 뒤·위로 돌아오는 전신 운동입니다.
+              엉덩이를 높인 자세에서 가슴을 앞으로 밀어내고, 다시 뒤·위로 돌아오는 전신 운동입니다.
             </Text>
-            <Text style={O.heroGoal}>200개의 퀘스트. 마지막은 2,000개.</Text>
-            <Text style={O.heroOrigin}>
-              2,000은 전설적인 레슬러 Great Gama의 배밀기(Dand) 고반복 기록에서 가져온 상징적인 목표입니다.
-            </Text>
+            <Text style={O.heroGoal}>1개부터 시작해, 200개의 퀘스트 끝에 2,000개까지.</Text>
             <Text style={O.heroSafety}>
-              운동 권장량이 아닙니다. 체력에 맞게 진행하고 통증이나 어지럼이 있으면 중단하세요.
+              목표는 기록일 뿐이에요. 체력에 맞게 진행하고 통증이 있으면 멈추세요.
             </Text>
           </View>
 
@@ -379,7 +376,7 @@ const O = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: '#07090C66',
+    backgroundColor: '#07090C7A',
   },
   heroSafe: { flex: 1 },
   heroFrame: { flex: 1, paddingHorizontal: 22, paddingBottom: 20 },
@@ -398,7 +395,7 @@ const O = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.35,
   },
-  heroCopy: { flex: 1, justifyContent: 'flex-start', paddingTop: 64 },
+  heroCopy: { flex: 1, justifyContent: 'center', paddingBottom: 24 },
   heroEyebrow: {
     color: '#AFC0D7',
     fontFamily: 'Menlo',
@@ -409,8 +406,8 @@ const O = StyleSheet.create({
   },
   heroTitle: {
     color: '#FAF9F6',
-    fontSize: 58,
-    lineHeight: 61,
+    fontSize: 56,
+    lineHeight: 59,
     fontWeight: '900',
     letterSpacing: -2.8,
   },
@@ -428,14 +425,6 @@ const O = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '900',
     marginTop: 14,
-  },
-  heroOrigin: {
-    color: '#C9CDD2',
-    fontSize: 11,
-    lineHeight: 17,
-    fontWeight: '700',
-    maxWidth: 330,
-    marginTop: 8,
   },
   heroSafety: {
     color: '#FAF9F6',
