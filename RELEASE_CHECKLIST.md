@@ -11,16 +11,16 @@
 - [x] 높은 레벨 성공 시 하위 자동 완료
 - [x] 로컬 기록 자동 저장 상태 표시
 - [x] 기록 백업 및 복원
-- [x] EAS production / OTA workflow 준비
+- [x] EAS production / OTA workflow 준비 — TestFlight build 10 runtime 대상
 
 ## 제출 전
 - [x] Expo 프로젝트 및 GitHub 연결
 - [x] projectId / updates.url 설정
 - [x] Apple Developer Program 활성
-- [x] Production iOS build 성공 — 1.0.0 (5)
+- [x] Production iOS build 성공 — 1.0.0 (10)
 - [x] App Store Connect 업로드 성공
 - [ ] 실제 iPhone 핵심 흐름 회귀 테스트
-- [ ] 개인정보 처리방침 / 지원 URL 확인
+- [ ] 개인정보 처리방침 / 지원 URL 공개 전환 — 현재 Vercel 로그인으로 리디렉션됨
 - [ ] App Store 스크린샷 제작
 - [ ] App Privacy 입력
 - [ ] App Review 제출
