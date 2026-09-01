@@ -1,0 +1,47 @@
+name: PUSH TOTAL Lottie Setup Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-lottie-setup-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Install current dependencies
+        run: npm ci
+
+      - name: Install Lottie React Native
+        run: npx expo install lottie-react-native
+
+      - name: Validate Lottie-ready project
+        run: |
+          npm run typecheck
+          npm run doctor
+          npx expo config --type public >/dev/null
+
+      - name: Commit Lottie runtime foundation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --check
+          git commit -m "Prepare PUSH TOTAL for AI-generated Lottie intro"
+          git push origin push-total-rc
