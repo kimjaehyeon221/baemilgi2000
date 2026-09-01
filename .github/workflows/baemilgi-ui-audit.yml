@@ -55,14 +55,12 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const base={viewport:{width:440,height:956},deviceScaleFactor:2,isMobile:true,hasTouch:true,colorScheme:'light'};
 
-            // Fresh onboarding
             let context=await browser.newContext(base);
             let page=await context.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
             await page.screenshot({path:'docs/ui-audit/01-onboarding.png',fullPage:true});
             await context.close();
 
-            // Active user
             context=await browser.newContext(base);
             const state={
               onboarded:true,
@@ -94,7 +92,7 @@ jobs:
             await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
             await page.screenshot({path:'docs/ui-audit/05-records.png',fullPage:true});
 
-            await page.getByRole('tab',{name:'정보'}).click();
+            await page.getByRole('button',{name:'정보 및 설정'}).click();
             await page.screenshot({path:'docs/ui-audit/06-info.png',fullPage:true});
             await context.close();
             await browser.close();
