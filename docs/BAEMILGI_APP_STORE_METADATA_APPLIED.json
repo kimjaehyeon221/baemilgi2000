@@ -1,5 +1,5 @@
 {
-  "appliedAt": "2026-09-01T09:02:37.947Z",
+  "appliedAt": "2026-09-01T09:35:07.382Z",
   "appId": "6806588875",
   "versionId": "8698e177-b678-44c3-9c36-2e483be9ad73",
   "selectedBuild": {
@@ -7,5 +7,7 @@
     "buildNumber": "10",
     "processingState": "VALID"
   },
-  "metadataApplied": true
+  "metadataApplied": true,
+  "copyrightApplied": true,
+  "ageRatingApplied": true
 }
