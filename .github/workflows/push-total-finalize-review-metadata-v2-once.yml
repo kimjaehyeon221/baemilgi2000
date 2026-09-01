@@ -1,0 +1,49 @@
+name: PUSH TOTAL Finalize Review Metadata V2 Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-finalize-review-metadata-v2-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Prepare API key
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+      - name: Set content rights and Health Fitness category
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,keyId=process.env.ASC_KEY_ID,issuer=process.env.ASC_ISSUER_ID;
+          const key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b64=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const now=Math.floor(Date.now()/1000);const u=`${b64(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64(JSON.stringify({iss:issuer,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;const s=crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url');return `${u}.${s}`}
+          async function asc(path,options={}){const h={Authorization:`Bearer ${jwt()}`};if(options.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:options.method||'GET',headers:h,body:options.body?JSON.stringify(options.body):undefined});const t=await r.text();const b=t?JSON.parse(t):null;if(!r.ok){const e=new Error(`${r.status} ${path}`);e.body=b;throw e}return b}
+          (async()=>{
+            await asc(`/v1/apps/${appId}`,{method:'PATCH',body:{data:{type:'apps',id:appId,attributes:{contentRightsDeclaration:'DOES_NOT_USE_THIRD_PARTY_CONTENT'}}}});
+            const app=await asc(`/v1/apps/${appId}?fields%5Bapps%5D=contentRightsDeclaration`);
+            console.log('CONTENT_RIGHTS='+app.data?.attributes?.contentRightsDeclaration);
+            if(app.data?.attributes?.contentRightsDeclaration!=='DOES_NOT_USE_THIRD_PARTY_CONTENT')throw new Error('Content rights verify failed');
+
+            const rel=await asc(`/v1/apps/${appId}/relationships/appInfos`);const infoId=rel.data?.[0]?.id;if(!infoId)throw new Error('App Info missing');
+            await asc(`/v1/appInfos/${infoId}`,{method:'PATCH',body:{data:{type:'appInfos',id:infoId,relationships:{primaryCategory:{data:{type:'appCategories',id:'HEALTH_AND_FITNESS'}}}}}});
+            const cat=await asc(`/v1/appInfos/${infoId}/relationships/primaryCategory`);
+            console.log('PRIMARY_CATEGORY_ID='+cat.data?.id);
+            if(cat.data?.id!=='HEALTH_AND_FITNESS')throw new Error('Primary category verify failed');
+            console.log('FINALIZE_V2_OK=true');
+          })().catch(e=>{console.error(e.stack||e);if(e.body)console.error(JSON.stringify(e.body));process.exit(1)});
+          NODE
