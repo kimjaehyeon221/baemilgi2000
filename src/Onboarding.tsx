@@ -152,27 +152,29 @@ function Intro({ onContinue }: { onContinue: () => void }) {
         source={require('../assets/onboarding-dojo-v1.jpg')}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
-        blurRadius={4}
+        blurRadius={2}
         accessibilityIgnoresInvertColors
       />
       <View style={O.heroShade} />
       <SafeAreaView style={O.heroSafe}>
-        <View style={O.heroTop}>
-          <View style={O.heroMark} />
-          <Text style={O.heroBrand}>BAEMILGI 2000</Text>
-        </View>
+        <View style={O.heroFrame}>
+          <View style={O.heroTop}>
+            <View style={O.heroMark} />
+            <Text style={O.heroBrand}>BAEMILGI 2000</Text>
+          </View>
 
-        <View style={O.heroCopy}>
-          <Text style={O.heroEyebrow}>전통 전신 운동 · 200 QUESTS</Text>
-          <Text style={O.heroTitle}>배밀기{`\n`}2000</Text>
-          <Text style={O.heroDescription}>
-            엉덩이를 높인 자세에서 가슴을 앞으로 밀어낸 뒤, 다시 뒤·위로 돌아오는 전신 운동입니다.
-          </Text>
-          <Text style={O.heroGoal}>200개의 퀘스트. 마지막은 2,000개.</Text>
-        </View>
+          <View style={O.heroCopy}>
+            <Text style={O.heroEyebrow}>전통 전신 운동 · 200 QUESTS</Text>
+            <Text style={O.heroTitle}>배밀기{`\n`}2000</Text>
+            <Text style={O.heroDescription}>
+              엉덩이를 높인 자세에서 가슴을 앞으로 밀어낸 뒤, 다시 뒤·위로 돌아오는 전신 운동입니다.
+            </Text>
+            <Text style={O.heroGoal}>200개의 퀘스트. 마지막은 2,000개.</Text>
+          </View>
 
-        <View style={O.heroAction}>
-          <Button label="시작하기" dark onPress={onContinue} />
+          <View style={O.heroAction}>
+            <Button label="시작하기" dark onPress={onContinue} />
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -337,9 +339,10 @@ const O = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: '#07090C80',
+    backgroundColor: '#07090C66',
   },
-  heroSafe: { flex: 1, paddingHorizontal: 22, paddingBottom: 20 },
+  heroSafe: { flex: 1 },
+  heroFrame: { flex: 1, paddingHorizontal: 22, paddingBottom: 20 },
   heroTop: {
     minHeight: 68,
     flexDirection: 'row',
