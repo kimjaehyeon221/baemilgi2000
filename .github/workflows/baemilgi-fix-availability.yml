@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          asc territories list --paginate --output json > /tmp/territories.json
+          asc pricing territories list --paginate --output json > /tmp/territories.json
           TERRITORIES=$(node <<'NODE'
           const fs=require('fs');
           const root=JSON.parse(fs.readFileSync('/tmp/territories.json','utf8'));
@@ -80,7 +80,7 @@ jobs:
       - name: Persist result
         run: |
           git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git config user.email 41898282+kimjaehyeon221@users.noreply.github.com
           git add docs/BAEMILGI_AVAILABILITY_AND_HEALTH.txt
           git commit -m 'Record Baemilgi availability readiness' || exit 0
           git push origin HEAD:main
