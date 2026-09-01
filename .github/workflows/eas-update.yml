@@ -46,6 +46,7 @@ jobs:
 
       # Build 10 is the current TestFlight QA binary. For JS/UI-only changes we publish
       # against its embedded runtime. Any native dependency/config change requires a new build.
+      # This manual trigger also deploys the final brand-intro polish.
       - name: Resolve TestFlight build 10 runtime
         run: |
           npx eas-cli@latest build:view 9c14fcf7-6a78-4557-bffa-a44e3c19884b --json > build10.json
