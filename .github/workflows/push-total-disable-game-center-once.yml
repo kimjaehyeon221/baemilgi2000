@@ -1,0 +1,50 @@
+name: PUSH TOTAL Disable Game Center Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-disable-game-center-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  disable:
+    runs-on: ubuntu-latest
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Disable Game Center for App Store version 1.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function asc(path,opts={}){const h={Authorization:`Bearer ${jwt()}`};if(opts.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:opts.method||'GET',headers:h,body:opts.body?JSON.stringify(opts.body):undefined});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok){const e=new Error(`${r.status} ${opts.method||'GET'} ${path}`);e.body=j;throw e}return j}
+          (async()=>{
+            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0');
+            if(!v) throw new Error('App Store version 1.0 missing');
+            let gc;
+            try { gc=(await asc(`/v1/appStoreVersions/${v.id}/gameCenterAppVersion?fields%5BgameCenterAppVersions%5D=enabled`)).data; }
+            catch(e){ if(e.body?.errors?.[0]?.status==='404'){console.log('GAME_CENTER_VERSION=NONE'); return;} throw e; }
+            console.log('GAME_CENTER_BEFORE='+gc.attributes?.enabled);
+            if(gc.attributes?.enabled!==false){
+              await asc(`/v1/gameCenterAppVersions/${gc.id}`,{method:'PATCH',body:{data:{type:'gameCenterAppVersions',id:gc.id,attributes:{enabled:false}}}});
+            }
+            const check=(await asc(`/v1/gameCenterAppVersions/${gc.id}?fields%5BgameCenterAppVersions%5D=enabled`)).data;
+            console.log('GAME_CENTER_AFTER='+check.attributes?.enabled);
+            if(check.attributes?.enabled!==false) throw new Error('Game Center still enabled');
+          })().catch(e=>{console.error(e.stack||e);if(e.body)console.error(JSON.stringify(e.body));process.exit(1)});
+          NODE
