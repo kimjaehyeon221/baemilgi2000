@@ -1,0 +1,41 @@
+name: Final Baemilgi Review Note
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-final-review-note.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  note:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Update App Review notes
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          REVIEW_DETAIL_ID: '0c30b92e-7e4b-46a9-9cfc-ad24f6dd1ebb'
+        run: |
+          node <<'NODE'
+          const crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url'),now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const notes=`배밀기 2000 is a simple local exercise repetition and quest tracker for baemilgi (Hindu push-up/Dand-style conditioning). It is not a medical device and does not diagnose, prevent, monitor, or treat any disease or physiological condition. The app does not use HealthKit or access health records. Workout counts and training history are stored locally on the user's iPhone and are not uploaded to the developer's server. No account or login is required. The app uses Expo EAS Update (expo-updates) to deliver code fixes; limited technical diagnostic/update data may be processed by Expo as disclosed in the privacy policy. For a new user: launch -> Start -> choose “처음이에요” -> review the 3 form images -> begin Quest 001. Experienced users can choose “해본 적 있어요” and enter their current level. Starting a challenge begins the timer immediately; there is no automatic repetition counting. Users count their own repetitions and tap COMPLETE or STOP HERE.`;
+          (async()=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com/v1/appStoreReviewDetails/'+process.env.REVIEW_DETAIL_ID,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({data:{type:'appStoreReviewDetails',id:process.env.REVIEW_DETAIL_ID,attributes:{notes}}})});
+            const text=await r.text(); if(!r.ok) throw new Error(r.status+' '+text); console.log('Review notes updated.');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
