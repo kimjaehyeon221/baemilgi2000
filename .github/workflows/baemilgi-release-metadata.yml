@@ -1,0 +1,86 @@
+name: Apply Baemilgi App Store Metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-release-metadata.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Select build 10 and apply release metadata
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806588875'
+          STORE_DESCRIPTION: "배밀기 2000은 배밀기 한 가지에만 집중합니다.\n\n• 목표 없는 첫 측정으로 실제 현재 수준 확인\n• 직접 센 횟수에서 다음 Quest 시작\n• 200개의 Quest 전체 공개\n• 높은 레벨을 성공하면 그 아래 레벨도 자동 완료\n• 아직 어렵다면 현재 기록 기준의 보조 훈련\n• 계정, 카메라, 광고 없이 이 iPhone에 기록 자동 저장\n• 기기 변경을 위한 기록 백업과 복원\n\n2,000은 의학적 권장량이나 현대식 공인 기록이 아니라 오래된 고반복 Dand 훈련 기록에서 가져온 마지막 Quest입니다."
+          STORE_REVIEW_NOTES: "배밀기 2000은 계정이 필요 없는 단일 목적 운동 앱입니다.\n\n심사 흐름:\n1. 첫 실행에서 배밀기 경험 여부 선택\n2. 초보자는 자세 안내 후 목표 숫자 없는 첫 기록 측정\n3. 경험자는 기존 최고 기록 직접 입력\n4. 200개 Quest 중 현재 다음 Quest 도전\n5. 사용자가 완료/중단을 직접 선언\n6. 기록은 기기에만 자동 저장되며 JSON 백업/복원 지원\n\n카메라, 마이크, 위치, 광고, 추적, 서버 계정, 클라우드 동기화를 사용하지 않습니다. 키·몸무게·푸쉬업 기록을 수집하거나 목표를 추정하지 않습니다. 2,000회는 의학적 권장량이 아니라 역사적 고반복 Dand 기록에서 가져온 상징적 최종 Quest입니다. 통증이나 어지럼이 있으면 중단하도록 안내하며 치료·진단 효과를 주장하지 않습니다."
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url'), now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const api=async(path,method='GET',body)=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com'+path,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+            const text=await r.text(); const j=text?JSON.parse(text):{};
+            if(!r.ok) throw new Error(method+' '+path+' '+r.status+' '+JSON.stringify(j));
+            return j;
+          };
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
+            const version=(versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION')||(versions.data||[])[0];
+            if(!version) throw new Error('No iOS App Store version');
+            const builds=await api('/v1/builds?filter%5Bapp%5D='+appId+'&filter%5Bversion%5D=10&limit=5');
+            const build=(builds.data||[]).find(b=>b.attributes?.processingState==='VALID');
+            if(!build) throw new Error('Valid build 10 not found');
+            await api('/v1/appStoreVersions/'+version.id+'/relationships/build','PATCH',{data:{type:'builds',id:build.id}});
+            const locs=await api('/v1/appStoreVersions/'+version.id+'/appStoreVersionLocalizations?limit=50');
+            for(const loc of (locs.data||[])){
+              await api('/v1/appStoreVersionLocalizations/'+loc.id,'PATCH',{data:{type:'appStoreVersionLocalizations',id:loc.id,attributes:{
+                description:process.env.STORE_DESCRIPTION,
+                keywords:'배밀기,dand,운동,푸쉬업,홈트,챌린지,유도,맨몸운동',
+                promotionalText:'앱이 정한 숫자가 아니라, 오늘 직접 측정한 기록에서 시작하는 200개의 배밀기 퀘스트.'
+              }}});
+            }
+            const review=await api('/v1/appStoreVersions/'+version.id+'/appStoreReviewDetail');
+            if(review.data) await api('/v1/appStoreReviewDetails/'+review.data.id,'PATCH',{data:{type:'appStoreReviewDetails',id:review.data.id,attributes:{notes:process.env.STORE_REVIEW_NOTES,demoAccountRequired:false}}});
+            const infos=await api('/v1/apps/'+appId+'/appInfos?limit=10');
+            for(const info of (infos.data||[])){
+              const infoLocs=await api('/v1/appInfos/'+info.id+'/appInfoLocalizations?limit=50');
+              for(const loc of (infoLocs.data||[])){
+                await api('/v1/appInfoLocalizations/'+loc.id,'PATCH',{data:{type:'appInfoLocalizations',id:loc.id,attributes:{subtitle:'200개의 퀘스트, 마지막은 2000'}}});
+              }
+            }
+            const verifyBuild=await api('/v1/appStoreVersions/'+version.id+'/build');
+            const result={appliedAt:new Date().toISOString(),appId,versionId:version.id,selectedBuild:verifyBuild.data?{id:verifyBuild.data.id,buildNumber:verifyBuild.data.attributes?.version,processingState:verifyBuild.data.attributes?.processingState}:null,metadataApplied:true};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_APP_STORE_METADATA_APPLIED.json',JSON.stringify(result,null,2)+'\n');
+            console.log(JSON.stringify(result,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_APP_STORE_METADATA_APPLIED.json
+          git commit -m 'Record Baemilgi App Store metadata update' || exit 0
+          git push origin HEAD:main
