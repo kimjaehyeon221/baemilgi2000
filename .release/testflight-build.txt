@@ -1,4 +1,5 @@
 BAEMILGI 2000 TestFlight release
-Trigger revision: 2
+Trigger revision: 3
 Requested: 2026-09-01 Asia/Seoul
-Source main includes native icon v2 and UI commit 5b9c15429247cfcbba7c7f0df334fb3db1f8502d
+Source: 14531970b0c86a4fadf7055b30f0b77e007b42b3
+Includes: repaired PNG icon, production onboarding art, enlarged three-stage form guide
