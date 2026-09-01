@@ -1,0 +1,59 @@
+name: PUSH TOTAL Submit Direct Version Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-submit-direct-version-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Submit App Store version 1.0 directly
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const b=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function asc(path,opts={}){const h={Authorization:`Bearer ${jwt()}`};if(opts.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:opts.method||'GET',headers:h,body:opts.body?JSON.stringify(opts.body):undefined});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok){const e=new Error(`ASC ${r.status} ${opts.method||'GET'} ${path}\n${typeof j==='string'?j:JSON.stringify(j)}`);e.status=r.status;e.body=j;throw e}return j}
+          (async()=>{
+            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0');
+            if(!v) throw Error('version 1.0 missing');
+            console.log('VERSION_BEFORE='+v.attributes?.appStoreState);
+            if(['WAITING_FOR_REVIEW','IN_REVIEW','PENDING_APPLE_RELEASE','PROCESSING_FOR_DISTRIBUTION','READY_FOR_DISTRIBUTION'].includes(v.attributes?.appStoreState)){
+              console.log('ALREADY_SUBMITTED=true');
+              return;
+            }
+            const loc=(await asc(`/v1/appStoreVersions/${v.id}/appStoreVersionLocalizations?filter%5Blocale%5D=ko&limit=10`)).data?.[0];
+            const sets=await asc(`/v1/appStoreVersionLocalizations/${loc.id}/appScreenshotSets?include=appScreenshots&limit=50`);
+            console.log('SCREENSHOT_COUNT='+(sets.included||[]).filter(x=>x.type==='appScreenshots').length);
+            const gc=(await asc(`/v1/appStoreVersions/${v.id}/gameCenterAppVersion?fields%5BgameCenterAppVersions%5D=enabled`)).data;
+            console.log('GAME_CENTER_ENABLED='+gc.attributes?.enabled);
+            const sched=await asc(`/v1/apps/${appId}/appPriceSchedule?include=baseTerritory`);
+            const base=(sched.included||[]).find(x=>x.type==='territories');
+            console.log('PRICE_BASE_TERRITORY='+(base?.id||''));
+            const created=await asc('/v1/appStoreVersionSubmissions',{method:'POST',body:{data:{type:'appStoreVersionSubmissions',relationships:{appStoreVersion:{data:{type:'appStoreVersions',id:v.id}}}}}});
+            console.log('DIRECT_VERSION_SUBMISSION_CREATED='+created.data?.id);
+            await sleep(5000);
+            const vv=await asc(`/v1/appStoreVersions/${v.id}`);
+            console.log('VERSION_AFTER='+vv.data?.attributes?.appStoreState);
+          })().catch(e=>{console.error(e.stack||e);if(e.body)console.error(JSON.stringify(e.body));process.exit(1)});
+          NODE
