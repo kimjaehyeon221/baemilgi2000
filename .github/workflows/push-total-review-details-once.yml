@@ -1,0 +1,106 @@
+name: PUSH TOTAL Review Details Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-review-details-once.yml
+
+jobs:
+  review-details:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Reuse review contact, set review notes, and inspect screenshot status
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const appId = process.env.ASC_APP_ID;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+          const b64url = value => Buffer.from(value).toString('base64url');
+          const token = (() => {
+            const now = Math.floor(Date.now()/1000);
+            const unsigned = `${b64url(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64url(JSON.stringify({iss:issuerId,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;
+            const sig = crypto.sign('sha256', Buffer.from(unsigned), {key:privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+            return `${unsigned}.${sig}`;
+          })();
+          async function asc(path, options={}) {
+            const headers={Authorization:`Bearer ${token}`};
+            if (options.body) headers['Content-Type']='application/json';
+            const res=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined});
+            const text=await res.text(); const body=text?JSON.parse(text):null;
+            if (!res.ok) { const e=new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`); e.status=res.status; e.body=body; throw e; }
+            return body;
+          }
+          const notes = `PUSH TOTAL does not require an account or sign-in.\n\nPocket Count test flow:\n1. Tap Pocket Count.\n2. During the first 5 seconds, place the iPhone fully in a front pants pocket.\n3. During the next 5 seconds, get into and hold the push-up start position.\n4. A start sound and haptic indicate that measurement has begun.\n5. Perform push-ups at a natural cadence.\n6. After the final rep, remain still for 5 seconds; the set ends automatically.\n7. The detected count can be corrected only within ±10 before saving.\n\nMotion permission is required for Pocket Count. The app does not use the camera. Push-up history is stored locally on-device. For meaningful motion testing, please use the intended front-pocket placement rather than moving the phone by hand.`;
+          (async()=>{
+            const versions=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const version=(versions.data||[]).find(v=>v.attributes?.versionString==='1.0') || (versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION');
+            if(!version) throw new Error('Version 1.0 not found');
+
+            let review=null;
+            try { review=(await asc(`/v1/appStoreVersions/${version.id}/appStoreReviewDetail`)).data; } catch(e) { if(e.status!==404) throw e; }
+            let contact=review?.attributes || null;
+            const complete=c=>c && c.contactFirstName && c.contactLastName && c.contactPhone && c.contactEmail;
+            if(!complete(contact)) {
+              try { const beta=(await asc(`/v1/apps/${appId}/betaAppReviewDetail`)).data; if(complete(beta?.attributes)) contact=beta.attributes; } catch(e) { if(e.status!==404) throw e; }
+            }
+            if(complete(contact)) {
+              const attrs={
+                contactFirstName:contact.contactFirstName,
+                contactLastName:contact.contactLastName,
+                contactPhone:contact.contactPhone,
+                contactEmail:contact.contactEmail,
+                demoAccountRequired:false,
+                notes
+              };
+              if(review) {
+                await asc(`/v1/appStoreReviewDetails/${review.id}`,{method:'PATCH',body:{data:{type:'appStoreReviewDetails',id:review.id,attributes:attrs}}});
+              } else {
+                const created=await asc('/v1/appStoreReviewDetails',{method:'POST',body:{data:{type:'appStoreReviewDetails',attributes:attrs,relationships:{appStoreVersion:{data:{type:'appStoreVersions',id:version.id}}}}}});
+                review=created.data;
+              }
+              console.log('REVIEW_CONTACT_READY=true');
+              console.log('REVIEW_NOTES_READY=true');
+            } else {
+              console.log('REVIEW_CONTACT_READY=false');
+              console.log('REVIEW_NOTES_READY=false');
+            }
+
+            const locs=await asc(`/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?filter%5Blocale%5D=ko&limit=10`);
+            const ko=(locs.data||[])[0];
+            if(!ko) throw new Error('Korean localization not found');
+            const sets=await asc(`/v1/appStoreVersionLocalizations/${ko.id}/appScreenshotSets?include=appScreenshots&limit=50`);
+            const screenshots=(sets.included||[]).filter(x=>x.type==='appScreenshots');
+            console.log('SCREENSHOT_SET_COUNT='+String((sets.data||[]).length));
+            console.log('SCREENSHOT_COUNT='+String(screenshots.length));
+            console.log('VERSION_STATE='+String(version.attributes?.appStoreState));
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
