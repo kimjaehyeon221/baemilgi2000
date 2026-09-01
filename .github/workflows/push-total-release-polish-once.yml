@@ -1,0 +1,78 @@
+name: PUSH TOTAL Release Polish Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-release-polish-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Apply release sensor behavior and visual spec
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('App.tsx')
+          text = path.read_text()
+
+          replacements = [
+            ("const CADENCE_HALF_MS = 1_500;\nconst AUTO_FINISH_MS = 4_000;", "const AUTO_FINISH_MS = 5_000;\nconst STATIONARY_MOTION_RATIO = 0.28;\nconst STATIONARY_MOTION_FLOOR = 0.12;"),
+            ("  const cadenceDownPlayer = useAudioPlayer(require('./assets/cadence-down.wav'));\n  const cadenceUpPlayer = useAudioPlayer(require('./assets/cadence-up.wav'));\n", ""),
+            ("  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);", "  const lastActiveMotionAtRef = useRef(0);"),
+            ("  const cadenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);\n  const cadencePhaseRef = useRef(0);\n", ""),
+            ("    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);\n", ""),
+            ("    if (cadenceTimerRef.current) clearInterval(cadenceTimerRef.current);\n", ""),
+            ("    idleTimerRef.current = null;\n", ""),
+            ("    cadenceTimerRef.current = null;\n    cadencePhaseRef.current = 0;\n", ""),
+            ("    const threshold = SENSITIVITY[sensitivityRef.current].threshold;\n", "    const threshold = SENSITIVITY[sensitivityRef.current].threshold;\n    const stationaryThreshold = Math.max(STATIONARY_MOTION_FLOOR, threshold * STATIONARY_MOTION_RATIO);\n    if (Math.abs(smooth) > stationaryThreshold) {\n      lastActiveMotionAtRef.current = now;\n    } else if (countRef.current > 0 && now - lastActiveMotionAtRef.current >= AUTO_FINISH_MS) {\n      finishSessionRef.current(true);\n      return;\n    }\n"),
+            ("\n        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);\n        idleTimerRef.current = setTimeout(() => finishSessionRef.current(true), AUTO_FINISH_MS);", ""),
+            ("    startedAtRef.current = Date.now();\n    lastCountAtRef.current = 0;", "    startedAtRef.current = Date.now();\n    lastActiveMotionAtRef.current = startedAtRef.current;\n    lastCountAtRef.current = 0;"),
+            ("\n    const playCadenceCue = () => {\n      const player = cadencePhaseRef.current % 2 === 0 ? cadenceDownPlayer : cadenceUpPlayer;\n      void (async () => {\n        try {\n          await player.seekTo(0);\n          player.play();\n        } catch {\n          // Motion counting continues even if a cadence cue cannot play.\n        }\n      })();\n      cadencePhaseRef.current += 1;\n    };\n    cadencePhaseRef.current = 0;\n    const firstCadenceCue = setTimeout(() => {\n      playCadenceCue();\n      cadenceTimerRef.current = setInterval(playCadenceCue, CADENCE_HALF_MS);\n    }, CADENCE_HALF_MS);\n    countdownTimersRef.current.push(firstCadenceCue);\n", "\n"),
+          ]
+
+          for old, new in replacements:
+            if old not in text:
+              raise SystemExit(f'Missing expected snippet: {old[:90]!r}')
+            text = text.replace(old, new, 1)
+
+          path.write_text(text)
+
+          docs = Path('docs')
+          docs.mkdir(exist_ok=True)
+          Path('docs/PUSH_TOTAL_VISUAL_SYSTEM.md').write_text('''# PUSH TOTAL Visual System — Release Direction\n\n## Style: Flat Industrial / Masonry\n\nPUSH TOTAL should feel like a compact training instrument, not a game ad.\n\n- Background: warm ivory `#F9F7F2`\n- Primary ink: near-black `#121212`\n- Brick: muted terracotta `#A64B35`\n- Dark brick: `#873420`\n- Secondary surfaces: warm gray `#F0EEE9` / `#E4E2DD`\n- Typography: bold condensed/utility feel; minimal decoration\n- Motion: short, mechanical, impact-driven. No cartoon bounce.\n- Launch intro target: 1.0–1.2 s total. Flat outlined fist, 6–10 brick fragments, one impact flash, minimal dust, then PUSH TOTAL wordmark/home reveal.\n- Avoid: photoreal muscles, glossy 3D bricks, comic explosions, excessive particles, forced workout cadence sounds.\n\n## Sound behavior\n\n- One start cue after the pocket countdown.\n- No cadence metronome. The user controls push-up speed.\n- Session ends when meaningful phone motion has remained below the stationary threshold for 5 continuous seconds after at least one rep.\n\n## Camera mode\n\nCamera counting is a post-launch accuracy mode, not a launch blocker. Pocket Count remains the default interaction for v0.9.\n''')
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project
+        run: |
+          npm run typecheck
+          npm run doctor
+          npx expo config --type public >/dev/null
+
+      - name: Commit release polish
+        run: |
+          git config user.name "kimcat"
+          git config user.email "79156711+kimjaehyeon221@users.noreply.github.com"
+          git add App.tsx docs/PUSH_TOTAL_VISUAL_SYSTEM.md
+          git commit -m "Polish PUSH TOTAL release sensor behavior"
+          git push origin HEAD:push-total-rc
