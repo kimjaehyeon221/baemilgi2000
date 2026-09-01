@@ -214,9 +214,9 @@ function IntroLaunch({ onContinue }: { onContinue: () => void }) {
         </View>
 
         <Button
-          label={opened ? '내 기록으로 시작' : '먼저 화면을 눌러'}
-          disabled={!opened}
-          onPress={onContinue}
+          label={opened ? '내 기록으로 시작' : '첫 퀘스트 열기'}
+          onPress={opened ? onContinue : openQuest}
+          accessibilityHint={opened ? '시작 방식 선택으로 이동합니다' : '첫 퀘스트를 열고 시작 기록 준비 상태로 전환합니다'}
         />
       </View>
     </SafeAreaView>
@@ -454,16 +454,16 @@ function CalibrationTest({ onCancel, onFinish }: { onCancel: () => void; onFinis
 
 
 const O = StyleSheet.create({
-  launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  launchTop: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#D7D3CA' },
   launchBrand: { color: '#121212', fontFamily: 'Menlo', fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
   launchMeta: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
-  launchStage: { flex: 1, minHeight: 360, alignItems: 'center', justifyContent: 'center' },
+  launchStage: { flex: 1, minHeight: 390, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#D7D3CA' },
   launchPressed: { opacity: 0.82 },
-  launchMark: { width: 218, height: 218, marginBottom: 8, borderRadius: 48, overflow: 'hidden' },
+  launchMark: { width: 184, height: 184, marginBottom: 14, borderRadius: 42, overflow: 'hidden' },
   launchIcon: { width: '100%', height: '100%' },
-  launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 62, lineHeight: 70, fontWeight: '800', letterSpacing: -1.8, fontVariant: ['tabular-nums'] },
-  launchPrompt: { color: '#686A68', fontSize: 12, fontWeight: '800', letterSpacing: -0.1, marginTop: 2 },
-  launchCopyArea: { minHeight: 104, justifyContent: 'flex-end', paddingBottom: 18 },
+  launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 72, lineHeight: 80, fontWeight: '800', letterSpacing: -2.2, fontVariant: ['tabular-nums'] },
+  launchPrompt: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.05, marginTop: 3 },
+  launchCopyArea: { minHeight: 104, justifyContent: 'center', paddingVertical: 16 },
   launchTitle: { color: '#121212', fontSize: 31, lineHeight: 40, fontWeight: '800', letterSpacing: -0.8 },
   launchCopy: { color: '#686A68', fontSize: 14, lineHeight: 22, marginTop: 7, maxWidth: 310 },
   launchHint: { color: '#686A68', fontSize: 13, lineHeight: 21, maxWidth: 300 },

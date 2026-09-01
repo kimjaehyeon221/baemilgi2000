@@ -501,7 +501,7 @@ export default function App() {
           </Pressable>
 
           <View style={styles.questHero}>
-            <Text style={[styles.kicker, styles.kickerOnAccent]}>현재 위치</Text>
+            <Text style={styles.kicker}>현재 위치</Text>
             <View style={styles.questHeroRow}>
               <View>
                 <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>
@@ -726,22 +726,47 @@ export default function App() {
 
       <Modal visible={infoOpen} transparent animationType="slide" onRequestClose={() => setInfoOpen(false)}>
         <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>배밀기 2000</Text>
-            <Text style={styles.sheetCopy}>2,000은 운동 권장량이 아니라 20세기 초 레슬러 Great Gama의 역사적 Dand 고반복 기록에서 가져온 마지막 퀘스트야.</Text>
-            <Text style={styles.sheetCopy}>현재 기록은 이 iPhone에 저장돼. 기기를 바꿀 때는 백업을 내보낸 뒤 새 기기에서 복원할 수 있어.</Text>
-            <View style={{ gap: 9 }}>
-              <Button label="전체 기록 백업" secondary onPress={exportRecords} />
-              <Button label="백업 복원" secondary onPress={() => { setInfoOpen(false); setRestoreOpen(true); }} />
-              <Button label="배밀기와 무도" secondary onPress={() => Alert.alert('배밀기와 무도', BAEMILGI_MARTIAL_COPY)} />
-              <Button label="5색 훈련 챕터" secondary onPress={() => Alert.alert('5색 훈련 챕터', CHAPTER_GUIDE_COPY)} />
-              <Button label="배밀기 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
-              <Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} />
-              <Button label="개인정보 처리방침" secondary onPress={() => openExternal(PRIVACY_URL, '개인정보 처리방침')} />
-              <Button label="지원" secondary onPress={() => openExternal(SUPPORT_URL, '지원 페이지')} />
-              <Button label="기록 초기화" danger onPress={reset} />
-              <Button label="닫기" onPress={() => setInfoOpen(false)} />
+          <View style={styles.infoSheet}>
+            <View style={styles.infoSheetHeader}>
+              <View>
+                <Text style={styles.infoSheetEyebrow}>ABOUT / LOCAL</Text>
+                <Text style={styles.sheetTitle}>배밀기 2000</Text>
+              </View>
+              <Pressable
+                onPress={() => setInfoOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="정보 닫기"
+                style={({ pressed }) => [styles.infoSheetClose, pressed && { opacity: 0.55 }]}
+              >
+                <Text style={styles.infoSheetCloseText}>×</Text>
+              </Pressable>
             </View>
+            <ScrollView
+              style={styles.infoSheetScrollView}
+              contentContainerStyle={styles.infoSheetScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.sheetCopy}>2,000은 운동 권장량이 아니라 20세기 초 레슬러 Great Gama의 역사적 Dand 고반복 기록에서 가져온 마지막 퀘스트야.</Text>
+              <Text style={styles.sheetCopy}>현재 기록은 이 iPhone에 저장돼. 기기를 바꿀 때는 백업을 내보낸 뒤 새 기기에서 복원할 수 있어.</Text>
+              <Text style={styles.infoSheetSectionLabel}>DATA</Text>
+              <View style={{ gap: 9 }}>
+                <Button label="전체 기록 백업" secondary onPress={exportRecords} />
+                <Button label="백업 복원" secondary onPress={() => { setInfoOpen(false); setRestoreOpen(true); }} />
+              </View>
+              <Text style={styles.infoSheetSectionLabel}>GUIDE</Text>
+              <View style={{ gap: 9 }}>
+                <Button label="배밀기와 무도" secondary onPress={() => Alert.alert('배밀기와 무도', BAEMILGI_MARTIAL_COPY)} />
+                <Button label="5색 훈련 챕터" secondary onPress={() => Alert.alert('5색 훈련 챕터', CHAPTER_GUIDE_COPY)} />
+                <Button label="배밀기 자세 다시 보기" secondary onPress={() => { setInfoOpen(false); setFormOpen(true); }} />
+                <Button label="왜 2,000?" secondary onPress={() => { setInfoOpen(false); setWhyOpen(true); }} />
+              </View>
+              <Text style={styles.infoSheetSectionLabel}>SUPPORT</Text>
+              <View style={{ gap: 9 }}>
+                <Button label="개인정보 처리방침" secondary onPress={() => openExternal(PRIVACY_URL, '개인정보 처리방침')} />
+                <Button label="지원" secondary onPress={() => openExternal(SUPPORT_URL, '지원 페이지')} />
+                <Button label="기록 초기화" danger onPress={reset} />
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
