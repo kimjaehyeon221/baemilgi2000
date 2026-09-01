@@ -36,15 +36,7 @@
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": [
-              "CA92.1"
-            ]
-          },
-          {
-            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": [
-              "CA92.1"
-            ]
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
           }
         ]
       },
@@ -57,12 +49,9 @@
         "projectId": "c28e2156-a87c-4e46-886c-48440d672a0f"
       }
     },
-    "platforms": [
-      "ios"
-    ],
+    "platforms": ["ios"],
     "updates": {
       "url": "https://u.expo.dev/c28e2156-a87c-4e46-886c-48440d672a0f"
-    },
-    "android": {}
+    }
   }
 }
