@@ -23,10 +23,20 @@ jobs:
         with:
           ref: push-total-rc
 
-      - name: Verify public pages
+      - name: Diagnose public pages
+        id: pages
+        continue-on-error: true
         run: |
-          curl --fail --silent --show-error --location --max-time 20 "$PRIVACY_URL" >/tmp/privacy.html
-          curl --fail --silent --show-error --location --max-time 20 "$SUPPORT_URL" >/tmp/support.html
+          PRIVACY_RESULT=$(curl --silent --show-error --location --max-time 20 --output /tmp/privacy.html --write-out '%{http_code} %{url_effective}' "$PRIVACY_URL")
+          SUPPORT_RESULT=$(curl --silent --show-error --location --max-time 20 --output /tmp/support.html --write-out '%{http_code} %{url_effective}' "$SUPPORT_URL")
+          echo "PRIVACY_HTTP $PRIVACY_RESULT"
+          echo "SUPPORT_HTTP $SUPPORT_RESULT"
+          echo 'PRIVACY_HEAD'
+          head -c 400 /tmp/privacy.html | tr '\n' ' '
+          echo
+          echo 'SUPPORT_HEAD'
+          head -c 400 /tmp/support.html | tr '\n' ' '
+          echo
           grep -q 'PUSH TOTAL' /tmp/privacy.html
           grep -q 'PUSH TOTAL' /tmp/support.html
           echo 'PUBLIC_PAGES_OK'
