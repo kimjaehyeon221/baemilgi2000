@@ -1,0 +1,69 @@
+name: Apply Baemilgi Public Support URLs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-release-urls.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Apply App Store URLs
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806588875'
+          SUPPORT_URL: 'https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/support'
+          PRIVACY_URL: 'https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/privacy'
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url'),now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const api=async(route,method='GET',body)=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com'+route,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+            const text=await r.text();const j=text?JSON.parse(text):{};
+            if(!r.ok)throw new Error(method+' '+route+' '+r.status+' '+JSON.stringify(j));
+            return j;
+          };
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
+            const version=(versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION')||(versions.data||[])[0];
+            const locs=await api('/v1/appStoreVersions/'+version.id+'/appStoreVersionLocalizations?limit=50');
+            for(const loc of (locs.data||[]))await api('/v1/appStoreVersionLocalizations/'+loc.id,'PATCH',{data:{type:'appStoreVersionLocalizations',id:loc.id,attributes:{supportUrl:process.env.SUPPORT_URL}}});
+            const infos=await api('/v1/apps/'+appId+'/appInfos?limit=10');
+            for(const info of (infos.data||[])){
+              const infoLocs=await api('/v1/appInfos/'+info.id+'/appInfoLocalizations?limit=50');
+              for(const loc of (infoLocs.data||[]))await api('/v1/appInfoLocalizations/'+loc.id,'PATCH',{data:{type:'appInfoLocalizations',id:loc.id,attributes:{privacyPolicyUrl:process.env.PRIVACY_URL}}});
+            }
+            const result={appliedAt:new Date().toISOString(),appId,supportUrl:process.env.SUPPORT_URL,privacyPolicyUrl:process.env.PRIVACY_URL};
+            fs.mkdirSync('docs',{recursive:true});fs.writeFileSync('docs/BAEMILGI_APP_STORE_URLS.json',JSON.stringify(result,null,2)+'\n');
+            console.log(JSON.stringify(result,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_APP_STORE_URLS.json
+          git commit -m 'Record Baemilgi App Store URLs' || exit 0
+          git push origin HEAD:main
