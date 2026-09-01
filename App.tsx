@@ -121,7 +121,9 @@ export default function App() {
           if (!saved) return false;
           setChallengeLevel(null);
           if (success && clearedLevel >= 200) setMessage('2,000. 마지막 퀘스트를 완료했어.');
-          else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) {
+          else if (success && targetForLevel(old || 1) < 1000 && targetForLevel(clearedLevel || 1) >= 1000) {
+            setMessage('1,000개 관문을 넘었어. 마지막 퀘스트까지 절반 남았어.');
+          } else if (success && targetForLevel(old || 1) < 500 && targetForLevel(clearedLevel || 1) >= 500) {
             setMessage('500개를 넘었어. 최종 목표는 2,000개야.');
           } else {
             setMessage(null);
@@ -170,7 +172,8 @@ export default function App() {
     );
   }
 
-  const nextLevel = state.clearedLevel >= 200 ? 200 : state.clearedLevel + 1;
+  const journeyComplete = state.clearedLevel >= 200;
+  const nextLevel = journeyComplete ? 200 : state.clearedLevel + 1;
   const nextTarget = targetForLevel(nextLevel);
   const hasPersonalRecord = state.firstBaemilgiMax !== null || state.sessions.some((session) => session.type === 'challenge');
   const currentReps = state.sessions.reduce((best, session) => {
@@ -409,10 +412,21 @@ export default function App() {
               </View>
             </View>
 
-            <View style={[styles.chapterRibbon, { backgroundColor: currentChapter.color }]} accessible accessibilityLabel={`${currentChapter.name} 훈련 챕터, 퀘스트 ${currentChapter.startLevel}부터 ${currentChapter.endLevel}`}>
-              <Text style={[styles.chapterRibbonName, { color: currentChapter.textColor }]}>{currentChapter.name}</Text>
-              <Text style={[styles.chapterRibbonMeta, { color: currentChapter.textColor }]}>{currentChapter.label} · Q{String(currentChapter.startLevel).padStart(3, '0')}—{String(currentChapter.endLevel).padStart(3, '0')}</Text>
-            </View>
+            {journeyComplete ? (
+              <View
+                style={[styles.chapterRibbon, { backgroundColor: '#121212' }]}
+                accessible
+                accessibilityLabel="200개 퀘스트 완료. 최종 퀘스트 2,000개 달성"
+              >
+                <Text style={[styles.chapterRibbonName, { color: '#FAF9F6' }]}>200 / 200</Text>
+                <Text style={[styles.chapterRibbonMeta, { color: '#FAF9F6' }]}>FINAL QUEST CLEARED · 2,000</Text>
+              </View>
+            ) : (
+              <View style={[styles.chapterRibbon, { backgroundColor: currentChapter.color }]} accessible accessibilityLabel={`${currentChapter.name} 훈련 챕터, 퀘스트 ${currentChapter.startLevel}부터 ${currentChapter.endLevel}`}>
+                <Text style={[styles.chapterRibbonName, { color: currentChapter.textColor }]}>{currentChapter.name}</Text>
+                <Text style={[styles.chapterRibbonMeta, { color: currentChapter.textColor }]}>{currentChapter.label} · Q{String(currentChapter.startLevel).padStart(3, '0')}—{String(currentChapter.endLevel).padStart(3, '0')}</Text>
+              </View>
+            )}
 
             <View style={styles.questBandStage} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <View style={styles.questBandStitch} />
@@ -435,8 +449,8 @@ export default function App() {
             </View>
 
             <View style={styles.primaryActions}>
-              <Button label="START CHALLENGE" onPress={() => setChallengeLevel(nextLevel)} />
-              <Button label="TRAINING" secondary onPress={() => setTrainingLevel(nextLevel)} />
+              <Button label={journeyComplete ? '2,000 다시 도전' : 'START CHALLENGE'} onPress={() => setChallengeLevel(nextLevel)} />
+              <Button label={journeyComplete ? '2,000 TRAINING' : 'TRAINING'} secondary onPress={() => setTrainingLevel(nextLevel)} />
             </View>
 
             <Pressable
@@ -491,14 +505,18 @@ export default function App() {
             <View style={styles.questHeroRow}>
               <View>
                 <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>
-                <Text style={styles.questHeroCopy}>다음 도전</Text>
+                <Text style={styles.questHeroCopy}>{journeyComplete ? '최종 퀘스트 완료' : '다음 도전'}</Text>
               </View>
               <Text style={styles.questHeroTarget} maxFontSizeMultiplier={1.2}>{nextTarget}<Text style={styles.questHeroUnit}>개</Text></Text>
             </View>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${state.clearedLevel / 2}%` }]} />
             </View>
-            <Text style={styles.questProgressCopy}>{state.clearedLevel}단계 완료 · 200단계까지 {200 - state.clearedLevel}단계</Text>
+            <Text style={styles.questProgressCopy}>
+              {journeyComplete
+                ? '200단계 완료 · FINAL QUEST CLEARED'
+                : `${state.clearedLevel}단계 완료 · 200단계까지 ${200 - state.clearedLevel}단계`}
+            </Text>
           </View>
 
           <Text style={styles.questSectionLabel}>현재 구간</Text>

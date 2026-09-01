@@ -13,7 +13,6 @@ export type Session = {
 
 export type AppState = {
   onboarded: boolean;
-  pushupMax: number | null;
   firstBaemilgiMax: number | null;
   clearedLevel: number;
   selectedLevel: number;
@@ -28,7 +27,6 @@ export const SUPPORT_URL = 'https://baemilgi2000-support-upendjh-6028s-projects.
 
 export const initialState: AppState = {
   onboarded: false,
-  pushupMax: null,
   firstBaemilgiMax: null,
   clearedLevel: 0,
   selectedLevel: 1,
@@ -160,7 +158,6 @@ export function safeState(raw: any): AppState {
   const minimumSelected = clearedLevel >= 200 ? 200 : clearedLevel + 1;
   const candidate: AppState = {
     onboarded: Boolean(raw?.onboarded),
-    pushupMax: Number.isFinite(raw?.pushupMax) ? Math.min(2000, Math.max(0, Math.floor(raw.pushupMax))) : null,
     firstBaemilgiMax: Number.isFinite(raw?.firstBaemilgiMax) ? Math.min(2000, Math.max(0, Math.floor(raw.firstBaemilgiMax))) : null,
     clearedLevel,
     selectedLevel: Math.max(minimumSelected, Math.min(200, Number(raw?.selectedLevel) || 1)),
