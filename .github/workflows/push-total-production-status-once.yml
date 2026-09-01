@@ -24,4 +24,4 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Read production build status
-        run: eas build:view 0a9267da-d525-445e-a271-e196c6e7483a --json --non-interactive
+        run: eas build:view 0a9267da-d525-445e-a271-e196c6e7483a --json
