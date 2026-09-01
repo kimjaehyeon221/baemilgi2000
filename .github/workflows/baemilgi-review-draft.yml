@@ -1,0 +1,73 @@
+name: Prepare Baemilgi App Review Draft
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-review-draft.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Add version 1.0 to an App Review draft
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806588875'
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url'),now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const api=async(route,method='GET',body)=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com'+route,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+            const text=await r.text();const j=text?JSON.parse(text):{};
+            if(!r.ok)throw new Error(method+' '+route+' '+r.status+' '+JSON.stringify(j));
+            return j;
+          };
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
+            const version=(versions.data||[]).find(v=>['PREPARE_FOR_SUBMISSION','READY_FOR_REVIEW'].includes(v.attributes?.appStoreState))||(versions.data||[])[0];
+            if(!version)throw new Error('No editable iOS version');
+            const existing=await api('/v1/apps/'+appId+'/reviewSubmissions?filter%5Bstate%5D=READY_FOR_REVIEW&filter%5Bplatform%5D=IOS&include=items&limit=20');
+            let submission=(existing.data||[])[0];
+            if(!submission){
+              submission=(await api('/v1/reviewSubmissions','POST',{data:{type:'reviewSubmissions',attributes:{platform:'IOS'},relationships:{app:{data:{type:'apps',id:appId}}}}})).data;
+            }
+            const items=await api('/v1/reviewSubmissions/'+submission.id+'/items?limit=50');
+            let item=(items.data||[]).find(x=>x.relationships?.appStoreVersion?.data?.id===version.id);
+            if(!item){
+              item=(await api('/v1/reviewSubmissionItems','POST',{data:{type:'reviewSubmissionItems',relationships:{reviewSubmission:{data:{type:'reviewSubmissions',id:submission.id}},appStoreVersion:{data:{type:'appStoreVersions',id:version.id}}}}})).data;
+            }
+            const refreshed=await api('/v1/reviewSubmissions/'+submission.id+'?include=items,appStoreVersionForReview');
+            const result={preparedAt:new Date().toISOString(),appId,versionId:version.id,reviewSubmissionId:submission.id,reviewSubmissionItemId:item.id,state:refreshed.data?.attributes?.state||null,submittedDate:refreshed.data?.attributes?.submittedDate||null,submitted:false};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_APP_REVIEW_DRAFT.json',JSON.stringify(result,null,2)+'\n');
+            console.log(JSON.stringify(result,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist draft state
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_APP_REVIEW_DRAFT.json
+          git commit -m 'Record Baemilgi App Review draft' || exit 0
+          git push origin HEAD:main
