@@ -1,0 +1,22 @@
+name: PUSH TOTAL Final Probe Once
+on:
+  push:
+    branches: [push-total-rc]
+    paths: ['.github/workflows/push-total-final-probe-once.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Probe
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"; printf '%s' "$ASC_API_KEY_P8" > "$KEY"; chmod 600 "$KEY"; export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');const id=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');const b=v=>Buffer.from(v).toString('base64url');function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`};async function a(p){const r=await fetch(`https://api.appstoreconnect.apple.com${p}`,{headers:{Authorization:`Bearer ${jwt()}`}}),t=await r.text(),j=t?JSON.parse(t):null;if(!r.ok){console.error(JSON.stringify(j));throw Error(`${r.status} ${p}`)}return j};(async()=>{const app=await a(`/v1/apps/${id}?fields%5Bapps%5D=contentRightsDeclaration`);console.log('CONTENT_RIGHTS='+(app.data?.attributes?.contentRightsDeclaration??'NULL'));const vs=await a(`/v1/apps/${id}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`),v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0');if(!v)throw Error('v1.0 missing');const full=await a(`/v1/appStoreVersions/${v.id}?include=build`);console.log('VERSION_STATE='+v.attributes?.appStoreState);console.log('COPYRIGHT='+(full.data?.attributes?.copyright??''));console.log('RELEASE_TYPE='+(full.data?.attributes?.releaseType??''));const build=(full.included||[]).find(x=>x.type==='builds');console.log('BUILD='+(build?.attributes?.version||''));console.log('BUILD_STATE='+(build?.attributes?.processingState||''));const review=(await a(`/v1/appStoreVersions/${v.id}/appStoreReviewDetail`)).data;console.log('REVIEW_CONTACT_READY='+Boolean(review?.attributes?.contactFirstName&&review?.attributes?.contactLastName&&review?.attributes?.contactPhone&&review?.attributes?.contactEmail));console.log('REVIEW_NOTES_READY='+Boolean(review?.attributes?.notes));const loc=(await a(`/v1/appStoreVersions/${v.id}/appStoreVersionLocalizations?filter%5Blocale%5D=ko&limit=10`)).data?.[0];const sets=await a(`/v1/appStoreVersionLocalizations/${loc.id}/appScreenshotSets?include=appScreenshots&limit=50`);console.log('SCREENSHOT_COUNT='+(sets.included||[]).filter(x=>x.type==='appScreenshots').length);const infos=await a(`/v1/apps/${id}/relationships/appInfos`),infoId=infos.data?.[0]?.id,cat=await a(`/v1/appInfos/${infoId}/relationships/primaryCategory`);console.log('PRIMARY_CATEGORY='+(cat.data?.id||''));})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
