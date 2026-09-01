@@ -1,0 +1,63 @@
+{
+  "checkedAt": "2026-09-01T17:07:05.335Z",
+  "appId": "6806588875",
+  "version": {
+    "id": "8698e177-b678-44c3-9c36-2e483be9ad73",
+    "state": "PREPARE_FOR_SUBMISSION",
+    "versionString": "1.0"
+  },
+  "selectedBuild": {
+    "id": "365dc77b-2587-4b8a-bdb7-f14da06e8a48",
+    "buildNumber": "10",
+    "processingState": "VALID"
+  },
+  "screenshotSets": [
+    {
+      "locale": "en-US",
+      "displayType": "APP_IPHONE_67",
+      "id": "cd974930-6fab-4211-8594-3dde12dd055d",
+      "count": 4,
+      "screenshots": [
+        {
+          "fileName": "01-home.png",
+          "state": "COMPLETE"
+        },
+        {
+          "fileName": "02-quests.png",
+          "state": "COMPLETE"
+        },
+        {
+          "fileName": "03-challenge.png",
+          "state": "COMPLETE"
+        },
+        {
+          "fileName": "04-records.png",
+          "state": "COMPLETE"
+        }
+      ]
+    }
+  ],
+  "reviewSubmissions": [
+    {
+      "id": "644b7b5a-47d6-4a25-8923-8cc99f53bbd9",
+      "state": "READY_FOR_REVIEW",
+      "submittedDate": null
+    }
+  ],
+  "urls": {
+    "support": {
+      "url": "https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/support",
+      "status": 200,
+      "ok": true,
+      "finalUrl": "https://vercel.com/login?next=%2Fsso-api%3Furl%3Dhttps%253A%252F%252Fbaemilgi2000-support-upendjh-6028s-projects.vercel.app%252Fsupport%26nonce%3De4f299ccfae8677d566bb90ef4065f49a9ca5b6dd5eb5d4b4609961660957a81",
+      "contentType": "text/html; charset=utf-8"
+    },
+    "privacy": {
+      "url": "https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/privacy",
+      "status": 200,
+      "ok": true,
+      "finalUrl": "https://vercel.com/login?next=%2Fsso-api%3Furl%3Dhttps%253A%252F%252Fbaemilgi2000-support-upendjh-6028s-projects.vercel.app%252Fprivacy%26nonce%3D95fe609a5f81d642bc5128513d54f969889ce6bb7e64ac9a422c94994f2e0989",
+      "contentType": "text/html; charset=utf-8"
+    }
+  }
+}
