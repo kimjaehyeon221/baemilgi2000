@@ -1,0 +1,53 @@
+name: PUSH TOTAL TestFlight Submit 12 Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-testflight-submit-12-once.yml
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+        run: |
+          test -n "$ASC_API_KEY_P8"
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_ISSUER_ID"
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "EXPO_ASC_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+          echo "EXPO_ASC_KEY_ID=$ASC_KEY_ID" >> "$GITHUB_ENV"
+          echo "EXPO_ASC_ISSUER_ID=$ASC_ISSUER_ID" >> "$GITHUB_ENV"
+
+      - name: Submit build 12 to TestFlight
+        env:
+          CI: '1'
+        run: eas submit --platform ios --profile production --id e920bbf7-ddfa-4093-a6bb-96e8fc624165 --non-interactive --wait
