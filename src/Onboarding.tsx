@@ -3,6 +3,7 @@ import {
   Alert,
   Animated,
   Easing,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -106,14 +107,14 @@ const FORM_FRAMES = [
   },
 ] as const;
 
+const FORM_ARTWORK = [
+  require('../assets/baemilgi-form-1.png'),
+  require('../assets/baemilgi-form-2.png'),
+  require('../assets/baemilgi-form-3.png'),
+] as const;
+
 function MotionSketch({ frame }: { frame: number }) {
   const reveal = useRef(new Animated.Value(0)).current;
-  const poses = [
-    { torso: '-18deg', torsoX: -8, torsoY: -16, headX: 79, headY: -12, arm: '51deg', armX: 37, armY: 20, leg: '137deg', legX: -47, legY: 21 },
-    { torso: '9deg', torsoX: 8, torsoY: 0, headX: 88, headY: 17, arm: '69deg', armX: 46, armY: 29, leg: '157deg', legX: -43, legY: 18 },
-    { torso: '-7deg', torsoX: 2, torsoY: -4, headX: 91, headY: -1, arm: '43deg', armX: 48, armY: 24, leg: '150deg', legX: -45, legY: 21 },
-  ] as const;
-  const pose = poses[frame];
 
   useEffect(() => {
     reveal.setValue(0);
@@ -126,19 +127,25 @@ function MotionSketch({ frame }: { frame: number }) {
     }).start();
   }, [frame, reveal]);
 
-  const shift = reveal.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] });
+  const shift = reveal.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
+  const scale = reveal.interpolate({ inputRange: [0, 1], outputRange: [0.975, 1] });
   return (
     <View style={O.motionStage} accessible accessibilityLabel={FORM_FRAMES[frame].title}>
-      <Text style={O.motionCount}>0{frame + 1}</Text>
-      <View style={O.motionGround} />
-      <Animated.View style={[O.pose, { opacity: reveal, transform: [{ translateX: shift }] }]}>
-        <View style={[O.motionBody, { transform: [{ translateX: pose.torsoX }, { translateY: pose.torsoY }, { rotate: pose.torso }] }]} />
-        <View style={[O.motionHead, { transform: [{ translateX: pose.headX }, { translateY: pose.headY }] }]} />
-        <View style={[O.motionLimb, { transform: [{ translateX: pose.armX }, { translateY: pose.armY }, { rotate: pose.arm }] }]} />
-        <View style={[O.motionLimb, { transform: [{ translateX: pose.legX }, { translateY: pose.legY }, { rotate: pose.leg }] }]} />
-        <View style={O.motionJoint} />
+      <Animated.View style={[O.motionArtwork, { opacity: reveal, transform: [{ translateY: shift }, { scale }] }]}>
+        <Image
+          source={FORM_ARTWORK[frame]}
+          style={O.motionImage}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
       </Animated.View>
-      <View style={O.motionArrow}><Text style={O.motionArrowText}>FLOW →</Text></View>
+      <View style={O.motionLabels}>
+        {['시작', '전진', '복귀'].map((label, index) => (
+          <View key={label} style={[O.motionLabel, index === frame && O.motionLabelActive]}>
+            <Text style={[O.motionLabelText, index === frame && O.motionLabelTextActive]}>0{index + 1} {label}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -179,7 +186,7 @@ function IntroLaunch({ onContinue }: { onContinue: () => void }) {
       <View style={styles.onboarding}>
         <View style={O.launchTop}>
           <Text style={O.launchBrand}>BAEMILGI 2000</Text>
-          <Text style={O.launchMeta}>FIRST MOTION</Text>
+          <Text style={O.launchMeta}>첫 움직임</Text>
         </View>
 
         <Pressable
@@ -189,13 +196,10 @@ function IntroLaunch({ onContinue }: { onContinue: () => void }) {
           style={({ pressed }) => [O.launchStage, pressed && O.launchPressed]}
         >
           <Animated.View style={[O.launchMark, { transform: [{ translateY: markShift }, { scale: markScale }] }]}>
-            <View style={O.launchFoldLeft} />
-            <View style={O.launchFoldRight} />
-            <View style={O.launchDrive} />
-            <View style={O.launchStamp} />
+            <Image source={require('../assets/icon.png')} style={O.launchIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
           </Animated.View>
           <Text style={O.launchCounter}>{opened ? '001' : '000'}</Text>
-          <Text style={O.launchPrompt}>{opened ? 'QUEST OPEN' : 'TAP TO MOVE'}</Text>
+          <Text style={O.launchPrompt}>{opened ? '첫 기록 준비' : '눌러서 시작'}</Text>
         </Pressable>
 
         <View style={O.launchCopyArea}>
@@ -455,13 +459,10 @@ const O = StyleSheet.create({
   launchMeta: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
   launchStage: { flex: 1, minHeight: 360, alignItems: 'center', justifyContent: 'center' },
   launchPressed: { opacity: 0.82 },
-  launchMark: { width: 238, height: 176, position: 'relative', marginBottom: 18 },
-  launchFoldLeft: { position: 'absolute', left: 33, top: 0, width: 83, height: 98, backgroundColor: '#1B365D', transform: [{ rotate: '-14deg' }, { skewY: '-9deg' }] },
-  launchFoldRight: { position: 'absolute', right: 33, top: 0, width: 83, height: 98, backgroundColor: '#1B365D', transform: [{ rotate: '14deg' }, { skewY: '9deg' }] },
-  launchDrive: { position: 'absolute', left: 26, right: 26, bottom: 8, height: 68, backgroundColor: '#1B365D', transform: [{ skewX: '-18deg' }] },
-  launchStamp: { position: 'absolute', right: 16, bottom: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#B22222' },
+  launchMark: { width: 218, height: 218, marginBottom: 8, borderRadius: 48, overflow: 'hidden' },
+  launchIcon: { width: '100%', height: '100%' },
   launchCounter: { color: '#121212', fontFamily: 'Avenir Next', fontSize: 62, lineHeight: 70, fontWeight: '800', letterSpacing: -1.8, fontVariant: ['tabular-nums'] },
-  launchPrompt: { color: '#686A68', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.6, marginTop: 4 },
+  launchPrompt: { color: '#686A68', fontSize: 12, fontWeight: '800', letterSpacing: -0.1, marginTop: 2 },
   launchCopyArea: { minHeight: 104, justifyContent: 'flex-end', paddingBottom: 18 },
   launchTitle: { color: '#121212', fontSize: 31, lineHeight: 40, fontWeight: '800', letterSpacing: -0.8 },
   launchCopy: { color: '#686A68', fontSize: 14, lineHeight: 22, marginTop: 7, maxWidth: 310 },
@@ -471,16 +472,14 @@ const O = StyleSheet.create({
   guideProgressItem: { flex: 1, height: 3, backgroundColor: '#D7D3CA' },
   guideProgressItemActive: { backgroundColor: '#1B365D' },
   guideCode: { color: '#1B365D', fontFamily: 'Menlo', fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginBottom: 9 },
-  motionStage: { height: 218, marginTop: 18, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', backgroundColor: '#F0EEE8' },
-  motionCount: { position: 'absolute', left: 18, top: 15, color: '#C8C4BB', fontFamily: 'Avenir Next', fontSize: 34, lineHeight: 40, fontWeight: '800' },
-  motionGround: { position: 'absolute', left: 26, right: 26, bottom: 38, height: 2, backgroundColor: '#C8C4BB' },
-  pose: { width: 210, height: 108, alignItems: 'center', justifyContent: 'center' },
-  motionBody: { position: 'absolute', width: 142, height: 14, borderRadius: 7, backgroundColor: '#1B365D' },
-  motionHead: { position: 'absolute', left: 91, top: 38, width: 27, height: 27, borderRadius: 14, backgroundColor: '#1B365D' },
-  motionLimb: { position: 'absolute', left: 72, top: 45, width: 69, height: 10, borderRadius: 5, backgroundColor: '#1B365D' },
-  motionJoint: { position: 'absolute', left: 96, top: 49, width: 13, height: 13, borderRadius: 7, backgroundColor: '#B22222' },
-  motionArrow: { position: 'absolute', right: 18, top: 16 },
-  motionArrowText: { color: '#B22222', fontFamily: 'Menlo', fontSize: 10, letterSpacing: 1, fontWeight: '900' },
+  motionStage: { height: 226, marginTop: 18, overflow: 'hidden', backgroundColor: '#111317', borderRadius: 2 },
+  motionArtwork: { flex: 1, paddingHorizontal: 10, paddingTop: 8 },
+  motionImage: { width: '100%', height: '100%' },
+  motionLabels: { height: 38, flexDirection: 'row', backgroundColor: '#111317', paddingHorizontal: 10, gap: 6 },
+  motionLabel: { flex: 1, borderTopWidth: 2, borderTopColor: '#3B3E43', justifyContent: 'center' },
+  motionLabelActive: { borderTopColor: '#B22222' },
+  motionLabelText: { color: '#777B82', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  motionLabelTextActive: { color: '#FAF9F6' },
   guideNote: { color: '#686A68', fontSize: 12, lineHeight: 19, marginTop: 15 },
   guideActions: { gap: 9 },
   measureBody: { flex: 1, paddingTop: 42 },
