@@ -1,0 +1,52 @@
+name: PUSH TOTAL Direct Upload 13 Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-direct-upload13-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: macos-15
+    env:
+      IPA_URL: https://expo.dev/artifacts/eas/RHCM2s-OiQ2hFt04xZ1OHk1VgCq1dTu773LSEI0lkao.ipa
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Download production IPA
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 --retry-delay 3 "$IPA_URL" -o "$RUNNER_TEMP/push-total-13.ipa"
+          ls -lh "$RUNNER_TEMP/push-total-13.ipa"
+
+      - name: Prepare App Store Connect API key
+        run: |
+          set -euo pipefail
+          for dir in "$HOME/private_keys" "$HOME/.private_keys" "$HOME/.appstoreconnect/private_keys"; do
+            mkdir -p "$dir"
+            printf '%s' "$ASC_API_KEY_P8" > "$dir/AuthKey_${ASC_KEY_ID}.p8"
+            chmod 600 "$dir/AuthKey_${ASC_KEY_ID}.p8"
+          done
+
+      - name: Validate build 13 with Apple
+        run: |
+          set -euo pipefail
+          xcrun altool --validate-app \
+            --file "$RUNNER_TEMP/push-total-13.ipa" \
+            --type ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Upload build 13 to Apple
+        run: |
+          set -euo pipefail
+          xcrun altool --upload-app \
+            --file "$RUNNER_TEMP/push-total-13.ipa" \
+            --type ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
