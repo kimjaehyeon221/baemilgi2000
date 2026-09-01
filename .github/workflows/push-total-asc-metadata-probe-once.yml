@@ -70,21 +70,22 @@ jobs:
             const app = await asc(`/v1/apps/${appId}`);
             console.log('APP', JSON.stringify(pick(app.data.attributes, ['name','bundleId','sku','primaryLocale'])));
 
-            const infos = await asc(`/v1/appInfos?filter%5Bapp%5D=${appId}&limit=10`);
+            const infos = await asc(`/v1/apps/${appId}/appInfos?limit=10`);
             console.log('APP_INFO_COUNT', infos.data?.length || 0);
             for (const info of infos.data || []) {
               console.log('APP_INFO', JSON.stringify({id: info.id, ...pick(info.attributes, ['appStoreState'])}));
-              const locs = await asc(`/v1/appInfoLocalizations?filter%5BappInfo%5D=${info.id}&limit=50`);
+              const locs = await asc(`/v1/appInfos/${info.id}/appInfoLocalizations?limit=50`);
               for (const loc of locs.data || []) {
-                console.log('APP_INFO_LOCALIZATION', JSON.stringify({id:loc.id, locale:loc.attributes?.locale, name:loc.attributes?.name || null, subtitle:loc.attributes?.subtitle || null, privacyPolicyUrl:loc.attributes?.privacyPolicyUrl || null, privacyChoicesUrl:loc.attributes?.privacyChoicesUrl || null}));
+                const a = loc.attributes || {};
+                console.log('APP_INFO_LOCALIZATION', JSON.stringify({id:loc.id, locale:a.locale, name:a.name || null, subtitle:a.subtitle || null, privacyPolicyUrl:a.privacyPolicyUrl || null, privacyChoicesUrl:a.privacyChoicesUrl || null}));
               }
             }
 
-            const versions = await asc(`/v1/appStoreVersions?filter%5Bapp%5D=${appId}&filter%5Bplatform%5D=IOS&limit=50`);
+            const versions = await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
             console.log('VERSION_COUNT', versions.data?.length || 0);
             for (const version of versions.data || []) {
               console.log('VERSION', JSON.stringify({id:version.id, ...pick(version.attributes, ['versionString','appStoreState','releaseType','copyright'])}));
-              const locs = await asc(`/v1/appStoreVersionLocalizations?filter%5BappStoreVersion%5D=${version.id}&limit=50`);
+              const locs = await asc(`/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=50`);
               for (const loc of locs.data || []) {
                 const a = loc.attributes || {};
                 console.log('VERSION_LOCALIZATION', JSON.stringify({id:loc.id, locale:a.locale, descriptionPresent:Boolean(a.description), keywords:a.keywords || null, marketingUrl:a.marketingUrl || null, promotionalText:a.promotionalText || null, supportUrl:a.supportUrl || null, whatsNew:a.whatsNew || null}));
