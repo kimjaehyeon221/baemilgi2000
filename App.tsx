@@ -62,8 +62,9 @@ const BRICK_REPS = 100;
 
 const UPDATE_MS = 40;
 const MAX_SESSION_MS = 90_000;
-const CADENCE_HALF_MS = 1_500;
-const AUTO_FINISH_MS = 4_000;
+const AUTO_FINISH_MS = 5_000;
+const STATIONARY_MOTION_RATIO = 0.28;
+const STATIONARY_MOTION_FLOOR = 0.12;
 const IGNORE_START_MS = 300;
 const MIN_REP_MS = 1_900;
 const MAX_HALF_CYCLE_MS = 2_100;
@@ -210,8 +211,6 @@ function BottomNav({ active, onNavigate }: { active: 'home' | 'wall' | 'history'
 
 export default function App() {
   const startSignalPlayer = useAudioPlayer(require('./assets/start.wav'));
-  const cadenceDownPlayer = useAudioPlayer(require('./assets/cadence-down.wav'));
-  const cadenceUpPlayer = useAudioPlayer(require('./assets/cadence-up.wav'));
   const [state, setState] = useState<PersistedState>(initialState);
   const [loaded, setLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>('home');
@@ -234,7 +233,7 @@ export default function App() {
   const subscriptionRef = useRef<any>(null);
   const countdownTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActiveMotionAtRef = useRef(0);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(0);
   const lastCountAtRef = useRef(0);
@@ -245,8 +244,6 @@ export default function App() {
   const finishingRef = useRef(false);
   const sensitivityRef = useRef<SensitivityKey>('medium');
   const finishSessionRef = useRef<(automatic?: boolean) => void>(() => undefined);
-  const cadenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cadencePhaseRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -293,14 +290,9 @@ export default function App() {
     countdownTimersRef.current.forEach(clearTimeout);
     countdownTimersRef.current = [];
     if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
-    if (cadenceTimerRef.current) clearInterval(cadenceTimerRef.current);
     maxTimerRef.current = null;
-    idleTimerRef.current = null;
     elapsedTimerRef.current = null;
-    cadenceTimerRef.current = null;
-    cadencePhaseRef.current = 0;
     void KeepAwake.deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => undefined);
   };
 
@@ -446,6 +438,13 @@ export default function App() {
     if (sinceStart <= IGNORE_START_MS) return;
 
     const threshold = SENSITIVITY[sensitivityRef.current].threshold;
+    const stationaryThreshold = Math.max(STATIONARY_MOTION_FLOOR, threshold * STATIONARY_MOTION_RATIO);
+    if (Math.abs(smooth) > stationaryThreshold) {
+      lastActiveMotionAtRef.current = now;
+    } else if (countRef.current > 0 && now - lastActiveMotionAtRef.current >= AUTO_FINISH_MS) {
+      finishSessionRef.current(true);
+      return;
+    }
     if (phaseRef.current === 'neutral' && smooth > threshold) {
       phaseRef.current = 'positive';
       positiveAtRef.current = now;
@@ -463,8 +462,6 @@ export default function App() {
         setSessionCount(countRef.current);
         animateRep();
 
-        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = setTimeout(() => finishSessionRef.current(true), AUTO_FINISH_MS);
       }
       phaseRef.current = 'neutral';
     } else if (halfCycle > MAX_HALF_CYCLE_MS) {
@@ -481,6 +478,7 @@ export default function App() {
 
     DeviceMotion.setUpdateInterval(UPDATE_MS);
     startedAtRef.current = Date.now();
+    lastActiveMotionAtRef.current = startedAtRef.current;
     lastCountAtRef.current = 0;
     positiveAtRef.current = 0;
     phaseRef.current = 'neutral';
@@ -501,24 +499,6 @@ export default function App() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
     subscriptionRef.current = DeviceMotion.addListener(processMotion);
 
-    const playCadenceCue = () => {
-      const player = cadencePhaseRef.current % 2 === 0 ? cadenceDownPlayer : cadenceUpPlayer;
-      void (async () => {
-        try {
-          await player.seekTo(0);
-          player.play();
-        } catch {
-          // Motion counting continues even if a cadence cue cannot play.
-        }
-      })();
-      cadencePhaseRef.current += 1;
-    };
-    cadencePhaseRef.current = 0;
-    const firstCadenceCue = setTimeout(() => {
-      playCadenceCue();
-      cadenceTimerRef.current = setInterval(playCadenceCue, CADENCE_HALF_MS);
-    }, CADENCE_HALF_MS);
-    countdownTimersRef.current.push(firstCadenceCue);
 
     maxTimerRef.current = setTimeout(() => finishSessionRef.current(true), MAX_SESSION_MS);
     elapsedTimerRef.current = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 200);
