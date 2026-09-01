@@ -1,6 +1,6 @@
 name: Capture Baemilgi UI Audit
 
-# Post-polish visual check: render the current main branch at iPhone dimensions.
+# Render one actual 440x956 phone viewport per screen; do not use full-page browser captures.
 on:
   push:
     branches: [main]
@@ -59,7 +59,7 @@ jobs:
             let context=await browser.newContext(base);
             let page=await context.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
-            await page.screenshot({path:'docs/ui-audit/01-onboarding.png',fullPage:true});
+            await page.screenshot({path:'docs/ui-audit/01-onboarding.png'});
             await context.close();
 
             context=await browser.newContext(base);
@@ -77,24 +77,25 @@ jobs:
             page=await context.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
             await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/02-home.png',fullPage:true});
+            await page.screenshot({path:'docs/ui-audit/02-home.png'});
 
             await page.getByRole('tab',{name:'퀘스트'}).click();
             await page.getByText('QUEST MAP',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/03-quests.png',fullPage:true});
+            await page.screenshot({path:'docs/ui-audit/03-quests.png'});
 
             await page.getByRole('tab',{name:'홈'}).click();
             await page.getByRole('button',{name:'START CHALLENGE'}).click();
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
-            await page.screenshot({path:'docs/ui-audit/04-challenge.png',fullPage:true});
+            await page.screenshot({path:'docs/ui-audit/04-challenge.png'});
             await page.getByRole('button',{name:'닫기'}).click();
 
             await page.getByRole('tab',{name:'기록'}).click();
             await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
-            await page.screenshot({path:'docs/ui-audit/05-records.png',fullPage:true});
+            await page.screenshot({path:'docs/ui-audit/05-records.png'});
 
             await page.getByRole('button',{name:'정보 및 설정'}).click();
-            await page.screenshot({path:'docs/ui-audit/06-info.png',fullPage:true});
+            await page.getByRole('button',{name:'정보 닫기'}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/06-info.png'});
             await context.close();
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
@@ -112,5 +113,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/ui-audit/*.png
-          git commit -m 'Refresh Baemilgi UI audit screenshots' || exit 0
+          git commit -m 'Refresh Baemilgi viewport screenshots' || exit 0
           git push origin HEAD:main
