@@ -1,0 +1,186 @@
+name: PUSH TOTAL Cleanup Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-cleanup-once.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: push-total-rc
+
+      - name: Apply focused cleanup
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'App.tsx';
+          let s = fs.readFileSync(path, 'utf8');
+          const original = s;
+
+          function replaceOnce(from, to, label) {
+            if (s.includes(to)) return;
+            if (!s.includes(from)) throw new Error(`Missing anchor: ${label}`);
+            s = s.replace(from, to);
+          }
+
+          replaceOnce(
+            "  Text,\n  TextInput,\n  View,",
+            "  Text,\n  View,",
+            'unused TextInput import',
+          );
+
+          replaceOnce(
+            "type EntrySource = 'pocket' | 'manual';",
+            "type EntrySource = 'pocket' | 'legacy';",
+            'entry source type',
+          );
+
+          replaceOnce(
+          `function parsePositiveInt(value: string) {
+            const number = Number(value.replace(/[^0-9]/g, ''));
+            if (!Number.isFinite(number) || number <= 0) return null;
+            return Math.floor(number);
+          }
+
+          `,
+          '',
+          'unused manual parser',
+          );
+
+          replaceOnce(
+            "    source: raw?.source === 'pocket' ? 'pocket' : 'manual',",
+            "    source: raw?.source === 'pocket' ? 'pocket' : 'legacy',",
+            'legacy migration source',
+          );
+
+          replaceOnce(
+          `  const [screen, setScreen] = useState<Screen>('home');
+            const [customValue, setCustomValue] = useState('');
+            const [existingValue, setExistingValue] = useState('');
+            const [privacyOpen, setPrivacyOpen] = useState(false);
+            const [editingId, setEditingId] = useState<string | null>(null);
+            const [editingValue, setEditingValue] = useState('');`,
+          `  const [screen, setScreen] = useState<Screen>('home');
+            const [privacyOpen, setPrivacyOpen] = useState(false);`,
+          'unused manual input state',
+          );
+
+          const oldBrickWall = `function BrickWall({ filledBricks, compact = false }: { filledBricks: number; compact?: boolean }) {
+            const visibleFilled = Math.min(Math.max(0, filledBricks), compact ? 16 : 160);
+            const minimumSlots = compact ? 16 : 28;
+            const capacity = Math.max(minimumSlots, Math.ceil((visibleFilled + (compact ? 4 : 12)) / 4) * 4);
+            const rows = Math.ceil(capacity / 4);
+
+            return (
+              <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
+                {Array.from({ length: rows }, (_, visualRow) => {
+                  const rowFromBottom = rows - 1 - visualRow;
+                  return (
+                    <View key={visualRow} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
+                      {Array.from({ length: 4 }, (_, brickIndex) => {
+                        const brickNumber = rowFromBottom * 4 + brickIndex;
+                        const filled = brickNumber < visibleFilled;
+                        return (
+                          <View
+                            key={\`${visualRow}-\${brickIndex}\`}
+                            style={[
+                              styles.brick,
+                              compact && styles.brickCompact,
+                              filled ? styles.brickFilled : styles.brickEmpty,
+                              filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
+                              filled && brickNumber % 5 === 2 && styles.brickFilledDark,
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          }`;
+
+          const newBrickWall = `function BrickWall({ filledBricks, compact = false }: { filledBricks: number; compact?: boolean }) {
+            const visibleFilled = Math.min(Math.max(0, filledBricks), compact ? 16 : 160);
+            const minimumSlots = compact ? 16 : 28;
+            const capacity = Math.max(minimumSlots, Math.ceil((visibleFilled + (compact ? 4 : 12)) / 4) * 4);
+            const rows = Math.ceil(capacity / 4);
+
+            return (
+              <View style={[styles.wallCanvas, compact && styles.wallCanvasCompact]}>
+                {Array.from({ length: rows }, (_, rowFromBottom) => (
+                  <View key={rowFromBottom} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>
+                    {Array.from({ length: 4 }, (_, brickIndex) => {
+                      const brickNumber = rowFromBottom * 4 + brickIndex;
+                      const filled = brickNumber < visibleFilled;
+                      return (
+                        <View
+                          key={\`${rowFromBottom}-\${brickIndex}\`}
+                          style={[
+                            styles.brick,
+                            compact && styles.brickCompact,
+                            filled ? styles.brickFilled : styles.brickEmpty,
+                            filled && brickNumber % 3 === 1 && styles.brickFilledAlt,
+                            filled && brickNumber % 5 === 2 && styles.brickFilledDark,
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            );
+          }`;
+          replaceOnce(oldBrickWall, newBrickWall, 'bottom-up brick wall');
+
+          replaceOnce(
+            "  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2 },",
+            "  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2, flexDirection: 'column-reverse' },",
+            'bottom-up wall layout',
+          );
+
+          const obsoleteManualStyles = `  manualSection: { marginTop: 20, borderTopWidth: 2, borderColor: INK, paddingTop: 14 },
+            sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+            sectionLabel: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+            sectionMeta: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1.0 },
+            quickRow: { marginTop: 11, flexDirection: 'row', gap: 7 },
+            quickButton: { flex: 1, height: 48, backgroundColor: BG, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+            quickButtonPressed: { backgroundColor: BRICK },
+            quickButtonText: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },
+            customRow: { marginTop: 8, flexDirection: 'row', gap: 8 },
+            customInput: { flex: 1, minHeight: 48, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 12, color: INK, fontSize: 16, fontWeight: '800' },
+            customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+            customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },`;
+
+          if (s.includes(obsoleteManualStyles)) {
+            s = s.replace(obsoleteManualStyles,
+          `  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+            sectionLabel: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+            sectionMeta: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1.0 },`);
+          }
+
+          if (s === original) throw new Error('No cleanup changes were applied');
+          fs.writeFileSync(path, s);
+          console.log('Applied PUSH TOTAL bottom-up wall and manual-input cleanup.');
+          NODE
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add App.tsx
+          git diff --cached --check
+          git commit -m "Fix PUSH TOTAL wall direction and remove manual input remnants"
+          git push origin push-total-rc
