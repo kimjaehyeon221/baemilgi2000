@@ -1,0 +1,159 @@
+name: Generate and Upload Baemilgi App Store Screenshots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-appstore-screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ASC_APP_ID: '6806588875'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install app and screenshot runtime
+        run: |
+          npm install
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Start latest app preview
+        env:
+          BROWSER: none
+          EXPO_NO_TELEMETRY: '1'
+        run: |
+          npx expo start --web --port 8092 > /tmp/baemilgi-expo.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8092 >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/baemilgi-expo.log
+          exit 1
+      - name: Capture current release UI at 6.9-inch resolution
+        run: |
+          mkdir -p /tmp/baemilgi-screens
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({
+              viewport:{width:440,height:956},
+              deviceScaleFactor:3,
+              isMobile:true,
+              hasTouch:true,
+              colorScheme:'light',
+            });
+            const state={
+              onboarded:true,
+              pushupMax:35,
+              firstBaemilgiMax:35,
+              clearedLevel:35,
+              selectedLevel:36,
+              sessions:[],
+            };
+            await context.addInitScript(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:'baemilgi2000-ios-v1',value:state});
+            const page=await context.newPage();
+            await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
+            await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-screens/01-home.png'});
+            await page.getByRole('tab',{name:'퀘스트 탭'}).click();
+            await page.getByText('QUEST MAP',{exact:true}).waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-screens/02-quests.png'});
+            await page.getByRole('tab',{name:'홈 탭'}).click();
+            await page.getByRole('button',{name:'START CHALLENGE'}).click();
+            await page.getByText('TARGET REPS',{exact:true}).waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-screens/03-challenge.png'});
+            await page.getByRole('button',{name:'도전 닫기'}).click();
+            await page.getByRole('tab',{name:'기록 탭'}).click();
+            await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-screens/04-records.png'});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          file /tmp/baemilgi-screens/*.png
+      - name: Upload screenshots to App Store Connect
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),path=require('path');
+          const b64=v=>Buffer.from(v).toString('base64url'),now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const api=async(route,method='GET',body)=>{
+            const r=await fetch('https://api.appstoreconnect.apple.com'+route,{method,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+            const text=await r.text();const j=text?JSON.parse(text):{};
+            if(!r.ok)throw new Error(method+' '+route+' '+r.status+' '+JSON.stringify(j));
+            return j;
+          };
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
+            const version=(versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION')||(versions.data||[])[0];
+            if(!version)throw new Error('No editable iOS version');
+            const locs=await api('/v1/appStoreVersions/'+version.id+'/appStoreVersionLocalizations?limit=50');
+            const loc=(locs.data||[]).find(x=>x.attributes?.locale==='en-US')||(locs.data||[])[0];
+            if(!loc)throw new Error('No App Store localization');
+            const sets=await api('/v1/appStoreVersionLocalizations/'+loc.id+'/appScreenshotSets?filter%5BscreenshotDisplayType%5D=APP_IPHONE_67&limit=50');
+            let set=(sets.data||[])[0];
+            if(!set){
+              const created=await api('/v1/appScreenshotSets','POST',{data:{type:'appScreenshotSets',attributes:{screenshotDisplayType:'APP_IPHONE_67'},relationships:{appStoreVersionLocalization:{data:{type:'appStoreVersionLocalizations',id:loc.id}}}}});
+              set=created.data;
+            }
+            const old=await api('/v1/appScreenshotSets/'+set.id+'/appScreenshots?limit=50');
+            for(const shot of (old.data||[]))await api('/v1/appScreenshots/'+shot.id,'DELETE');
+            const files=fs.readdirSync('/tmp/baemilgi-screens').filter(x=>x.endsWith('.png')).sort();
+            const uploaded=[];
+            for(const fileName of files){
+              const bytes=fs.readFileSync(path.join('/tmp/baemilgi-screens',fileName));
+              const reserved=await api('/v1/appScreenshots','POST',{data:{type:'appScreenshots',attributes:{fileName,fileSize:bytes.length},relationships:{appScreenshotSet:{data:{type:'appScreenshotSets',id:set.id}}}}});
+              const shot=reserved.data;
+              for(const op of (shot.attributes?.uploadOperations||[])){
+                const headers={};for(const h of (op.requestHeaders||[]))headers[h.name]=h.value;
+                const part=bytes.subarray(Number(op.offset),Number(op.offset)+Number(op.length));
+                const r=await fetch(op.url,{method:op.method,headers,body:part});
+                if(!r.ok)throw new Error('Asset upload '+fileName+' '+r.status+' '+await r.text());
+              }
+              await api('/v1/appScreenshots/'+shot.id,'PATCH',{data:{type:'appScreenshots',id:shot.id,attributes:{uploaded:true}}});
+              uploaded.push({id:shot.id,fileName});
+            }
+            let states=[];
+            for(let attempt=0;attempt<30;attempt++){
+              const current=await api('/v1/appScreenshotSets/'+set.id+'/appScreenshots?limit=50');
+              states=(current.data||[]).map(x=>({id:x.id,fileName:x.attributes?.fileName,state:x.attributes?.assetDeliveryState?.state||null,errors:x.attributes?.assetDeliveryState?.errors||[]}));
+              if(states.length===files.length && states.every(x=>x.state==='COMPLETE'))break;
+              if(states.some(x=>x.state==='FAILED'))throw new Error('Screenshot processing failed '+JSON.stringify(states));
+              await sleep(5000);
+            }
+            if(states.length!==files.length || !states.every(x=>x.state==='COMPLETE'))throw new Error('Screenshot processing timed out '+JSON.stringify(states));
+            const result={uploadedAt:new Date().toISOString(),appId,versionId:version.id,localizationId:loc.id,screenshotSetId:set.id,displayType:'APP_IPHONE_67',screenshots:states};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_APP_STORE_SCREENSHOTS.json',JSON.stringify(result,null,2)+'\n');
+            console.log(JSON.stringify(result,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist upload result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_APP_STORE_SCREENSHOTS.json
+          git commit -m 'Record Baemilgi App Store screenshots' || exit 0
+          git push origin HEAD:main
