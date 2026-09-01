@@ -28,3 +28,5 @@ export const CHAPTER_GUIDE_COPY =
 
 export const BAEMILGI_MARTIAL_COPY =
   '배밀기는 힌두 푸시업(Hindu push-up)이라고도 불리는 반복 체력 운동이야. 국내 유도 훈련 자료에서도 상체 전반과 코어를 쓰는 기초 체력 동작으로 소개돼. 이 앱은 무도 수련의 반복·기록 문화를 시각 언어로 가져왔지만, 특정 협회의 공식 훈련 프로그램은 아니야.';
+
+// Release checkpoint: simplified onboarding visual QA + production OTA.
