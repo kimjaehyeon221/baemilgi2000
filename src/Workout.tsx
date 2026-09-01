@@ -367,16 +367,13 @@ export function Challenge({
           <FocusHeader code={`QUEST / ${String(level).padStart(3, '0')}`} onClose={() => { resumeElapsedClock(); setRecordFailure(false); }} light />
 
           <View style={S.ledger}>
-            <View style={S.ledgerBlueTop} />
             <View style={S.ledgerHeadingRow}>
               <View>
                 <Text style={S.ledgerTitle}>RECORDED.</Text>
                 <Text style={S.ledgerCode}>BAEMILGI 2000 // EVENT LOG</Text>
               </View>
-              <Text style={S.ledgerMark}>▰</Text>
             </View>
 
-            <View style={S.dashedRule} />
             <Text style={S.ledgerPrompt}>멈춘 지점도 수련의 일부야. 숫자만 정확히 남겨.</Text>
 
             <View style={S.ledgerRows}>
@@ -396,6 +393,7 @@ export function Challenge({
                     placeholderTextColor="#8C8D89"
                     style={S.stopInput}
                     autoFocus
+                    maxFontSizeMultiplier={1.15}
                     accessibilityLabel="중단 전까지 성공한 배밀기 개수"
                   />
                 </View>
@@ -633,19 +631,16 @@ const S = StyleSheet.create({
   logRoot: { flex: 1, backgroundColor: '#FAF9F6' },
   logPage: { flex: 1, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#FAF9F6' },
   ledger: { flex: 1, marginTop: 8, backgroundColor: '#FAF9F6', paddingHorizontal: 0, paddingVertical: 20, position: 'relative' },
-  ledgerBlueTop: { width: 56, height: 4, backgroundColor: '#1B365D', marginBottom: 18 },
-  ledgerHeadingRow: { marginTop: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 14, borderBottomWidth: 2, borderBottomColor: '#121212' },
+  ledgerHeadingRow: { marginTop: 10, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   ledgerTitle: { color: '#121212', fontFamily: headline, fontSize: 30, lineHeight: 38, fontWeight: '800' },
   ledgerCode: { color: '#686A68', fontFamily: mono, fontSize: 10, fontWeight: '900', letterSpacing: 1.1, marginTop: 5 },
-  ledgerMark: { fontFamily: body, color: '#1B365D', fontSize: 18 },
-  dashedRule: { height: 1, borderTopWidth: 1, borderStyle: 'dashed', borderColor: '#C8C4BB', marginTop: 22 },
-  ledgerPrompt: { color: '#686A68', fontFamily: body, fontSize: 13, lineHeight: 20, marginTop: 18, marginBottom: 28 },
-  ledgerRows: { borderTopWidth: 2, borderTopColor: '#121212' },
-  ledgerRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderStyle: 'dashed', borderBottomColor: '#C8C4BB' },
+  ledgerPrompt: { color: '#686A68', fontFamily: body, fontSize: 13, lineHeight: 20, marginTop: 18, marginBottom: 24 },
+  ledgerRows: { gap: 8 },
+  ledgerRow: { minHeight: 84, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F0EEE8', paddingHorizontal: 14 },
   ledgerLabel: { color: '#686A68', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   ledgerValue: { color: '#121212', fontFamily: metric, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] },
-  stopInputWrap: { minWidth: 92, alignItems: 'flex-end', borderBottomWidth: 2, borderBottomColor: '#1B365D' },
-  stopInput: { minWidth: 92, color: '#121212', fontFamily: metric, fontSize: 44, lineHeight: 50, fontWeight: '900', textAlign: 'right', paddingVertical: 4, fontVariant: ['tabular-nums'] },
+  stopInputWrap: { width: 148, maxWidth: '54%', alignItems: 'flex-end', backgroundColor: '#FAF9F6', paddingHorizontal: 8 },
+  stopInput: { width: '100%', color: '#121212', fontFamily: metric, fontSize: 40, lineHeight: 52, fontWeight: '900', textAlign: 'right', paddingHorizontal: 0, paddingVertical: 2, fontVariant: ['tabular-nums'] },
   logActions: { gap: 12, marginTop: 16 },
   stitchedAction: { minHeight: 56, borderWidth: 2, borderStyle: 'dashed', borderColor: '#121212', alignItems: 'center', justifyContent: 'center' },
   stitchedActionText: { color: '#121212', fontFamily: headline, fontSize: 12, fontWeight: '900', letterSpacing: 1.1 },

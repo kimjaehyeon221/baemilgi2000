@@ -24,7 +24,7 @@ import {
   safeState,
   targetForLevel,
 } from './src/core';
-import { styles } from './src/styles';
+import { C, styles } from './src/styles';
 import { Button, FormStep, Header } from './src/ui';
 import { Onboarding } from './src/Onboarding';
 import { Challenge, Training } from './src/Workout';
@@ -209,7 +209,7 @@ export default function App() {
     { length: nearbyEnd - nearbyStart + 1 },
     (_, i) => nearbyStart + i,
   );
-  const milestoneLevels = [50, 100, 130, 150, 175, 200];
+  const milestoneLevels = [100, 130, 150, 175, 200];
   const currentChapter = chapterForLevel(nextLevel);
 
   const exportRecords = async () => {
@@ -391,7 +391,11 @@ export default function App() {
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar barStyle="dark-content" />
-      <Header onInfo={() => setInfoOpen(true)} />
+      <Header
+        beltColor={currentChapter.color}
+        beltName={currentChapter.name}
+        onInfo={() => setInfoOpen(true)}
+      />
 
       {tab === 'home' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -470,7 +474,7 @@ export default function App() {
               accessibilityLabel="수련 기록 보기"
             >
               <View>
-                <Text style={styles.archiveFooterLabel}>DOJO TRAINING LOG</Text>
+                <Text style={styles.archiveFooterLabel}>BAEMILGI RECORDS</Text>
                 <Text style={styles.archiveFooterValue}>
                   {state.sessions.length ? `${state.sessions.length} TOTAL RECORDS` : 'NO RECORDS YET'}
                 </Text>
@@ -529,8 +533,9 @@ export default function App() {
             </Text>
           </View>
 
-          <Text style={styles.questSectionLabel}>현재 구간</Text>
-          <View style={styles.grid}>
+          <View style={styles.questSection}>
+            <Text style={styles.questSectionLabel}>현재 구간</Text>
+            <View style={styles.grid}>
             {nearbyLevels.map((level) => {
               const done = level <= state.clearedLevel;
               const selected = level === nextLevel && !done;
@@ -557,20 +562,39 @@ export default function App() {
                     );
                   }}
                   accessibilityHint={done ? '완료한 단계의 훈련을 시작합니다' : level === nextLevel ? '현재 다음 퀘스트로 이동합니다' : '미래 퀘스트의 목표를 미리 봅니다'}
-                  style={[styles.cell, done && styles.cellDone, selected && styles.cellSelected]}
+                  style={[
+                    styles.cell,
+                    done && styles.cellDone,
+                    selected && styles.cellSelected,
+                    selected && {
+                      backgroundColor: currentChapter.color,
+                      borderColor: currentChapter.id === 'white' ? C.line : currentChapter.color,
+                    },
+                  ]}
                 >
-                  <Text style={[styles.cellLevel, inverse && styles.cellTextInverse]}>{done ? '완료' : `L${level}`}</Text>
-                  <Text style={[styles.cellReps, inverse && styles.cellTextInverse]}>{reps}개</Text>
+                  <Text style={[
+                    styles.cellLevel,
+                    inverse && styles.cellTextInverse,
+                    selected && { color: currentChapter.textColor },
+                  ]}>{done ? '완료' : `L${level}`}</Text>
+                  <Text style={[
+                    styles.cellReps,
+                    inverse && styles.cellTextInverse,
+                    selected && { color: currentChapter.textColor },
+                  ]}>{reps}개</Text>
                 </Pressable>
               );
             })}
+            </View>
           </View>
 
-          <Text style={styles.questSectionLabel}>주요 관문</Text>
-          <View style={styles.milestoneList}>
-            {milestoneLevels.map((level) => {
+          <View style={styles.milestoneSection}>
+            <Text style={styles.questSectionLabel}>주요 관문</Text>
+            <View style={styles.milestoneList}>
+            {milestoneLevels.map((level, index) => {
               const reps = targetForLevel(level);
               const done = level <= state.clearedLevel;
+              const chapter = TRAINING_CHAPTERS[index];
               return (
                 <Pressable
                   key={level}
@@ -587,19 +611,29 @@ export default function App() {
                     );
                   }}
                   accessibilityHint={done ? '완료한 관문 단계의 훈련을 시작합니다' : '미래 관문의 목표를 미리 봅니다'}
-                  style={styles.milestoneRow}
+                  style={({ pressed }) => [
+                    styles.milestoneRow,
+                    { backgroundColor: chapter.color, borderColor: chapter.id === 'white' ? C.line : chapter.color },
+                    !done && styles.milestonePending,
+                    pressed && styles.milestonePressed,
+                  ]}
                 >
-                  <View style={[styles.milestoneMark, done && styles.milestoneMarkDone]}>
-                    <Text style={[styles.milestoneMarkText, done && styles.cellTextInverse]}>{done ? '✓' : level}</Text>
-                  </View>
-                  <View style={styles.milestoneBody}>
-                    <Text style={styles.milestoneTitle}>{reps.toLocaleString()}개</Text>
-                    <Text style={styles.milestoneCopy}>레벨 {level}</Text>
-                  </View>
-                  <Text style={styles.linkArrow}>{done ? '↻' : '·'}</Text>
+                  <Text style={[styles.milestoneBelt, { color: chapter.textColor }]}>{chapter.name}</Text>
+                  <Text
+                    style={[styles.milestoneTitle, { color: chapter.textColor }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                  >
+                    {reps.toLocaleString()}
+                  </Text>
+                  <Text style={[styles.milestoneCopy, { color: chapter.textColor }]}>
+                    {done ? '✓ ' : ''}L{level}
+                  </Text>
                 </Pressable>
               );
             })}
+            </View>
           </View>
         </ScrollView>
       )}
@@ -607,8 +641,8 @@ export default function App() {
       {tab === 'records' && (
         <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <View style={styles.archivePanel}>
-            <Text style={styles.pageEyebrow}>PERSONAL ARCHIVE / LOCAL</Text>
-            <Text style={styles.archiveTitle}>DOJO TRAINING LOG</Text>
+            <Text style={styles.pageEyebrow}>PERSONAL RECORD / THIS DEVICE</Text>
+            <Text style={styles.archiveTitle}>BAEMILGI RECORDS</Text>
             <Text style={styles.pageCopy}>영광의 목록보다 반복의 장부. 성공과 멈춘 지점을 같은 기록으로 남겨.</Text>
 
             <View style={styles.stats}>
@@ -620,15 +654,21 @@ export default function App() {
                 accessibilityHint="두 번 탭하여 처음 입력한 최고 기록을 수정합니다"
               >
                 <Text style={styles.statLabel}>START / EDIT</Text>
-                <Text style={styles.statValue}>{state.firstBaemilgiMax ?? '—'}</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
+                  {state.firstBaemilgiMax ?? '—'}
+                </Text>
               </Pressable>
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>CURRENT BEST</Text>
-                <Text style={styles.statValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
+                  {hasPersonalRecord ? currentReps : '—'}
+                </Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>CLEARED</Text>
-                <Text style={styles.statValue}>{state.clearedLevel}</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
+                  {state.clearedLevel}
+                </Text>
               </View>
             </View>
 
@@ -672,7 +712,14 @@ export default function App() {
                     <Text style={[styles.archiveCell, styles.archiveCodeCol]}>
                       {session.type === 'training' ? `D-${String(session.level).padStart(3, '0')}` : `Q-${String(session.level).padStart(3, '0')}`}
                     </Text>
-                    <Text style={[styles.archiveReps, styles.archiveRepsCol]}>{training ? trainingSummary : reps}</Text>
+                    <Text
+                      style={[styles.archiveReps, styles.archiveRepsCol]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.62}
+                    >
+                      {training ? trainingSummary : reps}
+                    </Text>
                     <View style={styles.archiveStatusCol}>
                       {session.type === 'training' ? (
                         <View style={styles.drillTag}><Text style={styles.drillTagText}>DRILL</Text></View>
@@ -697,13 +744,8 @@ export default function App() {
               </View>
             ) : null}
 
-            <View style={styles.archiveQuote}>
-              <Text style={styles.archiveQuoteText}>“THE ARCHIVE IS A LEDGER OF REPETITION.”</Text>
-            </View>
-
             <View style={styles.storageCard}>
               <View style={styles.storageCardTop}>
-                <View style={styles.storageDot} />
                 <Text style={styles.storageTitle}>LOCAL RECORD</Text>
                 <Text style={styles.storageInlineCode}>NO ACCOUNT</Text>
               </View>

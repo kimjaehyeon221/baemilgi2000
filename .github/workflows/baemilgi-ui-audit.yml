@@ -8,6 +8,9 @@ on:
       - 'App.tsx'
       - 'src/Onboarding.tsx'
       - 'src/Workout.tsx'
+      - 'src/chapters.ts'
+      - 'src/styles.ts'
+      - 'src/ui.tsx'
       - 'assets/onboarding-dojo-v1.jpg'
       - '.github/workflows/baemilgi-ui-audit.yml'
   workflow_dispatch:
@@ -129,9 +132,14 @@ jobs:
             await page.getByRole('button',{name:'3 2 1 뒤 도전 시작'}).click();
             await page.getByText('TARGET REPS',{exact:true}).waitFor();
             await page.screenshot({path:'docs/ui-audit/11-challenge.png'});
+            await page.getByRole('button',{name:'여기까지 기록'}).click();
+            await page.getByRole('textbox',{name:'중단 전까지 성공한 배밀기 개수'}).fill('2000');
+            await page.screenshot({path:'docs/ui-audit/11a-save-record.png'});
+            await page.getByRole('button',{name:'닫기'}).click();
+            await page.getByText('TARGET REPS',{exact:true}).waitFor();
             await page.getByRole('button',{name:'닫기'}).click();
             await page.getByRole('tab',{name:'기록'}).click();
-            await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
+            await page.getByText('BAEMILGI RECORDS',{exact:true}).first().waitFor();
             await page.screenshot({path:'docs/ui-audit/12-records.png'});
             await page.getByRole('button',{name:'정보 및 설정'}).click();
             await page.getByRole('button',{name:'정보 닫기'}).waitFor();

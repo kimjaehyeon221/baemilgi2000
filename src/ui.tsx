@@ -54,15 +54,23 @@ export function Button({
   );
 }
 
-export function Header({ onInfo }: { onInfo: () => void }) {
+export function Header({
+  beltColor,
+  beltName,
+  onInfo,
+}: {
+  beltColor: string;
+  beltName: string;
+  onInfo: () => void;
+}) {
   return (
     <View style={styles.header}>
       <View style={styles.brandLockup} accessibilityRole="header">
-        <View style={{ width: 20, height: 4, backgroundColor: C.blue }} />
+        <View style={[styles.brandBelt, { backgroundColor: beltColor }]} />
         <View>
           <Text style={styles.brand}>BAEMILGI 2000</Text>
-          <Text style={{ color: C.faint, fontSize: 10, fontFamily: FONT.data, fontWeight: '800', letterSpacing: 1, marginTop: 1 }}>
-            DOJO TRAINING LOG
+          <Text style={styles.brandSubline}>
+            {beltName} CHAPTER · BAEMILGI TRAINING
           </Text>
         </View>
       </View>
