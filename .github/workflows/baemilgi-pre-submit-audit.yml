@@ -1,0 +1,73 @@
+name: Baemilgi Pre-Submit Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-pre-submit-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Inspect submission blockers
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_APP_ID: '6806588875'
+          SUPPORT_URL: 'https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/support'
+          PRIVACY_URL: 'https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/privacy'
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const b64=v=>Buffer.from(v).toString('base64url'),now=Math.floor(Date.now()/1000);
+          const h=b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p=b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input=h+'.'+p;
+          const token=input+'.'+crypto.sign('sha256',Buffer.from(input),{key:process.env.ASC_API_KEY_P8,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const api=async route=>{const r=await fetch('https://api.appstoreconnect.apple.com'+route,{headers:{Authorization:'Bearer '+token}});const text=await r.text();const j=text?JSON.parse(text):{};if(!r.ok)throw new Error(route+' '+r.status+' '+JSON.stringify(j));return j};
+          const urlCheck=async url=>{try{const r=await fetch(url,{redirect:'follow'});return {url,status:r.status,ok:r.ok,finalUrl:r.url,contentType:r.headers.get('content-type')}}catch(e){return {url,status:null,ok:false,error:String(e)}}};
+          (async()=>{
+            const appId=process.env.ASC_APP_ID;
+            const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
+            const version=(versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION')||(versions.data||[])[0];
+            if(!version)throw new Error('No iOS version');
+            const build=await api('/v1/appStoreVersions/'+version.id+'/build');
+            const locs=await api('/v1/appStoreVersions/'+version.id+'/appStoreVersionLocalizations?limit=50');
+            const screenshotSets=[];
+            for(const loc of (locs.data||[])){
+              const sets=await api('/v1/appStoreVersionLocalizations/'+loc.id+'/appScreenshotSets?limit=50');
+              for(const set of (sets.data||[])){
+                const shots=await api('/v1/appScreenshotSets/'+set.id+'/appScreenshots?limit=200');
+                screenshotSets.push({locale:loc.attributes?.locale,displayType:set.attributes?.screenshotDisplayType,id:set.id,count:(shots.data||[]).length,screenshots:(shots.data||[]).map(s=>({fileName:s.attributes?.fileName,state:s.attributes?.assetDeliveryState?.state||null}))});
+              }
+            }
+            let submissions={data:[]};
+            try{submissions=await api('/v1/apps/'+appId+'/reviewSubmissions?limit=20&include=items')}catch(e){submissions={error:String(e),data:[]}};
+            const [support,privacy]=await Promise.all([urlCheck(process.env.SUPPORT_URL),urlCheck(process.env.PRIVACY_URL)]);
+            const report={checkedAt:new Date().toISOString(),appId,version:{id:version.id,state:version.attributes?.appStoreState,versionString:version.attributes?.versionString},selectedBuild:build.data?{id:build.data.id,buildNumber:build.data.attributes?.version,processingState:build.data.attributes?.processingState}:null,screenshotSets,reviewSubmissions:(submissions.data||[]).map(x=>({id:x.id,state:x.attributes?.state,submittedDate:x.attributes?.submittedDate||null})),urls:{support,privacy}};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_PRE_SUBMIT_AUDIT.json',JSON.stringify(report,null,2)+'\n');
+            console.log(JSON.stringify(report,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Persist audit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_PRE_SUBMIT_AUDIT.json
+          git commit -m 'Record Baemilgi pre-submit audit' || exit 0
+          git push origin HEAD:main
