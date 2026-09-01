@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-01T09:36:22.270Z",
+  "checkedAt": "2026-09-01T17:04:16.056Z",
   "appId": "6806588875",
   "detail": {
     "version": {
@@ -33,10 +33,10 @@
     ],
     "reviewDetail": {
       "id": "0c30b92e-7e4b-46a9-9cfc-ad24f6dd1ebb",
-      "contactFirstName": null,
-      "contactLastName": null,
-      "contactPhonePresent": false,
-      "contactEmailPresent": false,
+      "contactFirstName": "재현",
+      "contactLastName": "김",
+      "contactPhonePresent": true,
+      "contactEmailPresent": true,
       "notesPresent": true,
       "demoAccountRequired": false
     },
