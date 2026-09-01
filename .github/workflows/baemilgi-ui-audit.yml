@@ -1,0 +1,110 @@
+name: Capture Baemilgi UI Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-ui-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install web preview runtime
+        run: |
+          npm ci
+          npm install --no-save playwright react-dom@19.2.3 react-native-web@0.21.2 @expo/metro-runtime@57.0.14
+          npx playwright install --with-deps chromium
+      - name: Start Baemilgi web preview
+        env:
+          BROWSER: none
+          EXPO_NO_TELEMETRY: '1'
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.platforms=['ios','web'];
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
+          NODE
+          npx expo start --web --port 8092 > /tmp/baemilgi-ui-audit.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8092 >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/baemilgi-ui-audit.log
+          exit 1
+      - name: Capture release screens
+        run: |
+          mkdir -p docs/ui-audit
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const base={viewport:{width:440,height:956},deviceScaleFactor:2,isMobile:true,hasTouch:true,colorScheme:'light'};
+
+            // Fresh onboarding
+            let context=await browser.newContext(base);
+            let page=await context.newPage();
+            await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
+            await page.screenshot({path:'docs/ui-audit/01-onboarding.png',fullPage:true});
+            await context.close();
+
+            // Active user
+            context=await browser.newContext(base);
+            const state={
+              onboarded:true,
+              firstBaemilgiMax:35,
+              clearedLevel:35,
+              selectedLevel:36,
+              sessions:[
+                {at:'2026-08-30T01:00:00.000Z',type:'challenge',level:35,target:35,success:true,seconds:164,actualReps:35},
+                {at:'2026-08-31T01:00:00.000Z',type:'training',level:36,target:36,success:true,seconds:420,trainingSets:4,trainingRepsPerSet:16,trainingRestSeconds:90}
+              ]
+            };
+            await context.addInitScript(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:'baemilgi2000-ios-v1',value:state});
+            page=await context.newPage();
+            await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
+            await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/02-home.png',fullPage:true});
+
+            await page.getByRole('tab',{name:'퀘스트'}).click();
+            await page.getByText('QUEST MAP',{exact:true}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/03-quests.png',fullPage:true});
+
+            await page.getByRole('tab',{name:'홈'}).click();
+            await page.getByRole('button',{name:'START CHALLENGE'}).click();
+            await page.getByText('TARGET REPS',{exact:true}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/04-challenge.png',fullPage:true});
+            await page.getByRole('button',{name:'닫기'}).click();
+
+            await page.getByRole('tab',{name:'기록'}).click();
+            await page.getByText('DOJO TRAINING LOG',{exact:true}).first().waitFor();
+            await page.screenshot({path:'docs/ui-audit/05-records.png',fullPage:true});
+
+            await page.getByRole('tab',{name:'정보'}).click();
+            await page.screenshot({path:'docs/ui-audit/06-info.png',fullPage:true});
+            await context.close();
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          file docs/ui-audit/*.png
+      - name: Commit screenshots
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/ui-audit/*.png
+          git commit -m 'Record Baemilgi UI audit screenshots'
+          git push origin HEAD:main
