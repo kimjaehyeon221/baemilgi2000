@@ -1,0 +1,31 @@
+name: Export Baemilgi Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-source-export.yml'
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baemilgi-source
+          path: |
+            App.tsx
+            app.json
+            package.json
+            package-lock.json
+            tsconfig.json
+            index.js
+            src
+            assets
+            scripts
+          if-no-files-found: error
+          retention-days: 1
