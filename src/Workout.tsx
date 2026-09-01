@@ -209,9 +209,11 @@ export function Challenge({
   }, [phase, countdown, countdownPulse]);
 
   const beginCountdown = () => {
-    setCountdown(3);
-    setPhase('countdown');
-    Vibration.vibrate(15);
+    accumulatedMsRef.current = 0;
+    runningSinceRef.current = Date.now();
+    setSeconds(0);
+    setPhase('active');
+    Vibration.vibrate(20);
   };
 
   const persistPendingResult = async () => {
@@ -294,16 +296,16 @@ export function Challenge({
               </View>
             </View>
             <Text style={S.readyCopy}>
-              아직 완료된 기록이 아니야. 시작을 누르면 3·2·1 뒤 타이머가 켜지고, 직접 횟수를 세며 도전해.
+              아직 완료된 기록이 아니야. 시작을 누르면 바로 타이머가 켜지고, 직접 횟수를 세며 도전해.
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="3 2 1 뒤 도전 시작"
+            accessibilityLabel="도전 시작"
             style={({ pressed }) => [S.readyAction, pressed && S.pressed]}
             onPress={beginCountdown}
           >
-            <Text style={S.readyActionText}>3·2·1 뒤 도전 시작</Text>
+            <Text style={S.readyActionText}>도전 시작</Text>
           </Pressable>
         </View>
       </SafeAreaView>
