@@ -47,12 +47,18 @@ Decision rule:
 Current architecture assumption: no account, analytics, ads, cloud sync, or back-end collection.
 
 - [x] Privacy policy source exists in `PRIVACY.md`.
-- [x] Web privacy page source exists in `docs/privacy.html`.
-- [x] Web support page source exists in `docs/support.html`.
+- [x] Web privacy/support source exists in this repository.
+- [x] Public Privacy Policy HTTPS URL is accessible without authentication.
+- [x] Public Support HTTPS URL is accessible without authentication.
+- [x] Support page includes a usable public GitHub Issues contact channel.
 - [x] App Store copy is aligned with the current no-manual-entry Pocket Count flow.
 - [x] App Review notes include exact reviewer test instructions.
-- [ ] Privacy policy has a public HTTPS URL.
-- [ ] Support page has a public HTTPS URL and a usable developer contact method.
+- [x] App Store Connect Korean subtitle is populated.
+- [x] App Store Connect description is populated.
+- [x] App Store Connect keywords are populated.
+- [x] App Store Connect promotional text is populated.
+- [x] App Store Connect Privacy Policy URL points to the verified public page.
+- [x] App Store Connect Support URL points to the verified public page.
 - [ ] App Store Connect App Privacy answers match the current architecture.
 - [ ] Age rating questionnaire is completed.
 - [ ] Final screenshots are uploaded.
@@ -70,6 +76,8 @@ Build #12 is a staging binary that listens to the `preview` OTA channel. Do not 
 
 Before public submission:
 - [ ] Finish physical-device sensor validation.
+- [ ] Complete App Privacy and age-rating answers.
+- [ ] Produce/upload final App Store screenshots.
 - [ ] Bump app/runtime version when final native runtime is frozen.
 - [ ] Build with the `production` profile / `production` update channel.
 - [ ] Upload the final production build to App Store Connect.
