@@ -99,10 +99,17 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
           file docs/ui-audit/*.png
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baemilgi-ui-audit
+          path: docs/ui-audit/*.png
+          if-no-files-found: error
+          retention-days: 1
       - name: Commit screenshots
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/ui-audit/*.png
-          git commit -m 'Record Baemilgi UI audit screenshots'
+          git commit -m 'Refresh Baemilgi UI audit screenshots' || exit 0
           git push origin HEAD:main
