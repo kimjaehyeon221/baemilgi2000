@@ -152,7 +152,7 @@ function Intro({ onContinue }: { onContinue: () => void }) {
         source={require('../assets/onboarding-dojo-v1.jpg')}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
-        blurRadius={7}
+        blurRadius={4}
         accessibilityIgnoresInvertColors
       />
       <View style={O.heroShade} />
@@ -337,7 +337,7 @@ const O = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: '#07090CCC',
+    backgroundColor: '#07090C80',
   },
   heroSafe: { flex: 1, paddingHorizontal: 22, paddingBottom: 20 },
   heroTop: {
@@ -355,7 +355,7 @@ const O = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.35,
   },
-  heroCopy: { flex: 1, justifyContent: 'flex-end', paddingBottom: 34 },
+  heroCopy: { flex: 1, justifyContent: 'flex-start', paddingTop: 64 },
   heroEyebrow: {
     color: '#AFC0D7',
     fontFamily: 'Menlo',
