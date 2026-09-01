@@ -1,0 +1,94 @@
+name: PUSH TOTAL ASC Metadata Probe Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-asc-metadata-probe-once.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Probe metadata
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          const appId = process.env.ASC_APP_ID;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+
+          const b64url = value => Buffer.from(value).toString('base64url');
+          const now = Math.floor(Date.now() / 1000);
+          const unsigned = `${b64url(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64url(JSON.stringify({iss:issuerId,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;
+          const signature = crypto.sign('sha256', Buffer.from(unsigned), {key:privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+          const token = `${unsigned}.${signature}`;
+
+          async function asc(path) {
+            const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {headers:{Authorization:`Bearer ${token}`}});
+            const text = await res.text();
+            const body = text ? JSON.parse(text) : null;
+            if (!res.ok) throw new Error(`ASC ${res.status} ${path}\n${JSON.stringify(body)}`);
+            return body;
+          }
+
+          function pick(obj, keys) {
+            const out = {};
+            for (const key of keys) if (obj && Object.prototype.hasOwnProperty.call(obj, key)) out[key] = obj[key];
+            return out;
+          }
+
+          (async () => {
+            const app = await asc(`/v1/apps/${appId}`);
+            console.log('APP', JSON.stringify(pick(app.data.attributes, ['name','bundleId','sku','primaryLocale'])));
+
+            const infos = await asc(`/v1/appInfos?filter%5Bapp%5D=${appId}&limit=10`);
+            console.log('APP_INFO_COUNT', infos.data?.length || 0);
+            for (const info of infos.data || []) {
+              console.log('APP_INFO', JSON.stringify({id: info.id, ...pick(info.attributes, ['appStoreState'])}));
+              const locs = await asc(`/v1/appInfoLocalizations?filter%5BappInfo%5D=${info.id}&limit=50`);
+              for (const loc of locs.data || []) {
+                console.log('APP_INFO_LOCALIZATION', JSON.stringify({id:loc.id, locale:loc.attributes?.locale, name:loc.attributes?.name || null, subtitle:loc.attributes?.subtitle || null, privacyPolicyUrl:loc.attributes?.privacyPolicyUrl || null, privacyChoicesUrl:loc.attributes?.privacyChoicesUrl || null}));
+              }
+            }
+
+            const versions = await asc(`/v1/appStoreVersions?filter%5Bapp%5D=${appId}&filter%5Bplatform%5D=IOS&limit=50`);
+            console.log('VERSION_COUNT', versions.data?.length || 0);
+            for (const version of versions.data || []) {
+              console.log('VERSION', JSON.stringify({id:version.id, ...pick(version.attributes, ['versionString','appStoreState','releaseType','copyright'])}));
+              const locs = await asc(`/v1/appStoreVersionLocalizations?filter%5BappStoreVersion%5D=${version.id}&limit=50`);
+              for (const loc of locs.data || []) {
+                const a = loc.attributes || {};
+                console.log('VERSION_LOCALIZATION', JSON.stringify({id:loc.id, locale:a.locale, descriptionPresent:Boolean(a.description), keywords:a.keywords || null, marketingUrl:a.marketingUrl || null, promotionalText:a.promotionalText || null, supportUrl:a.supportUrl || null, whatsNew:a.whatsNew || null}));
+              }
+            }
+          })().catch(error => { console.error(error.stack || error); process.exit(1); });
+          NODE
