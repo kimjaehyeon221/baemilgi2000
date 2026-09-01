@@ -1,0 +1,35 @@
+name: PUSH TOTAL Submit Probe Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-submit-probe-once.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.13.1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: List recent iOS submissions
+        run: eas submit:list --platform ios --limit 5 --json --non-interactive
