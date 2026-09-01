@@ -15,8 +15,8 @@ jobs:
       ASC_APP_ID: '6806938654'
       ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
-      PRIVACY_URL: 'https://push-total-support-upendjh-6028s-projects.vercel.app/privacy.html'
-      SUPPORT_URL: 'https://push-total-support-upendjh-6028s-projects.vercel.app/support.html'
+      PRIVACY_URL: 'https://github.com/kimjaehyeon221/web1/blob/main/push-total/PRIVACY.md'
+      SUPPORT_URL: 'https://github.com/kimjaehyeon221/web1/blob/main/push-total/SUPPORT.md'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
