@@ -28,7 +28,7 @@ jobs:
       - name: Install app and screenshot runtime
         run: |
           npm install
-          npm install --no-save playwright
+          npm install --no-save playwright react-dom@19.2.3 react-native-web@0.21.2 @expo/metro-runtime@57.0.14
           npx playwright install --with-deps chromium
       - name: Start latest app preview
         env:
