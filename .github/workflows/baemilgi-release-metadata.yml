@@ -49,6 +49,7 @@ jobs:
             const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
             const version=(versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION')||(versions.data||[])[0];
             if(!version) throw new Error('No iOS App Store version');
+            await api('/v1/appStoreVersions/'+version.id,'PATCH',{data:{type:'appStoreVersions',id:version.id,attributes:{copyright:'2026 Jaehyeon Kim'}}});
             const builds=await api('/v1/builds?filter%5Bapp%5D='+appId+'&filter%5Bversion%5D=10&limit=5');
             const build=(builds.data||[]).find(b=>b.attributes?.processingState==='VALID');
             if(!build) throw new Error('Valid build 10 not found');
@@ -63,13 +64,44 @@ jobs:
             }
             const infos=await api('/v1/apps/'+appId+'/appInfos?limit=10');
             for(const info of (infos.data||[])){
+              const age=await api('/v1/appInfos/'+info.id+'/ageRatingDeclaration');
+              if(age.data){
+                await api('/v1/ageRatingDeclarations/'+age.data.id,'PATCH',{data:{type:'ageRatingDeclarations',id:age.data.id,attributes:{
+                  advertising:false,
+                  alcoholTobaccoOrDrugUseOrReferences:'NONE',
+                  contests:'NONE',
+                  gambling:false,
+                  gamblingSimulated:'NONE',
+                  gunsOrOtherWeapons:'NONE',
+                  healthOrWellnessTopics:true,
+                  lootBox:false,
+                  medicalOrTreatmentInformation:'NONE',
+                  messagingAndChat:false,
+                  parentalControls:false,
+                  profanityOrCrudeHumor:'NONE',
+                  ageAssurance:false,
+                  sexualContentGraphicAndNudity:'NONE',
+                  sexualContentOrNudity:'NONE',
+                  socialMedia:false,
+                  socialMediaAgeRestricted:false,
+                  horrorOrFearThemes:'NONE',
+                  matureOrSuggestiveThemes:'NONE',
+                  unrestrictedWebAccess:false,
+                  userGeneratedContent:false,
+                  violenceCartoonOrFantasy:'NONE',
+                  violenceRealisticProlongedGraphicOrSadistic:'NONE',
+                  violenceRealistic:'NONE',
+                  ageRatingOverrideV2:'NONE',
+                  koreaAgeRatingOverride:'NONE'
+                }}});
+              }
               const infoLocs=await api('/v1/appInfos/'+info.id+'/appInfoLocalizations?limit=50');
               for(const loc of (infoLocs.data||[])){
                 await api('/v1/appInfoLocalizations/'+loc.id,'PATCH',{data:{type:'appInfoLocalizations',id:loc.id,attributes:{subtitle:'200개의 퀘스트, 마지막은 2000'}}});
               }
             }
             const verifyBuild=await api('/v1/appStoreVersions/'+version.id+'/build');
-            const result={appliedAt:new Date().toISOString(),appId,versionId:version.id,selectedBuild:verifyBuild.data?{id:verifyBuild.data.id,buildNumber:verifyBuild.data.attributes?.version,processingState:verifyBuild.data.attributes?.processingState}:null,metadataApplied:true};
+            const result={appliedAt:new Date().toISOString(),appId,versionId:version.id,selectedBuild:verifyBuild.data?{id:verifyBuild.data.id,buildNumber:verifyBuild.data.attributes?.version,processingState:verifyBuild.data.attributes?.processingState}:null,metadataApplied:true,copyrightApplied:true,ageRatingApplied:true};
             fs.mkdirSync('docs',{recursive:true});
             fs.writeFileSync('docs/BAEMILGI_APP_STORE_METADATA_APPLIED.json',JSON.stringify(result,null,2)+'\n');
             console.log(JSON.stringify(result,null,2));
