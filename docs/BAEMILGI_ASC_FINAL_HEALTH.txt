@@ -1,0 +1,167 @@
+# asc validate
+┌────────────┬──────────────────────────────────────┬─────────┬──────────┬────────┬──────────┬───────┬──────────┬────────────┬────────┐
+│   App ID   │              Version ID              │ Version │ Platform │ Errors │ Warnings │ Infos │ Blocking │ Actionable │ Strict │
+├────────────┼──────────────────────────────────────┼─────────┼──────────┼────────┼──────────┼───────┼──────────┼────────────┼────────┤
+│ 6806588875 │ 8698e177-b678-44c3-9c36-2e483be9ad73 │ 1.0     │ IOS      │ 1      │ 0        │ 1     │ 1        │ 2          │ false  │
+└────────────┴──────────────────────────────────────┴─────────┴──────────┴────────┴──────────┴───────┴──────────┴────────────┴────────┘
+┌───────┬──────────┬──────────┬──────────────────────────────────┬────────┬───────────────────┬───────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Order │ Severity │ Blocking │             Check ID             │ Locale │       Field       │       Resource        │                                                     Message                                                     │                                                              Remediation                                                              │
+├───────┼──────────┼──────────┼──────────────────────────────────┼────────┼───────────────────┼───────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1     │ error    │ true     │ availability.missing             │        │ appAvailabilityV2 │ app:6806588875        │ app availability is missing                                                                                     │ Configure availability for the app in App Store Connect (Pricing and Availability)                                                    │
+│ 2     │ info     │ false    │ privacy.publish_state.unverified │        │                   │ appPrivacy:6806588875 │ App Privacy publish state is not verifiable via the public App Store Connect API and may still block submission │ Confirm App Privacy is published in App Store Connect before submitting: https://appstoreconnect.apple.com/apps/6806588875/appPrivacy │
+└───────┴──────────┴──────────┴──────────────────────────────────┴────────┴───────────────────┴───────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────┬──────────────────────────────────┬────────┬───────────────────┬───────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Severity │             Check ID             │ Locale │       Field       │       Resource        │                                                     Message                                                     │                                                              Remediation                                                              │
+├──────────┼──────────────────────────────────┼────────┼───────────────────┼───────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ error    │ availability.missing             │        │ appAvailabilityV2 │ app:6806588875        │ app availability is missing                                                                                     │ Configure availability for the app in App Store Connect (Pricing and Availability)                                                    │
+│ info     │ privacy.publish_state.unverified │        │                   │ appPrivacy:6806588875 │ App Privacy publish state is not verifiable via the public App Store Connect API and may still block submission │ Confirm App Privacy is published in App Store Connect before submitting: https://appstoreconnect.apple.com/apps/6806588875/appPrivacy │
+└──────────┴──────────────────────────────────┴────────┴───────────────────┴───────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+EXIT=1
+
+# asc review doctor
+SUMMARY
+┌───────────────┬────────────────────────────────────────────────────────────────────────────────────┐
+│     field     │                                       value                                        │
+├───────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ appId         │ 6806588875                                                                         │
+│ reviewState   │ NOT_SUBMITTED                                                                      │
+│ blockingCount │ 1                                                                                  │
+│ warningCount  │ 0                                                                                  │
+│ nextAction    │ Configure availability for the app in App Store Connect (Pricing and Availability) │
+└───────────────┴────────────────────────────────────────────────────────────────────────────────────┘
+
+CURRENT REVIEW
+┌────────────────────┬──────────────────────────────────────┐
+│       field        │                value                 │
+├────────────────────┼──────────────────────────────────────┤
+│ versionId          │ 8698e177-b678-44c3-9c36-2e483be9ad73 │
+│ version            │ 1.0                                  │
+│ platform           │ IOS                                  │
+│ versionState       │ PREPARE_FOR_SUBMISSION               │
+│ reviewDetail       │ configured                           │
+│ reviewDetailId     │ 0c30b92e-7e4b-46a9-9cfc-ad24f6dd1ebb │
+│ latestSubmissionId │ n/a                                  │
+└────────────────────┴──────────────────────────────────────┘
+
+COVERAGE WARNINGS
+┌───────────────────────────────────────────────────┬─────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────┐
+│                        id                         │   status    │                                                                                      message                                                                                       │                                   remediation                                    │
+├───────────────────────────────────────────────────┼─────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+│ review.coverage.app_store_regulations_and_permits │ NOT_CHECKED │ App Store Regulations and Permits declarations, including the personal-service declaration, are managed on the App Store Connect website and are not checked by asc review doctor. │ Verify App Store Regulations and Permits in App Store Connect before submission. │
+└───────────────────────────────────────────────────┴─────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┘
+
+BLOCKING ISSUES
+┌──────────────────────┬─────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────┐
+│          id          │           message           │                                    remediation                                     │
+├──────────────────────┼─────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────┤
+│ availability.missing │ app availability is missing │ Configure availability for the app in App Store Connect (Pricing and Availability) │
+└──────────────────────┴─────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────┘
+
+EXIT=0
+
+# asc status
+SUMMARY
+┌──────────────┬────────────────────────────────────┐
+│    field     │               value                │
+├──────────────┼────────────────────────────────────┤
+│ health       │ [~] yellow                         │
+│ nextAction   │ Wait for App Store review outcome. │
+│ blockerCount │ 0                                  │
+└──────────────┴────────────────────────────────────┘
+
+BUILDS
+┌────────────────────────┬──────────────────────────────────────┐
+│         field          │                value                 │
+├────────────────────────┼──────────────────────────────────────┤
+│ latest.id              │ 365dc77b-2587-4b8a-bdb7-f14da06e8a48 │
+│ latest.version         │ 1.0.0                                │
+│ latest.buildNumber     │ 10                                   │
+│ latest.processingState │ [+] VALID                            │
+│ latest.expired         │ [+] false                            │
+│ latest.uploadedDate    │ 2026-08-31T18:54:44-07:00 (15h ago)  │
+│ latest.platform        │ IOS                                  │
+└────────────────────────┴──────────────────────────────────────┘
+
+APP STORE
+┌─────────────┬──────────────────────────────────────┐
+│    field    │                value                 │
+├─────────────┼──────────────────────────────────────┤
+│ versionId   │ 8698e177-b678-44c3-9c36-2e483be9ad73 │
+│ version     │ 1.0                                  │
+│ state       │ [~] PREPARE_FOR_SUBMISSION           │
+│ platform    │ IOS                                  │
+│ createdDate │ 2026-08-29T06:47:56-07:00 (3d ago)   │
+└─────────────┴──────────────────────────────────────┘
+
+SUBMISSION
+┌────────────────────┬──────────┐
+│       field        │  value   │
+├────────────────────┼──────────┤
+│ inFlight           │ [~] true │
+│ blockingIssueCount │ 0        │
+└────────────────────┴──────────┘
+
+REVIEW
+┌────────────────────┬──────────────────────────────────────┐
+│       field        │                value                 │
+├────────────────────┼──────────────────────────────────────┤
+│ latestSubmissionId │ 644b7b5a-47d6-4a25-8923-8cc99f53bbd9 │
+│ state              │ [~] READY_FOR_REVIEW                 │
+│ submittedDate      │ n/a                                  │
+│ platform           │ IOS                                  │
+└────────────────────┴──────────────────────────────────────┘
+
+EXIT=0
+
+# asc versions view
+┌──────────────────────────────────────┬─────────┬──────────┬────────────────────────┬──────────────────────────────────────┬───────────────┬───────────────┐
+│              Version ID              │ Version │ Platform │         State          │               Build ID               │ Build Version │ Submission ID │
+├──────────────────────────────────────┼─────────┼──────────┼────────────────────────┼──────────────────────────────────────┼───────────────┼───────────────┤
+│ 8698e177-b678-44c3-9c36-2e483be9ad73 │ 1.0     │ iOS      │ PREPARE_FOR_SUBMISSION │ 365dc77b-2587-4b8a-bdb7-f14da06e8a48 │ 10            │               │
+└──────────────────────────────────────┴─────────┴──────────┴────────────────────────┴──────────────────────────────────────┴───────────────┴───────────────┘
+EXIT=0
+
+# web capability help
+DESCRIPTION
+  Apple web-session workflows.
+
+USAGE
+  asc web <subcommand> [flags]
+
+WEB SESSION WORKFLOWS
+
+Use Apple web sessions for App Store Connect and Developer Portal workflows.
+Use `asc web apps create` as the canonical app-creation command in this family.
+
+Examples:
+  asc web auth status
+  asc web agreements status
+  asc web api-keys create --name "Release automation"
+  asc web sandbox create --first-name "Jane" --last-name "Tester" --email "jane+sandbox@example.com" --password "Passwordtest1" --territory "USA"
+  asc web auth login --apple-id "user@example.com"
+  asc web apps create --name "My App" --bundle-id "com.example.app" --sku "MYAPP123"
+  asc web removed-apps list --paginate
+  asc web privacy plan --app "123456789" --file "./privacy.json"
+  asc web review list --app "123456789" --apple-id "user@example.com"
+  asc web review show --app "123456789" --apple-id "user@example.com"
+  asc web review subscriptions list --app "123456789" --apple-id "user@example.com"
+  asc web subscriptions availability remove-from-sale --subscription-id "SUB_ID" --confirm
+  asc web analytics overview --app "123456789" --start 2025-12-24 --end 2026-03-23
+
+SUBCOMMANDS
+  auth           Manage Apple web sessions.
+  agreements     [experimental] Check and accept Apple Developer Program agreements.
+  api-keys       Manage App Store Connect API keys via web sessions.
+  sandbox        Create sandbox testers via web sessions.
+  apps           App management via web sessions; canonical path for app creation.
+  removed-apps   Inspect removed apps via web sessions.
+  bundle-ids     Manage Bundle IDs via web-session endpoints.
+  app-groups     Manage App Groups via Developer Portal web sessions.
+  privacy        App privacy declaration workflows.
+  review         App-centric review and rejection inspection.
+  subscriptions  Manage subscriptions via web sessions.
+  analytics      Recreate App Store Connect analytics web dashboards.
+  xcode-cloud    Xcode Cloud usage and workflow management.
+
+
+EXIT=0
