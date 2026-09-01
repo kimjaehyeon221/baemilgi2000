@@ -1,0 +1,131 @@
+name: PUSH TOTAL Age Rating Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-age-rating-once.yml
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      AGE_INFO_URL: 'https://github.com/kimjaehyeon221/web1/blob/main/push-total/SUPPORT.md'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Set and verify age rating declaration
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          (async () => {
+            const appId = process.env.ASC_APP_ID;
+            const keyId = process.env.ASC_KEY_ID;
+            const issuerId = process.env.ASC_ISSUER_ID;
+            const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+            const infoUrl = process.env.AGE_INFO_URL;
+            const b64url = value => Buffer.from(value).toString('base64url');
+            const now = Math.floor(Date.now() / 1000);
+            const unsigned = `${b64url(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64url(JSON.stringify({iss:issuerId,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;
+            const signature = crypto.sign('sha256', Buffer.from(unsigned), {key:privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+            const token = `${unsigned}.${signature}`;
+
+            async function asc(path, options = {}) {
+              const headers = {Authorization:`Bearer ${token}`};
+              if (options.body) headers['Content-Type'] = 'application/json';
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+                method: options.method || 'GET',
+                headers,
+                body: options.body ? JSON.stringify(options.body) : undefined,
+              });
+              const text = await res.text();
+              const body = text ? JSON.parse(text) : null;
+              if (!res.ok) throw new Error(`ASC ${res.status} ${options.method || 'GET'} ${path}\n${JSON.stringify(body)}`);
+              return body;
+            }
+
+            const infos = await asc(`/v1/apps/${appId}/appInfos?limit=10`);
+            const info = infos.data?.[0];
+            if (!info) throw new Error('App Info not found');
+
+            const before = await asc(`/v1/appInfos/${info.id}/ageRatingDeclaration`);
+            console.log('AGE_BEFORE', JSON.stringify(before.data?.attributes || {}));
+            const declarationId = before.data?.id;
+            if (!declarationId) throw new Error('Age rating declaration not found');
+
+            const attributes = {
+              advertising: false,
+              alcoholTobaccoOrDrugUseOrReferences: 'NONE',
+              contests: 'NONE',
+              gambling: false,
+              gamblingSimulated: 'NONE',
+              gunsOrOtherWeapons: 'NONE',
+              healthOrWellnessTopics: true,
+              lootBox: false,
+              medicalOrTreatmentInformation: 'NONE',
+              messagingAndChat: false,
+              parentalControls: false,
+              profanityOrCrudeHumor: 'NONE',
+              ageAssurance: false,
+              sexualContentGraphicAndNudity: 'NONE',
+              sexualContentOrNudity: 'NONE',
+              socialMedia: false,
+              socialMediaAgeRestricted: false,
+              horrorOrFearThemes: 'NONE',
+              matureOrSuggestiveThemes: 'NONE',
+              unrestrictedWebAccess: false,
+              userGeneratedContent: false,
+              violenceCartoonOrFantasy: 'NONE',
+              violenceRealisticProlongedGraphicOrSadistic: 'NONE',
+              violenceRealistic: 'NONE',
+              ageRatingOverrideV2: 'NONE',
+              koreaAgeRatingOverride: 'NONE',
+              developerAgeRatingInfoUrl: infoUrl,
+            };
+
+            await asc(`/v1/ageRatingDeclarations/${declarationId}`, {
+              method: 'PATCH',
+              body: {data:{type:'ageRatingDeclarations',id:declarationId,attributes}},
+            });
+
+            const after = await asc(`/v1/appInfos/${info.id}/ageRatingDeclaration`);
+            const a = after.data?.attributes || {};
+            const checks = {
+              healthOrWellnessTopics: a.healthOrWellnessTopics === true,
+              medical: a.medicalOrTreatmentInformation === 'NONE',
+              ads: a.advertising === false,
+              chat: a.messagingAndChat === false,
+              ugc: a.userGeneratedContent === false,
+              unrestrictedWeb: a.unrestrictedWebAccess === false,
+              gambling: a.gambling === false && a.gamblingSimulated === 'NONE',
+            };
+            const appInfo = await asc(`/v1/appInfos/${info.id}?fields%5BappInfos%5D=appStoreAgeRating,koreaAgeRating,kidsAgeBand,state`);
+            console.log('AGE_CHECKS', JSON.stringify(checks));
+            console.log('AGE_RESULT', JSON.stringify(appInfo.data?.attributes || {}));
+            if (Object.values(checks).some(v => !v)) process.exit(1);
+          })().catch(error => { console.error(error.stack || error); process.exit(1); });
+          NODE
