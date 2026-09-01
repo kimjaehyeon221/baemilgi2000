@@ -623,7 +623,6 @@ export default function App() {
           setState(initialState);
           setScreen('home');
           setPrivacyOpen(false);
-          setEditingId(null);
         },
       },
     ]);
