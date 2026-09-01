@@ -28,8 +28,8 @@ jobs:
           ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
           ASC_APP_ID: '6806588875'
-          SUPPORT_URL: 'https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/support'
-          PRIVACY_URL: 'https://baemilgi2000-support-upendjh-6028s-projects.vercel.app/privacy'
+          SUPPORT_URL: 'https://github.com/kimjaehyeon221/web1/blob/main/baemilgi2000/SUPPORT.md'
+          PRIVACY_URL: 'https://github.com/kimjaehyeon221/web1/blob/main/baemilgi2000/PRIVACY.md'
         run: |
           node <<'NODE'
           const fs=require('fs'),crypto=require('crypto');
