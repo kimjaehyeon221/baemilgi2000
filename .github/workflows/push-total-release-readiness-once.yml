@@ -1,0 +1,111 @@
+name: PUSH TOTAL Release Readiness Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-release-readiness-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-24.04
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Prepare App Store Connect API key
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Inspect release readiness
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const appId = process.env.ASC_APP_ID;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+          const b64url = v => Buffer.from(v).toString('base64url');
+          function token() {
+            const now = Math.floor(Date.now()/1000);
+            const unsigned = `${b64url(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64url(JSON.stringify({iss:issuerId,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;
+            const sig = crypto.sign('sha256', Buffer.from(unsigned), {key:privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+            return `${unsigned}.${sig}`;
+          }
+          async function asc(path) {
+            const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {headers:{Authorization:`Bearer ${token()}`}});
+            const text = await res.text();
+            const body = text ? JSON.parse(text) : null;
+            if (!res.ok) { const e = new Error(`${res.status} ${path}`); e.status=res.status; e.body=body; throw e; }
+            return body;
+          }
+          async function optional(label, fn) {
+            try { return await fn(); }
+            catch (e) { console.log(`${label}=UNAVAILABLE_${e.status||'ERR'}`); return null; }
+          }
+          (async()=>{
+            const versions = await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const version = (versions.data||[]).find(v=>v.attributes?.versionString==='1.0') || (versions.data||[]).find(v=>v.attributes?.appStoreState==='PREPARE_FOR_SUBMISSION');
+            if(!version) throw new Error('Version 1.0 not found');
+            console.log('VERSION_STATE='+version.attributes.appStoreState);
+            console.log('VERSION_ID='+version.id);
+
+            const versionWithBuild = await asc(`/v1/appStoreVersions/${version.id}?include=build`);
+            const linkedBuild = (versionWithBuild.included||[]).find(x=>x.type==='builds');
+            console.log('BUILD_ATTACHED='+(linkedBuild?.attributes?.version==='13'));
+            console.log('BUILD_NUMBER='+(linkedBuild?.attributes?.version||''));
+            console.log('BUILD_PROCESSING_STATE='+(linkedBuild?.attributes?.processingState||''));
+            console.log('BUILD_MIN_OS='+(linkedBuild?.attributes?.minOsVersion||''));
+
+            const locs = await asc(`/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?filter%5Blocale%5D=ko&limit=10`);
+            const ko = (locs.data||[])[0];
+            if(!ko) throw new Error('Korean localization missing');
+            const a = ko.attributes||{};
+            console.log('DESCRIPTION_READY='+Boolean(a.description));
+            console.log('KEYWORDS_READY='+Boolean(a.keywords));
+            console.log('SUPPORT_URL_READY='+Boolean(a.supportUrl));
+            console.log('PROMOTIONAL_TEXT_READY='+Boolean(a.promotionalText));
+
+            const sets = await asc(`/v1/appStoreVersionLocalizations/${ko.id}/appScreenshotSets?include=appScreenshots&limit=50`);
+            const shots = (sets.included||[]).filter(x=>x.type==='appScreenshots');
+            console.log('SCREENSHOT_SET_COUNT='+(sets.data||[]).length);
+            console.log('SCREENSHOT_COUNT='+shots.length);
+
+            let review = null;
+            try { review = (await asc(`/v1/appStoreVersions/${version.id}/appStoreReviewDetail`)).data; } catch(e) { if(e.status!==404) throw e; }
+            const r = review?.attributes||{};
+            console.log('REVIEW_CONTACT_READY='+Boolean(r.contactFirstName && r.contactLastName && r.contactPhone && r.contactEmail));
+            console.log('REVIEW_NOTES_READY='+Boolean(r.notes));
+            console.log('DEMO_ACCOUNT_REQUIRED='+Boolean(r.demoAccountRequired));
+
+            const rel = await optional('APP_INFO_REL', ()=>asc(`/v1/apps/${appId}/relationships/appInfos`));
+            if (rel?.data?.length) {
+              const infoId = rel.data[0].id;
+              const info = await asc(`/v1/appInfos/${infoId}`);
+              console.log('CONTENT_RIGHTS='+(info.data?.attributes?.contentRightsDeclaration||''));
+              const ilocs = await optional('APP_INFO_LOCALIZATIONS', ()=>asc(`/v1/appInfos/${infoId}/appInfoLocalizations?filter%5Blocale%5D=ko&limit=10`));
+              const il = ilocs?.data?.[0]?.attributes||{};
+              console.log('SUBTITLE_READY='+Boolean(il.subtitle));
+              console.log('PRIVACY_URL_READY='+Boolean(il.privacyPolicyUrl));
+              const primary = await optional('PRIMARY_CATEGORY', ()=>asc(`/v1/appInfos/${infoId}/primaryCategory`));
+              console.log('PRIMARY_CATEGORY='+(primary?.data?.attributes?.name||''));
+            }
+
+            const price = await optional('PRICE_SCHEDULE', ()=>asc(`/v1/apps/${appId}/appPriceSchedule?include=baseTerritory`));
+            console.log('PRICE_SCHEDULE_READY='+Boolean(price?.data));
+            const territories = await optional('AVAILABLE_TERRITORIES', ()=>asc(`/v1/apps/${appId}/availableTerritories?limit=200`));
+            console.log('AVAILABLE_TERRITORY_COUNT='+(territories?.data?.length||0));
+
+            console.log('APP_PRIVACY_NOTE=App Privacy data collection declaration must still be checked in App Store Connect UI');
+          })().catch(e=>{console.error(e.stack||e); if(e.body) console.error(JSON.stringify(e.body)); process.exit(1);});
+          NODE
