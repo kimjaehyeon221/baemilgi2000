@@ -21,7 +21,7 @@ jobs:
         with:
           ref: push-total-rc
 
-      - name: Apply focused cleanup
+      - name: Repair focused cleanup
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -29,91 +29,26 @@ jobs:
           let s = fs.readFileSync(path, 'utf8');
           const original = s;
 
-          function replaceOnce(from, to, label) {
-            if (s.includes(to)) return;
-            if (!s.includes(from)) throw new Error(`Missing anchor: ${label}`);
-            s = s.replace(from, to);
-          }
-
-          replaceOnce(
-            "  Text,\n  TextInput,\n  View,",
-            "  Text,\n  View,",
-            'unused TextInput import',
-          );
-
-          replaceOnce(
-            "type EntrySource = 'pocket' | 'manual';",
-            "type EntrySource = 'pocket' | 'legacy';",
-            'entry source type',
-          );
-
-          replaceOnce(
+          s = s.replace(
             "function parsePositiveInt(value: string) {\n  const number = Number(value.replace(/[^0-9]/g, ''));\n  if (!Number.isFinite(number) || number <= 0) return null;\n  return Math.floor(number);\n}\n\n",
             "",
-            'unused manual parser',
           );
 
-          replaceOnce(
-            "    source: raw?.source === 'pocket' ? 'pocket' : 'manual',",
-            "    source: raw?.source === 'pocket' ? 'pocket' : 'legacy',",
-            'legacy migration source',
-          );
-
-          replaceOnce(
-            "  const [screen, setScreen] = useState<Screen>('home');\n  const [customValue, setCustomValue] = useState('');\n  const [existingValue, setExistingValue] = useState('');\n  const [privacyOpen, setPrivacyOpen] = useState(false);\n  const [editingId, setEditingId] = useState<string | null>(null);\n  const [editingValue, setEditingValue] = useState('');",
-            "  const [screen, setScreen] = useState<Screen>('home');\n  const [privacyOpen, setPrivacyOpen] = useState(false);",
-            'unused manual input state',
-          );
-
-          replaceOnce(
-            "      {Array.from({ length: rows }, (_, visualRow) => {",
-            "      {Array.from({ length: rows }, (_, rowFromBottom) => {",
-            'brick row index',
-          );
-          replaceOnce(
+          s = s.replace(
             "        const rowFromBottom = rows - 1 - visualRow;\n",
             "",
-            'old visual row inversion',
-          );
-          replaceOnce(
-            "          <View key={visualRow} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>",
-            "          <View key={rowFromBottom} style={[styles.brickRow, rowFromBottom % 2 === 1 && styles.brickRowOffset]}>",
-            'brick row key',
-          );
-          replaceOnce(
-            "                  key={`${visualRow}-${brickIndex}`}",
-            "                  key={`${rowFromBottom}-${brickIndex}`}",
-            'brick key',
-          );
-          replaceOnce(
-            "  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2 },",
-            "  wallCanvas: { width: '100%', backgroundColor: '#CBC4BB', paddingVertical: 2, overflow: 'hidden', gap: 2, flexDirection: 'column-reverse' },",
-            'bottom-up wall layout',
           );
 
-          const manualStyles = [
-            "  manualSection: { marginTop: 20, borderTopWidth: 2, borderColor: INK, paddingTop: 14 },\n",
-            "  quickRow: { marginTop: 11, flexDirection: 'row', gap: 7 },\n",
-            "  quickButton: { flex: 1, height: 48, backgroundColor: BG, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },\n",
-            "  quickButtonPressed: { backgroundColor: BRICK },\n",
-            "  quickButtonText: { color: INK, fontSize: 18, fontWeight: '900', fontVariant: ['tabular-nums'] },\n",
-            "  customRow: { marginTop: 8, flexDirection: 'row', gap: 8 },\n",
-            "  customInput: { flex: 1, minHeight: 48, borderWidth: 2, borderColor: INK, backgroundColor: BG, paddingHorizontal: 12, color: INK, fontSize: 16, fontWeight: '800' },\n",
-            "  customButton: { width: 78, minHeight: 48, backgroundColor: BRICK, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },\n",
-            "  customButtonText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.0 },\n",
-          ];
-          for (const style of manualStyles) s = s.replace(style, '');
-
-          if (s === original) throw new Error('No cleanup changes were applied');
+          if (s === original) throw new Error('Expected repair anchors were not present');
           fs.writeFileSync(path, s);
-          console.log('Applied PUSH TOTAL bottom-up wall and manual-input cleanup.');
+          console.log('Repaired PUSH TOTAL cleanup patch.');
           NODE
 
-      - name: Commit cleanup
+      - name: Commit repair
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add App.tsx
           git diff --cached --check
-          git commit -m "Fix PUSH TOTAL wall direction and remove manual input remnants"
+          git commit -m "Repair PUSH TOTAL wall cleanup"
           git push origin push-total-rc
