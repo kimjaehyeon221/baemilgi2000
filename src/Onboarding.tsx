@@ -186,6 +186,9 @@ function Intro({ onContinue }: { onContinue: () => void }) {
             <Text style={O.heroOrigin}>
               2,000은 전설적인 레슬러 Great Gama의 배밀기(Dand) 고반복 기록에서 가져온 상징적인 목표입니다.
             </Text>
+            <Text style={O.heroSafety}>
+              운동 권장량이 아닙니다. 체력에 맞게 진행하고 통증이나 어지럼이 있으면 중단하세요.
+            </Text>
           </View>
 
           <View style={O.heroAction}>
@@ -433,6 +436,14 @@ const O = StyleSheet.create({
     fontWeight: '700',
     maxWidth: 330,
     marginTop: 8,
+  },
+  heroSafety: {
+    color: '#FAF9F6',
+    fontSize: 10,
+    lineHeight: 16,
+    fontWeight: '800',
+    maxWidth: 330,
+    marginTop: 9,
   },
   heroAction: { paddingTop: 16, borderTopWidth: 1, borderTopColor: '#FFFFFF2E' },
   guideBody: { flex: 1, paddingTop: 28 },

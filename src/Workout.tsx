@@ -111,7 +111,7 @@ function StampFlash({
         <Text style={[S.stampText, !cleared && S.recordStampText]}>{cleared ? 'CLEARED' : 'RECORDED'}</Text>
       </Animated.View>
       <Text style={S.flashMeta}>
-        {saveFailed ? 'LOCAL SAVE FAILED · RECORD KEPT ON SCREEN' : cleared ? 'TRAINING VERIFIED' : 'ATTEMPT LOGGED'}
+        {saveFailed ? 'LOCAL SAVE FAILED · RECORD KEPT ON SCREEN' : cleared ? 'QUEST COMPLETED' : 'ATTEMPT LOGGED'}
       </Text>
       {saveFailed && onRetry ? (
         <Pressable
@@ -556,6 +556,8 @@ export function Training({
           </View>
         </View>
 
+        <Text style={S.trainingPlanNote}>훈련 예시 · 현재 기록을 바탕으로 자동 구성</Text>
+
         <View style={S.trainingMat}>
           <Text style={S.trainingNumber} maxFontSizeMultiplier={1.15}>{rest ? formatSeconds(restLeft) : plan.reps}</Text>
           <Text style={S.trainingUnit}>{rest ? 'REST' : 'REPS'}</Text>
@@ -660,6 +662,7 @@ const S = StyleSheet.create({
 
   trainingBand: { minHeight: 64, marginTop: 16, borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#1B365D', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
   trainingBandLabel: { color: '#D5DBE2', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
+  trainingPlanNote: { color: '#8D9192', fontFamily: body, fontSize: 10, lineHeight: 16, marginTop: 10 },
   trainingBandMarks: { flexDirection: 'row', gap: 5 },
   trainingMark: { width: 10, height: 22, borderWidth: 1, borderColor: '#53595B' },
   trainingMarkDone: { backgroundColor: '#1B365D', borderColor: '#1B365D' },

@@ -123,6 +123,10 @@ jobs:
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
             await page.getByRole('button',{name:'START CHALLENGE'}).waitFor();
             await page.screenshot({path:'docs/ui-audit/09-home.png'});
+            await page.getByRole('button',{name:'TRAINING'}).click();
+            await page.getByText('훈련 예시 · 현재 기록을 바탕으로 자동 구성',{exact:true}).waitFor();
+            await page.screenshot({path:'docs/ui-audit/09a-training-example.png'});
+            await page.getByRole('button',{name:'닫기'}).click();
             await page.getByRole('tab',{name:'퀘스트'}).click();
             await page.getByText('QUEST MAP',{exact:true}).waitFor();
             await page.screenshot({path:'docs/ui-audit/10-quests.png'});
