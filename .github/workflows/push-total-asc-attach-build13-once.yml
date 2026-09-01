@@ -1,0 +1,111 @@
+name: PUSH TOTAL ASC Attach Build 13 Once
+
+on:
+  push:
+    branches:
+      - push-total-rc
+    paths:
+      - .github/workflows/push-total-asc-attach-build13-once.yml
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: push-total-rc
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Prepare App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Wait for build 13 and attach to App Store version 1.0
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          const appId = process.env.ASC_APP_ID;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+          const b64url = value => Buffer.from(value).toString('base64url');
+          const makeToken = () => {
+            const now = Math.floor(Date.now() / 1000);
+            const unsigned = `${b64url(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64url(JSON.stringify({iss:issuerId,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;
+            const signature = crypto.sign('sha256', Buffer.from(unsigned), {key:privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+            return `${unsigned}.${signature}`;
+          };
+
+          async function asc(path, options = {}) {
+            const headers = {Authorization:`Bearer ${makeToken()}`};
+            if (options.body) headers['Content-Type'] = 'application/json';
+            const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+              method: options.method || 'GET',
+              headers,
+              body: options.body ? JSON.stringify(options.body) : undefined,
+            });
+            const text = await res.text();
+            const body = text ? JSON.parse(text) : null;
+            if (!res.ok) throw new Error(`ASC ${res.status} ${options.method || 'GET'} ${path}\n${JSON.stringify(body)}`);
+            return body;
+          }
+
+          (async () => {
+            const versions = await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const version = (versions.data || []).find(v => v.attributes?.versionString === '1.0') ||
+              (versions.data || []).find(v => v.attributes?.appStoreState === 'PREPARE_FOR_SUBMISSION');
+            if (!version) throw new Error('App Store version 1.0 not found');
+            console.log('TARGET_VERSION', version.id, version.attributes?.versionString, version.attributes?.appStoreState);
+
+            let build = null;
+            for (let i = 0; i < 170; i++) {
+              const uploads = await asc(`/v1/apps/${appId}/buildUploads?filter%5BcfBundleShortVersionString%5D=1.0.0&filter%5BcfBundleVersion%5D=13&filter%5Bplatform%5D=IOS&include=build&limit=10`);
+              const builds = (uploads.included || []).filter(x => x.type === 'builds' && x.attributes?.version === '13');
+              build = builds.find(x => x.attributes?.processingState === 'VALID') || null;
+              const uploadStates = (uploads.data || []).map(x => x.attributes?.state).filter(Boolean);
+              const buildStates = builds.map(x => x.attributes?.processingState).filter(Boolean);
+              console.log(`ASC_POLL_${i+1}`, JSON.stringify({uploadStates, buildStates, buildFound:Boolean(build)}));
+              if (build) break;
+              if (builds.some(x => x.attributes?.processingState === 'FAILED' || x.attributes?.processingState === 'INVALID')) {
+                throw new Error(`Apple processing failed: ${JSON.stringify(buildStates)}`);
+              }
+              await sleep(30000);
+            }
+            if (!build) throw new Error('Timed out waiting for Apple build 13 to become VALID');
+
+            await asc(`/v1/appStoreVersions/${version.id}`, {
+              method: 'PATCH',
+              body: {
+                data: {
+                  type: 'appStoreVersions',
+                  id: version.id,
+                  relationships: {
+                    build: {data: {type: 'builds', id: build.id}}
+                  }
+                }
+              }
+            });
+            const verify = await asc(`/v1/appStoreVersions/${version.id}?include=build`);
+            const linked = (verify.included || []).find(x => x.type === 'builds');
+            if (!linked || linked.id !== build.id) throw new Error('Build relationship verification failed');
+            console.log('BUILD_13_ATTACHED', JSON.stringify({version:'1.0', build:'13', buildId:build.id, processingState:linked.attributes?.processingState}));
+          })().catch(err => { console.error(err.stack || err); process.exit(1); });
+          NODE
