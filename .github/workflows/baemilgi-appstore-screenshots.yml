@@ -35,6 +35,12 @@ jobs:
           BROWSER: none
           EXPO_NO_TELEMETRY: '1'
         run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.platforms=['ios','web'];
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
+          NODE
           npx expo start --web --port 8092 > /tmp/baemilgi-expo.log 2>&1 &
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8092 >/dev/null; then exit 0; fi
