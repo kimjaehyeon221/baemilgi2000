@@ -1,0 +1,67 @@
+name: Baemilgi ASC Final Health
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-asc-final-health.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ASC_BYPASS_KEYCHAIN: '1'
+      ASC_NO_UPDATE: '1'
+      ASC_APP_ID: '6806588875'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: rudrankriyam/setup-asc@v1
+      - name: Configure API key for asc
+        run: |
+          echo "ASC_PRIVATE_KEY_B64=$(printf '%s' "$ASC_API_KEY_P8" | base64 -w0)" >> "$GITHUB_ENV"
+      - name: Run App Store readiness diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p docs
+          {
+            echo '# asc validate'
+            asc validate --app "$ASC_APP_ID" --version 1.0 --platform IOS --output table
+            echo "EXIT=$?"
+            echo
+            echo '# asc review doctor'
+            asc review doctor --app "$ASC_APP_ID" --version 1.0 --platform IOS --output table
+            echo "EXIT=$?"
+            echo
+            echo '# asc status'
+            asc status --app "$ASC_APP_ID" --include builds,appstore,submission,review --output table
+            echo "EXIT=$?"
+            echo
+            echo '# asc versions view'
+            asc versions view --version-id 8698e177-b678-44c3-9c36-2e483be9ad73 --include-build --include-submission --output table
+            echo "EXIT=$?"
+            echo
+            echo '# web capability help'
+            asc web --help
+            echo "EXIT=$?"
+          } > docs/BAEMILGI_ASC_FINAL_HEALTH.txt 2>&1
+          cat docs/BAEMILGI_ASC_FINAL_HEALTH.txt
+          exit 0
+      - name: Persist diagnostic report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_ASC_FINAL_HEALTH.txt
+          git commit -m 'Record Baemilgi final ASC health' || exit 0
+          git push origin HEAD:main
