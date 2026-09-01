@@ -1,0 +1,136 @@
+name: PUSH TOTAL Submit Review Once
+
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-submit-review-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    env:
+      ASC_APP_ID: '6806938654'
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+    steps:
+      - name: Prepare API key
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          echo "ASC_KEY_PATH=$KEY" >> "$GITHUB_ENV"
+
+      - name: Verify screenshots and submit for review
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          const appId = process.env.ASC_APP_ID;
+          const keyId = process.env.ASC_KEY_ID;
+          const issuerId = process.env.ASC_ISSUER_ID;
+          const privateKey = fs.readFileSync(process.env.ASC_KEY_PATH, 'utf8');
+          const b64 = v => Buffer.from(v).toString('base64url');
+          function jwt() {
+            const now = Math.floor(Date.now()/1000);
+            const unsigned = `${b64(JSON.stringify({alg:'ES256',kid:keyId,typ:'JWT'}))}.${b64(JSON.stringify({iss:issuerId,iat:now-5,exp:now+600,aud:'appstoreconnect-v1'}))}`;
+            const sig = crypto.sign('sha256', Buffer.from(unsigned), {key:privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+            return `${unsigned}.${sig}`;
+          }
+          async function asc(path, options={}) {
+            const headers = {Authorization:`Bearer ${jwt()}`};
+            if (options.body) headers['Content-Type'] = 'application/json';
+            const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
+              method: options.method || 'GET', headers,
+              body: options.body ? JSON.stringify(options.body) : undefined
+            });
+            const text = await res.text();
+            let body = null;
+            try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+            if (!res.ok) {
+              const err = new Error(`ASC ${res.status} ${options.method||'GET'} ${path}\n${typeof body==='string'?body:JSON.stringify(body)}`);
+              err.status = res.status; err.body = body; throw err;
+            }
+            return body;
+          }
+          (async()=>{
+            const versions = await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const version = (versions.data||[]).find(v => v.attributes?.versionString === '1.0');
+            if (!version) throw new Error('App Store version 1.0 not found');
+            console.log('VERSION_BEFORE='+version.attributes?.appStoreState);
+            if (['WAITING_FOR_REVIEW','IN_REVIEW','PENDING_APPLE_RELEASE','PROCESSING_FOR_DISTRIBUTION','READY_FOR_DISTRIBUTION'].includes(version.attributes?.appStoreState)) {
+              console.log('ALREADY_SUBMITTED=true');
+              return;
+            }
+
+            const locs = await asc(`/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?filter%5Blocale%5D=ko&limit=10`);
+            const ko = (locs.data||[])[0];
+            if (!ko) throw new Error('Korean localization missing');
+            const sets = await asc(`/v1/appStoreVersionLocalizations/${ko.id}/appScreenshotSets?include=appScreenshots&limit=50`);
+            const shots = (sets.included||[]).filter(x=>x.type==='appScreenshots');
+            console.log('SCREENSHOT_SET_COUNT='+(sets.data||[]).length);
+            console.log('SCREENSHOT_COUNT='+shots.length);
+            if (shots.length < 1) throw new Error('No App Store screenshots are currently visible to the API. Upload at least one screenshot and save first.');
+
+            const submissions = await asc(`/v1/apps/${appId}/reviewSubmissions?limit=50`);
+            const active = (submissions.data||[]).filter(s => ['READY_FOR_REVIEW','WAITING_FOR_REVIEW','IN_REVIEW'].includes(s.attributes?.state));
+            const already = active.find(s => ['WAITING_FOR_REVIEW','IN_REVIEW'].includes(s.attributes?.state));
+            if (already) {
+              console.log('REVIEW_SUBMISSION_ALREADY_ACTIVE='+already.id);
+              console.log('REVIEW_SUBMISSION_STATE='+already.attributes?.state);
+              return;
+            }
+            let submission = active.find(s => s.attributes?.state === 'READY_FOR_REVIEW') || null;
+            if (!submission) {
+              const created = await asc('/v1/reviewSubmissions', {
+                method:'POST',
+                body:{data:{type:'reviewSubmissions',attributes:{platform:'IOS'},relationships:{app:{data:{type:'apps',id:appId}}}}}
+              });
+              submission = created.data;
+              console.log('REVIEW_SUBMISSION_CREATED='+submission.id);
+            } else {
+              console.log('REVIEW_SUBMISSION_REUSED='+submission.id);
+            }
+
+            let hasVersion = false;
+            try {
+              const items = await asc(`/v1/reviewSubmissions/${submission.id}/items?include=appStoreVersion&limit=200`);
+              hasVersion = (items.included||[]).some(x => x.type==='appStoreVersions' && x.id===version.id);
+              console.log('VERSION_ALREADY_IN_SUBMISSION='+hasVersion);
+            } catch (e) {
+              console.log('ITEM_PROBE_WARNING='+e.message.split('\n')[0]);
+            }
+            if (!hasVersion) {
+              try {
+                const item = await asc('/v1/reviewSubmissionItems', {
+                  method:'POST',
+                  body:{data:{type:'reviewSubmissionItems',relationships:{reviewSubmission:{data:{type:'reviewSubmissions',id:submission.id}},appStoreVersion:{data:{type:'appStoreVersions',id:version.id}}}}}
+                });
+                console.log('VERSION_ADDED_TO_REVIEW='+item.data?.id);
+              } catch (e) {
+                if (e.status === 409) {
+                  console.log('VERSION_ADD_CONFLICT_ASSUMING_PRESENT=true');
+                } else throw e;
+              }
+            }
+
+            await asc(`/v1/reviewSubmissions/${submission.id}`, {
+              method:'PATCH',
+              body:{data:{type:'reviewSubmissions',id:submission.id,attributes:{submitted:true}}}
+            });
+            console.log('SUBMIT_REQUEST_SENT=true');
+            await sleep(3000);
+            const verify = await asc(`/v1/reviewSubmissions/${submission.id}`);
+            console.log('REVIEW_SUBMISSION_STATE='+verify.data?.attributes?.state);
+            const vs2 = await asc(`/v1/appStoreVersions/${version.id}`);
+            console.log('VERSION_AFTER='+vs2.data?.attributes?.appStoreState);
+          })().catch(err=>{console.error(err.stack||err); process.exit(1)});
+          NODE
