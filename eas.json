@@ -11,6 +11,10 @@
       },
       "channel": "preview"
     },
+    "staging": {
+      "extends": "production",
+      "channel": "preview"
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"
