@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-02T01:11:39.676Z",
+  "checkedAt": "2026-09-02T01:39:39.029Z",
   "appId": "6806588875",
   "versionId": "8698e177-b678-44c3-9c36-2e483be9ad73",
   "submissionId": "644b7b5a-47d6-4a25-8923-8cc99f53bbd9",
@@ -14,7 +14,7 @@
           "baseTerritory": {
             "data": {
               "type": "territories",
-              "id": "USA"
+              "id": "KOR"
             },
             "links": {
               "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/baseTerritory",
@@ -24,11 +24,16 @@
           "manualPrices": {
             "meta": {
               "paging": {
-                "total": 0,
+                "total": 1,
                 "limit": 10
               }
             },
-            "data": [],
+            "data": [
+              {
+                "type": "appPrices",
+                "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ"
+              }
+            ],
             "links": {
               "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/manualPrices",
               "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/manualPrices"
@@ -48,12 +53,24 @@
       "included": [
         {
           "type": "territories",
-          "id": "USA",
+          "id": "KOR",
           "attributes": {
-            "currency": "USD"
+            "currency": "KRW"
           },
           "links": {
-            "self": "https://api.appstoreconnect.apple.com/v1/territories/USA"
+            "self": "https://api.appstoreconnect.apple.com/v1/territories/KOR"
+          }
+        },
+        {
+          "type": "appPrices",
+          "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ",
+          "attributes": {
+            "manual": true,
+            "startDate": null,
+            "endDate": null
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v2/appPrices/eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ"
           }
         }
       ],
@@ -257,62 +274,186 @@
   },
   "hasTargetVersionBefore": false,
   "addItemAttempt": {
-    "ok": false,
-    "status": 409,
+    "ok": true,
+    "status": 201,
     "body": {
-      "errors": [
-        {
-          "id": "467fe648-23d2-43fc-915a-22bc1d2ef7e3",
-          "status": "409",
-          "code": "STATE_ERROR.ENTITY_STATE_INVALID",
-          "title": "appStoreVersions with id '8698e177-b678-44c3-9c36-2e483be9ad73' is not in valid state.",
-          "detail": "This resource cannot be reviewed, please check associated errors to see why.",
-          "meta": {
-            "associatedErrors": {
-              "/v1/appInfos/737f43a4-13bc-45b3-a886-358812650ba8": [
-                {
-                  "id": "aa3b7442-4e46-4612-8f66-c2c8f7b4971b",
-                  "status": "409",
-                  "code": "STATE_ERROR.CANNOT_SUBMIT_MISSING_REGULATED_MEDICAL_DEVICE_APP_DECLARATION",
-                  "title": "Missing app declaration",
-                  "detail": "You must declare whether your app is a regulated medical device."
-                }
-              ],
-              "/v1/appDataUsages/": [
-                {
-                  "id": "23f428a3-df22-4ccc-8655-f7e3081451f4",
-                  "status": "409",
-                  "code": "STATE_ERROR.APP_DATA_USAGES_REQUIRED",
-                  "title": "Answers to what data your app collects and how it's used are needed.",
-                  "detail": "You must have published answers to your app's data usages."
-                }
-              ]
-            }
-          }
+      "data": {
+        "type": "reviewSubmissionItems",
+        "id": "NjQ0YjdiNWEtNDdkNi00YTI1LTg5MjMtOGNjOTlmNTNiYmQ5fDZ8ODkwNTA0ODI1",
+        "attributes": {
+          "state": "READY_FOR_REVIEW"
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissionItems/NjQ0YjdiNWEtNDdkNi00YTI1LTg5MjMtOGNjOTlmNTNiYmQ5fDZ8ODkwNTA0ODI1"
         }
-      ]
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissionItems"
+      }
     }
   },
   "itemsAfterAdd": {
     "ok": true,
     "status": 200,
     "body": {
-      "data": [],
-      "included": [],
+      "data": [
+        {
+          "type": "reviewSubmissionItems",
+          "id": "NjQ0YjdiNWEtNDdkNi00YTI1LTg5MjMtOGNjOTlmNTNiYmQ5fDZ8ODkwNTA0ODI1",
+          "attributes": {
+            "state": "READY_FOR_REVIEW"
+          },
+          "relationships": {
+            "appStoreVersion": {
+              "data": {
+                "type": "appStoreVersions",
+                "id": "8698e177-b678-44c3-9c36-2e483be9ad73"
+              }
+            }
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissionItems/NjQ0YjdiNWEtNDdkNi00YTI1LTg5MjMtOGNjOTlmNTNiYmQ5fDZ8ODkwNTA0ODI1"
+          }
+        }
+      ],
+      "included": [
+        {
+          "type": "appStoreVersions",
+          "id": "8698e177-b678-44c3-9c36-2e483be9ad73",
+          "attributes": {
+            "copyright": "2026 Jaehyeon Kim",
+            "downloadable": true,
+            "earliestReleaseDate": null,
+            "createdDate": "2026-08-29T06:47:56-07:00",
+            "usesIdfa": null,
+            "versionString": "1.0",
+            "releaseType": "AFTER_APPROVAL",
+            "appStoreState": "READY_FOR_REVIEW",
+            "reviewType": "APP_STORE",
+            "platform": "IOS",
+            "appVersionState": "READY_FOR_REVIEW"
+          },
+          "relationships": {
+            "appStoreVersionLocalizations": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appStoreVersionLocalizations",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appStoreVersionLocalizations"
+              }
+            },
+            "appStoreVersionPhasedRelease": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appStoreVersionPhasedRelease",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appStoreVersionPhasedRelease"
+              }
+            },
+            "customerReviews": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/customerReviews",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/customerReviews"
+              }
+            },
+            "gameCenterAppVersion": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/gameCenterAppVersion",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/gameCenterAppVersion"
+              }
+            },
+            "build": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/build",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/build"
+              }
+            },
+            "appStoreReviewDetail": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appStoreReviewDetail",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appStoreReviewDetail"
+              }
+            },
+            "appStoreVersionExperimentsV2": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appStoreVersionExperimentsV2",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appStoreVersionExperimentsV2"
+              }
+            },
+            "appClipDefaultExperience": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appClipDefaultExperience",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appClipDefaultExperience"
+              }
+            },
+            "alternativeDistributionPackage": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/alternativeDistributionPackage",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/alternativeDistributionPackage"
+              }
+            },
+            "appStoreVersionExperiments": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appStoreVersionExperiments",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appStoreVersionExperiments"
+              }
+            },
+            "routingAppCoverage": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/routingAppCoverage",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/routingAppCoverage"
+              }
+            },
+            "appStoreVersionSubmission": {
+              "links": {
+                "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/relationships/appStoreVersionSubmission",
+                "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73/appStoreVersionSubmission"
+              }
+            }
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/8698e177-b678-44c3-9c36-2e483be9ad73"
+          }
+        }
+      ],
       "links": {
         "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/644b7b5a-47d6-4a25-8923-8cc99f53bbd9/items?include=appStoreVersion&limit=200"
       },
       "meta": {
         "paging": {
-          "total": 0,
+          "total": 1,
           "limit": 200
         }
       }
     }
   },
-  "hasTargetVersionAfterAdd": false,
-  "action": "ADD_ITEM_REJECTED_BY_APPLE",
-  "reason": "Target App Store version could not be attached to the review submission.",
+  "hasTargetVersionAfterAdd": true,
+  "submitAttempt": {
+    "ok": true,
+    "status": 200,
+    "body": {
+      "data": {
+        "type": "reviewSubmissions",
+        "id": "644b7b5a-47d6-4a25-8923-8cc99f53bbd9",
+        "attributes": {
+          "platform": "IOS",
+          "submittedDate": "2026-09-02T01:39:47.077Z",
+          "state": "WAITING_FOR_REVIEW"
+        },
+        "relationships": {
+          "items": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/644b7b5a-47d6-4a25-8923-8cc99f53bbd9/relationships/items",
+              "related": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/644b7b5a-47d6-4a25-8923-8cc99f53bbd9/items"
+            }
+          }
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/644b7b5a-47d6-4a25-8923-8cc99f53bbd9"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/644b7b5a-47d6-4a25-8923-8cc99f53bbd9"
+      }
+    }
+  },
+  "action": "SUBMITTED",
   "submissionAfter": {
     "ok": true,
     "status": 200,
@@ -322,8 +463,8 @@
         "id": "644b7b5a-47d6-4a25-8923-8cc99f53bbd9",
         "attributes": {
           "platform": "IOS",
-          "submittedDate": null,
-          "state": "READY_FOR_REVIEW"
+          "submittedDate": "2026-09-02T01:39:47.077Z",
+          "state": "WAITING_FOR_REVIEW"
         },
         "relationships": {
           "items": {
