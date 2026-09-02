@@ -342,26 +342,6 @@ export default function App() {
     );
   };
 
-  const editStartingRecord = () => {
-    Alert.prompt(
-      '시작 기록 수정',
-      '처음 입력한 배밀기 최고 기록을 수정해. 0을 입력하면 시작 기록을 비워둘게.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '저장',
-          onPress: async (value?: string) => {
-            const reps = Math.max(0, Math.floor(Number(value) || 0));
-            await commit(recomputeProgress({ ...state, firstBaemilgiMax: reps > 0 ? reps : null }));
-          },
-        },
-      ],
-      'plain-text',
-      String(state.firstBaemilgiMax ?? 0),
-      'number-pad',
-    );
-  };
-
   const reset = () => Alert.alert(
     '기록을 모두 지울까?',
     '이 기기에 저장된 진행 기록이 모두 삭제돼. 먼저 기록을 내보낼 수 있어.',
@@ -642,18 +622,12 @@ export default function App() {
             <Text style={styles.pageCopy}>영광의 목록보다 반복의 장부. 성공과 멈춘 지점을 같은 기록으로 남겨.</Text>
 
             <View style={styles.stats}>
-              <Pressable
-                style={styles.stat}
-                onPress={editStartingRecord}
-                accessibilityRole="button"
-                accessibilityLabel={`시작 기록 ${state.firstBaemilgiMax ?? '없음'}. 수정`}
-                accessibilityHint="두 번 탭하여 처음 입력한 최고 기록을 수정합니다"
-              >
-                <Text style={styles.statLabel}>START / EDIT</Text>
+              <View style={styles.stat} accessible accessibilityLabel={`전체 기록 ${state.sessions.length}개`}>
+                <Text style={styles.statLabel}>TOTAL RECORDS</Text>
                 <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
-                  {state.firstBaemilgiMax ?? '—'}
+                  {state.sessions.length}
                 </Text>
-              </Pressable>
+              </View>
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>CURRENT BEST</Text>
                 <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
