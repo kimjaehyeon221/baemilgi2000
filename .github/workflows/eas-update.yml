@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: publish review clarity UI update
+# Trigger refresh: publish quest state contrast update
 on:
   workflow_dispatch:
   push:
