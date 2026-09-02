@@ -1,0 +1,71 @@
+name: Capture Onboarding Start CTA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/capture-onboarding-start-cta.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install screenshot runtime
+        run: |
+          npm install
+          npm install --no-save playwright react-dom@19.2.3 react-native-web@0.21.2 @expo/metro-runtime@57.0.14
+          npx playwright install --with-deps chromium
+      - name: Start web preview
+        env:
+          BROWSER: none
+          EXPO_NO_TELEMETRY: '1'
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.platforms=['ios','web'];
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
+          NODE
+          npx expo start --web --port 8092 > /tmp/baemilgi-expo.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8092 >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/baemilgi-expo.log
+          exit 1
+      - name: Capture active start CTA
+        run: |
+          mkdir -p /tmp/baemilgi-cta
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:440,height:956},deviceScaleFactor:3,isMobile:true,hasTouch:true,colorScheme:'light'});
+            const page=await context.newPage();
+            await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
+            await page.getByRole('button',{name:'시작하기'}).click();
+            await page.getByRole('button',{name:/해본 적 있어요/}).click();
+            const input=page.getByLabel('첫 도전 횟수');
+            await input.fill('10');
+            await page.getByRole('button',{name:'10개 도전 시작'}).waitFor();
+            await page.screenshot({path:'/tmp/baemilgi-cta/onboarding-start-cta.png'});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baemilgi-onboarding-start-cta
+          path: /tmp/baemilgi-cta/onboarding-start-cta.png
+          if-no-files-found: error
+          retention-days: 14
