@@ -107,13 +107,8 @@ export default function App() {
         onCancel={() => setChallengeLevel(null)}
         onFinish={async (success, seconds, actualReps) => {
           const old = state.clearedLevel;
-          const clearedLevel = success ? Math.max(old, challengeLevel) : old;
-          const next = {
+          const next = recomputeProgress({
             ...state,
-            clearedLevel,
-            selectedLevel: success
-              ? Math.min(200, clearedLevel + 1)
-              : Math.min(200, old + 1),
             sessions: [
               ...state.sessions,
               {
@@ -126,7 +121,8 @@ export default function App() {
                 actualReps,
               },
             ],
-          };
+          });
+          const clearedLevel = next.clearedLevel;
           const saved = await commit(next);
           if (!saved) return false;
           setChallengeLevel(null);
@@ -284,7 +280,7 @@ export default function App() {
   };
 
   const deleteSession = (index: number) => {
-    Alert.alert('이 기록을 삭제할까?', '진행 레벨도 남아 있는 성공 기록을 기준으로 다시 계산돼.', [
+    Alert.alert('이 기록을 삭제할까?', '진행 레벨도 남아 있는 도전 기록의 실제 수행 횟수를 기준으로 다시 계산돼.', [
       { text: '취소', style: 'cancel' },
       {
         text: '삭제',

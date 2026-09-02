@@ -69,4 +69,16 @@ const stopped = safeState({
 assert.equal(stopped.target, 10);
 assert.equal(stopped.actualReps, 9, 'stopped reps must stay below canonical target');
 
+const partialAttempt = safeState({
+  onboarded: true,
+  firstBaemilgiMax: 0,
+  clearedLevel: 0,
+  selectedLevel: 1,
+  sessions: [
+    { at: iso, type: 'challenge', level: 30, target: 30, success: false, seconds: 45, actualReps: 26 },
+  ],
+});
+assert.equal(partialAttempt.clearedLevel, 26, '30-rep attempt stopped at 26 must establish level 26');
+assert.equal(partialAttempt.selectedLevel, 27, 'next challenge after reaching 26 reps must be level 27');
+
 console.log('BAEMILGI core invariants: OK');

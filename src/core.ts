@@ -136,10 +136,11 @@ function safeSession(raw: any): Session | null {
 
 export function recomputeProgress(raw: AppState): AppState {
   const startLevel = raw.firstBaemilgiMax && raw.firstBaemilgiMax > 0 ? levelForReps(raw.firstBaemilgiMax) : 0;
-  const challengeLevel = raw.sessions.reduce(
-    (best, session) => session.type === 'challenge' && session.success ? Math.max(best, session.level) : best,
-    0,
-  );
+  const challengeLevel = raw.sessions.reduce((best, session) => {
+    if (session.type !== 'challenge') return best;
+    const achievedReps = session.success ? session.target : session.actualReps ?? 0;
+    return Math.max(best, levelForReps(achievedReps));
+  }, 0);
   const clearedLevel = Math.max(startLevel, challengeLevel);
   const minimumSelected = clearedLevel >= 200 ? 200 : clearedLevel + 1;
   return {
