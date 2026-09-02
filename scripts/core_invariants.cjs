@@ -81,4 +81,16 @@ const partialAttempt = safeState({
 assert.equal(partialAttempt.clearedLevel, 26, '30-rep attempt stopped at 26 must establish level 26');
 assert.equal(partialAttempt.selectedLevel, 27, 'next challenge after reaching 26 reps must be level 27');
 
+const milestoneAttempt = safeState({
+  onboarded: true,
+  firstBaemilgiMax: 0,
+  clearedLevel: 0,
+  selectedLevel: 1,
+  sessions: [
+    { at: iso, type: 'challenge', level: 130, target: 250, success: false, seconds: 300, actualReps: 249 },
+  ],
+});
+assert.equal(milestoneAttempt.clearedLevel, 129, '249 reps must remain one level below the 250-rep milestone');
+assert.equal(milestoneAttempt.selectedLevel, 130, '249 reps must keep the 250-rep milestone as the next challenge');
+
 console.log('BAEMILGI core invariants: OK');
