@@ -8,7 +8,7 @@ jobs:
   resubmit:
     runs-on: ubuntu-latest
     steps:
-      - name: Resubmit existing review submission
+      - name: Resolve rejected item and resubmit
         env:
           ASC_APP_ID: '6806938654'
           ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
@@ -27,14 +27,29 @@ jobs:
           function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
           async function asc(path,opts={}){const h={Authorization:`Bearer ${jwt()}`};if(opts.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:opts.method||'GET',headers:h,body:opts.body?JSON.stringify(opts.body):undefined});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok)throw new Error(`ASC ${r.status} ${path}\n${typeof j==='string'?j:JSON.stringify(j)}`);return j}
           (async()=>{
-            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
-            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0'); if(!v) throw Error('version 1.0 missing');
-            console.log('VERSION_BEFORE='+v.attributes?.appStoreState);
             const subs=await asc(`/v1/apps/${appId}/reviewSubmissions?include=items,appStoreVersionForReview&limit=50`);
-            const s=(subs.data||[]).find(x=>x.attributes?.state==='UNRESOLVED_ISSUES') || (subs.data||[])[0];
-            if(!s) throw Error('review submission missing');
+            const s=(subs.data||[]).find(x=>x.attributes?.state==='UNRESOLVED_ISSUES');
+            if(!s) throw Error('UNRESOLVED_ISSUES submission missing');
             console.log('SUBMISSION_ID='+s.id);
             console.log('SUBMISSION_BEFORE='+s.attributes?.state);
+            const items=(subs.included||[]).filter(x=>x.type==='reviewSubmissionItems');
+            if(!items.length) throw Error('review submission item missing');
+            for(const item of items){
+              console.log('ITEM_BEFORE='+item.id+' state='+(item.attributes?.state||''));
+              if(item.attributes?.state==='REJECTED'){
+                await asc(`/v1/reviewSubmissionItems/${encodeURIComponent(item.id)}`,{method:'PATCH',body:{data:{type:'reviewSubmissionItems',id:item.id,attributes:{resolved:true}}}});
+                console.log('ITEM_RESOLVED='+item.id);
+              }
+            }
+            let ready=false;
+            for(let i=0;i<10;i++){
+              await new Promise(r=>setTimeout(r,1500));
+              const c=await asc(`/v1/reviewSubmissions/${s.id}?include=items,appStoreVersionForReview`);
+              const st=c.data?.attributes?.state;
+              console.log('SUBMISSION_POLL_'+(i+1)+'='+st);
+              if(st==='READY_FOR_REVIEW'){ready=true;break;}
+            }
+            if(!ready) throw Error('submission did not reach READY_FOR_REVIEW');
             await asc(`/v1/reviewSubmissions/${s.id}`,{method:'PATCH',body:{data:{type:'reviewSubmissions',id:s.id,attributes:{submitted:true}}}});
             console.log('RESUBMIT_REQUEST_SENT=true');
             await new Promise(r=>setTimeout(r,2500));
@@ -44,8 +59,8 @@ jobs:
               if(x.type==='reviewSubmissionItems') console.log('ITEM_AFTER='+(x.attributes?.state||''));
               if(x.type==='appStoreVersions') console.log('VERSION_INCLUDED_AFTER='+(x.attributes?.appStoreState||''));
             }
-            const vs2=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
-            const v2=(vs2.data||[]).find(x=>x.attributes?.versionString==='1.0');
-            console.log('VERSION_AFTER='+v2?.attributes?.appStoreState);
+            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0');
+            console.log('VERSION_AFTER='+v?.attributes?.appStoreState);
           })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           NODE
