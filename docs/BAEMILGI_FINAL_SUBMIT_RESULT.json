@@ -1,8 +1,214 @@
 {
-  "checkedAt": "2026-09-02T01:10:25.681Z",
+  "checkedAt": "2026-09-02T01:11:39.676Z",
   "appId": "6806588875",
   "versionId": "8698e177-b678-44c3-9c36-2e483be9ad73",
   "submissionId": "644b7b5a-47d6-4a25-8923-8cc99f53bbd9",
+  "priceScheduleBefore": {
+    "ok": true,
+    "status": 200,
+    "body": {
+      "data": {
+        "type": "appPriceSchedules",
+        "id": "6806588875",
+        "relationships": {
+          "baseTerritory": {
+            "data": {
+              "type": "territories",
+              "id": "USA"
+            },
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/baseTerritory",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/baseTerritory"
+            }
+          },
+          "manualPrices": {
+            "meta": {
+              "paging": {
+                "total": 0,
+                "limit": 10
+              }
+            },
+            "data": [],
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/manualPrices",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/manualPrices"
+            }
+          },
+          "automaticPrices": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/automaticPrices",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/automaticPrices"
+            }
+          }
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875"
+        }
+      },
+      "included": [
+        {
+          "type": "territories",
+          "id": "USA",
+          "attributes": {
+            "currency": "USD"
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/territories/USA"
+          }
+        }
+      ],
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/apps/6806588875/appPriceSchedule?include=manualPrices%2CbaseTerritory"
+      }
+    }
+  },
+  "korPricePointsStatus": {
+    "ok": true,
+    "status": 200,
+    "count": 200
+  },
+  "freePricePoint": {
+    "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAifQ",
+    "customerPrice": "0"
+  },
+  "setFreePriceAttempt": {
+    "ok": true,
+    "status": 201,
+    "body": {
+      "data": {
+        "type": "appPriceSchedules",
+        "id": "6806588875",
+        "relationships": {
+          "baseTerritory": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/baseTerritory",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/baseTerritory"
+            }
+          },
+          "manualPrices": {
+            "meta": {
+              "paging": {
+                "total": 1,
+                "limit": 10
+              }
+            },
+            "data": [
+              {
+                "type": "appPrices",
+                "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ"
+              }
+            ],
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/manualPrices",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/manualPrices"
+            }
+          },
+          "automaticPrices": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/automaticPrices",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/automaticPrices"
+            }
+          }
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875"
+        }
+      },
+      "included": [
+        {
+          "type": "appPrices",
+          "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ",
+          "attributes": {
+            "manual": true,
+            "startDate": null,
+            "endDate": null
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v2/appPrices/eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ"
+          }
+        }
+      ],
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules"
+      }
+    }
+  },
+  "priceScheduleAfter": {
+    "ok": true,
+    "status": 200,
+    "body": {
+      "data": {
+        "type": "appPriceSchedules",
+        "id": "6806588875",
+        "relationships": {
+          "baseTerritory": {
+            "data": {
+              "type": "territories",
+              "id": "KOR"
+            },
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/baseTerritory",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/baseTerritory"
+            }
+          },
+          "manualPrices": {
+            "meta": {
+              "paging": {
+                "total": 1,
+                "limit": 10
+              }
+            },
+            "data": [
+              {
+                "type": "appPrices",
+                "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ"
+              }
+            ],
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/manualPrices",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/manualPrices"
+            }
+          },
+          "automaticPrices": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/relationships/automaticPrices",
+              "related": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875/automaticPrices"
+            }
+          }
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appPriceSchedules/6806588875"
+        }
+      },
+      "included": [
+        {
+          "type": "territories",
+          "id": "KOR",
+          "attributes": {
+            "currency": "KRW"
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/territories/KOR"
+          }
+        },
+        {
+          "type": "appPrices",
+          "id": "eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ",
+          "attributes": {
+            "manual": true,
+            "startDate": null,
+            "endDate": null
+          },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v2/appPrices/eyJzIjoiNjgwNjU4ODg3NSIsInQiOiJLT1IiLCJwIjoiMTAwMDAiLCJzZCI6MC4wLCJlZCI6MC4wfQ"
+          }
+        }
+      ],
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/apps/6806588875/appPriceSchedule?include=manualPrices%2CbaseTerritory"
+      }
+    }
+  },
   "submissionBefore": {
     "ok": true,
     "status": 200,
@@ -56,7 +262,7 @@
     "body": {
       "errors": [
         {
-          "id": "47b36860-1dbe-4e53-923a-28f5d21cf30b",
+          "id": "467fe648-23d2-43fc-915a-22bc1d2ef7e3",
           "status": "409",
           "code": "STATE_ERROR.ENTITY_STATE_INVALID",
           "title": "appStoreVersions with id '8698e177-b678-44c3-9c36-2e483be9ad73' is not in valid state.",
@@ -65,7 +271,7 @@
             "associatedErrors": {
               "/v1/appInfos/737f43a4-13bc-45b3-a886-358812650ba8": [
                 {
-                  "id": "c8b12120-93e6-40e0-88bb-94da0023544b",
+                  "id": "aa3b7442-4e46-4612-8f66-c2c8f7b4971b",
                   "status": "409",
                   "code": "STATE_ERROR.CANNOT_SUBMIT_MISSING_REGULATED_MEDICAL_DEVICE_APP_DECLARATION",
                   "title": "Missing app declaration",
@@ -74,20 +280,11 @@
               ],
               "/v1/appDataUsages/": [
                 {
-                  "id": "924fbcba-7487-4a4b-8672-64c17e105029",
+                  "id": "23f428a3-df22-4ccc-8655-f7e3081451f4",
                   "status": "409",
                   "code": "STATE_ERROR.APP_DATA_USAGES_REQUIRED",
                   "title": "Answers to what data your app collects and how it's used are needed.",
                   "detail": "You must have published answers to your app's data usages."
-                }
-              ],
-              "/v2/appPrices/": [
-                {
-                  "id": "b0338789-8d5b-46d6-aab3-b03e0e7a8bd6",
-                  "status": "409",
-                  "code": "STATE_ERROR.APP_PRICING_REQUIRED",
-                  "title": "App is missing required pricing.",
-                  "detail": "App is not eligible for submission until pricing has been set."
                 }
               ]
             }
