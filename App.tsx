@@ -533,7 +533,7 @@ export default function App() {
               const done = level <= state.clearedLevel;
               const selected = level === nextLevel && !done;
               const reps = targetForLevel(level);
-              const inverse = done || selected;
+              const upcoming = !done && !selected;
               return (
                 <Pressable
                   key={level}
@@ -557,12 +557,9 @@ export default function App() {
                   accessibilityHint={done ? '완료한 단계의 훈련을 시작합니다' : level === nextLevel ? '현재 다음 퀘스트로 이동합니다' : '미래 퀘스트의 목표를 미리 봅니다'}
                   style={[
                     styles.cell,
+                    upcoming && styles.cellUpcoming,
                     done && styles.cellDone,
                     selected && styles.cellSelected,
-                    selected && {
-                      backgroundColor: currentChapter.color,
-                      borderColor: currentChapter.id === 'white' ? C.line : currentChapter.color,
-                    },
                   ]}
                 >
                   {done ? (
@@ -570,15 +567,22 @@ export default function App() {
                       <Text style={styles.cellStampText}>CLEAR</Text>
                     </View>
                   ) : null}
+                  {selected ? (
+                    <View style={styles.cellCurrentBadge} pointerEvents="none">
+                      <Text style={styles.cellCurrentBadgeText}>CURRENT</Text>
+                    </View>
+                  ) : null}
                   <Text style={[
                     styles.cellLevel,
-                    inverse && styles.cellTextInverse,
-                    selected && { color: currentChapter.textColor },
+                    done && styles.cellTextDone,
+                    selected && styles.cellTextCurrent,
+                    upcoming && styles.cellTextUpcoming,
                   ]}>{done ? '완료' : `L${level}`}</Text>
                   <Text style={[
                     styles.cellReps,
-                    inverse && styles.cellTextInverse,
-                    selected && { color: currentChapter.textColor },
+                    done && styles.cellTextDone,
+                    selected && styles.cellTextCurrent,
+                    upcoming && styles.cellTextUpcoming,
                   ]}>{reps}개</Text>
                 </Pressable>
               );
