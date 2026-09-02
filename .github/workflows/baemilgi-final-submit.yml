@@ -10,6 +10,7 @@ on:
 permissions:
   contents: write
 
+# Re-run after App Privacy and regulated medical device declarations were completed in App Store Connect.
 jobs:
   submit:
     runs-on: ubuntu-latest
