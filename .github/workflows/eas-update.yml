@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: challenge countdown fix
+# Trigger refresh: challenge countdown + training progress fixes
 on:
   workflow_dispatch:
   push:
