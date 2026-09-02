@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: actual-reps progression fix
+# Trigger refresh: challenge countdown fix
 on:
   workflow_dispatch:
   push:
