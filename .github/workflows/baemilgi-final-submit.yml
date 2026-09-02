@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Verify draft and submit for review
+      - name: Add version to review draft and submit
         shell: bash
         run: |
           set +e
@@ -62,6 +62,10 @@ jobs:
             return {ok:r.ok,status:r.status,body};
           }
 
+          const containsVersion = (items, versionId) =>
+            (items?.body?.included || []).some(x => x.type === 'appStoreVersions' && x.id === versionId) ||
+            (items?.body?.data || []).some(x => x.relationships?.appStoreVersion?.data?.id === versionId);
+
           (async()=>{
             const appId = process.env.ASC_APP_ID;
             const versionId = process.env.ASC_VERSION_ID;
@@ -70,35 +74,64 @@ jobs:
 
             const submission = await api('/v1/reviewSubmissions/' + submissionId);
             report.submissionBefore = submission;
-            if (!submission.ok) throw new Error('Could not read review submission');
-            if (submission.body?.data?.attributes?.state !== 'READY_FOR_REVIEW') {
+            if (!submission.ok) {
+              report.action = 'READ_SUBMISSION_FAILED';
+              report.reason = 'Could not read review submission';
+            } else if (submission.body?.data?.attributes?.state !== 'READY_FOR_REVIEW') {
               report.action = 'NO_SUBMIT';
               report.reason = 'Submission state is not READY_FOR_REVIEW';
             } else {
-              const items = await api('/v1/reviewSubmissions/' + submissionId + '/items?limit=200&include=appStoreVersion');
-              report.items = items;
-              if (!items.ok) throw new Error('Could not read review submission items');
-
-              const hasTargetVersion = (items.body?.included || []).some(x => x.type === 'appStoreVersions' && x.id === versionId)
-                || (items.body?.data || []).some(x => x.relationships?.appStoreVersion?.data?.id === versionId);
-              report.hasTargetVersion = hasTargetVersion;
-
-              if (!hasTargetVersion) {
-                report.action = 'NO_SUBMIT';
-                report.reason = 'READY_FOR_REVIEW draft does not contain the target App Store version; refusing to mutate the draft.';
+              let items = await api('/v1/reviewSubmissions/' + submissionId + '/items?limit=200&include=appStoreVersion');
+              report.itemsBefore = items;
+              if (!items.ok) {
+                report.action = 'READ_ITEMS_FAILED';
+                report.reason = 'Could not read review submission items';
               } else {
-                const submit = await api('/v1/reviewSubmissions/' + submissionId, {
-                  method:'PATCH',
-                  body:JSON.stringify({
-                    data:{
-                      type:'reviewSubmissions',
-                      id:submissionId,
-                      attributes:{submitted:true}
-                    }
-                  })
-                });
-                report.submitAttempt = submit;
-                report.action = submit.ok ? 'SUBMITTED' : 'SUBMIT_REJECTED_BY_APPLE';
+                let hasTargetVersion = containsVersion(items, versionId);
+                report.hasTargetVersionBefore = hasTargetVersion;
+
+                if (!hasTargetVersion) {
+                  const addItem = await api('/v1/reviewSubmissionItems', {
+                    method:'POST',
+                    body:JSON.stringify({
+                      data:{
+                        type:'reviewSubmissionItems',
+                        relationships:{
+                          reviewSubmission:{
+                            data:{type:'reviewSubmissions',id:submissionId}
+                          },
+                          appStoreVersion:{
+                            data:{type:'appStoreVersions',id:versionId}
+                          }
+                        }
+                      }
+                    })
+                  });
+                  report.addItemAttempt = addItem;
+
+                  items = await api('/v1/reviewSubmissions/' + submissionId + '/items?limit=200&include=appStoreVersion');
+                  report.itemsAfterAdd = items;
+                  hasTargetVersion = items.ok && containsVersion(items, versionId);
+                  report.hasTargetVersionAfterAdd = hasTargetVersion;
+                }
+
+                if (!hasTargetVersion) {
+                  report.action = 'ADD_ITEM_REJECTED_BY_APPLE';
+                  report.reason = 'Target App Store version could not be attached to the review submission.';
+                } else {
+                  const submit = await api('/v1/reviewSubmissions/' + submissionId, {
+                    method:'PATCH',
+                    body:JSON.stringify({
+                      data:{
+                        type:'reviewSubmissions',
+                        id:submissionId,
+                        attributes:{submitted:true}
+                      }
+                    })
+                  });
+                  report.submitAttempt = submit;
+                  report.action = submit.ok ? 'SUBMITTED' : 'SUBMIT_REJECTED_BY_APPLE';
+                }
               }
             }
 
