@@ -1,0 +1,37 @@
+name: PUSH TOTAL Post Reply Status Once
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-post-reply-status-once.yml'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe post-reply App Review status
+        env:
+          ASC_APP_ID: '6806938654'
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function asc(path){const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{headers:{Authorization:`Bearer ${jwt()}`}});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok)throw new Error(`ASC ${r.status} ${path}\n${typeof j==='string'?j:JSON.stringify(j)}`);return j}
+          (async()=>{
+            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0'); if(!v) throw Error('version missing');
+            console.log('VERSION_STATE='+v.attributes?.appStoreState);
+            const subs=await asc(`/v1/apps/${appId}/reviewSubmissions?include=items,appStoreVersionForReview&limit=50`);
+            for(const s of (subs.data||[])) console.log(`SUBMISSION_STATE=${s.attributes?.state} SUBMITTED_DATE=${s.attributes?.submittedDate||''}`);
+            for(const x of (subs.included||[])) if(x.type==='reviewSubmissionItems') console.log(`ITEM_STATE=${x.attributes?.state||''}`);
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
