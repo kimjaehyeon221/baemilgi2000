@@ -1,0 +1,73 @@
+name: Fix achieved level from actual reps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-achieved-level-from-reps.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply progression fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          core = Path('src/core.ts')
+          text = core.read_text()
+          old = """  const challengeLevel = raw.sessions.reduce(\n    (best, session) => session.type === 'challenge' && session.success ? Math.max(best, session.level) : best,\n    0,\n  );\n"""
+          new = """  const challengeLevel = raw.sessions.reduce((best, session) => {\n    if (session.type !== 'challenge') return best;\n    const achievedReps = session.success ? session.target : session.actualReps ?? 0;\n    return Math.max(best, levelForReps(achievedReps));\n  }, 0);\n"""
+          if old not in text:
+              raise SystemExit('core progression block not found')
+          core.write_text(text.replace(old, new, 1))
+
+          app = Path('App.tsx')
+          text = app.read_text()
+          old = """          const old = state.clearedLevel;\n          const clearedLevel = success ? Math.max(old, challengeLevel) : old;\n          const next = {\n            ...state,\n            clearedLevel,\n            selectedLevel: success\n              ? Math.min(200, clearedLevel + 1)\n              : Math.min(200, old + 1),\n            sessions: [\n              ...state.sessions,\n              {\n                at: new Date().toISOString(),\n                type: 'challenge' as const,\n                level: challengeLevel,\n                target: targetForLevel(challengeLevel),\n                success,\n                seconds,\n                actualReps,\n              },\n            ],\n          };\n"""
+          new = """          const old = state.clearedLevel;\n          const next = recomputeProgress({\n            ...state,\n            sessions: [\n              ...state.sessions,\n              {\n                at: new Date().toISOString(),\n                type: 'challenge' as const,\n                level: challengeLevel,\n                target: targetForLevel(challengeLevel),\n                success,\n                seconds,\n                actualReps,\n              },\n            ],\n          });\n          const clearedLevel = next.clearedLevel;\n"""
+          if old not in text:
+              raise SystemExit('App challenge finish block not found')
+          text = text.replace(old, new, 1)
+          text = text.replace(
+              "Alert.alert('이 기록을 삭제할까?', '진행 레벨도 남아 있는 성공 기록을 기준으로 다시 계산돼.', [",
+              "Alert.alert('이 기록을 삭제할까?', '진행 레벨도 남아 있는 도전 기록의 실제 수행 횟수를 기준으로 다시 계산돼.', [",
+              1,
+          )
+          app.write_text(text)
+
+          test = Path('scripts/core_invariants.cjs')
+          text = test.read_text()
+          marker = "console.log('BAEMILGI core invariants: OK');"
+          addition = """const partialAttempt = safeState({\n  onboarded: true,\n  firstBaemilgiMax: 0,\n  clearedLevel: 0,\n  selectedLevel: 1,\n  sessions: [\n    { at: iso, type: 'challenge', level: 30, target: 30, success: false, seconds: 45, actualReps: 26 },\n  ],\n});\nassert.equal(partialAttempt.clearedLevel, 26, '30-rep attempt stopped at 26 must establish level 26');\nassert.equal(partialAttempt.selectedLevel, 27, 'next challenge after reaching 26 reps must be level 27');\n\n"""
+          if marker not in text:
+              raise SystemExit('core invariant marker not found')
+          test.write_text(text.replace(marker, addition + marker, 1))
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify progression logic
+        run: bash scripts/check-core.sh
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/fix-achieved-level-from-reps.yml
+          git add App.tsx src/core.ts scripts/core_invariants.cjs
+          git commit -m 'Use actual reps to advance Baemilgi level'
+          git push origin HEAD:main
