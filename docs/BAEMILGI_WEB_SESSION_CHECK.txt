@@ -1,0 +1,67 @@
+# asc web auth status
+{"authenticated":false,"passwordStored":false}
+EXIT=0
+
+# asc web privacy help
+DESCRIPTION
+  App privacy declaration workflows.
+
+USAGE
+  asc web privacy <subcommand> [flags]
+
+WEB SESSION WORKFLOWS
+
+Agent-friendly app privacy declaration workflows over Apple web-session /iris endpoints.
+Use pull/plan/apply/publish with explicit mutation controls.
+
+Subcommands:
+  catalog  List category/purpose/data-protection tokens for declaration authoring
+  pull     Fetch current app data usage declarations as canonical JSON
+  plan     Diff local declaration file against remote state
+  apply    Apply planned changes (never publishes automatically)
+  publish  Explicitly publish app data usage declarations
+
+SUBCOMMANDS
+  catalog  List app privacy catalog values.
+  pull     Pull app privacy declaration state.
+  plan     Plan app privacy declaration changes.
+  apply    Apply app privacy declaration changes.
+  publish  Publish app privacy declarations.
+
+
+EXIT=0
+
+# asc web agreements status
+Error: --apple-id is required when no cached web session is available
+DESCRIPTION
+  [experimental] Show Apple Developer Program agreement status.
+
+USAGE
+  asc web agreements status [flags]
+
+WEB SESSION WORKFLOWS
+
+This command is experimental.
+
+Show the App Store Connect agreement alert banner and the team's Apple
+Developer Program agreement history, including whether an updated agreement
+is waiting for the Account Holder.
+
+An agreement is reported as pending when App Store Connect shows an agreement
+alert banner or when the agreement's accepted date is older than its
+effective date.
+
+Example:
+  asc web agreements status
+
+FLAGS
+  --apple-id     Apple Account email used to scope a user-owned session cache (optional when a cached session exists)
+  --output       Output format: json, table, markdown (default: json)
+  --pretty       Pretty-print JSON output (default: false)
+  --provider-id  Numeric App Store Connect provider ID to select for this web session (default: 0)
+  --public-provider-id Public App Store Connect provider/team ID to select for this web session
+  --two-factor-code Deprecated: direct 2FA code if verification is required; prefer --two-factor-code-command
+  --two-factor-code-command Shell command that prints the 2FA code to stdout if verification is required
+
+
+EXIT=2
