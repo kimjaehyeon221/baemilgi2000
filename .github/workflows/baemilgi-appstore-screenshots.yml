@@ -55,13 +55,18 @@ jobs:
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext({
+            const options={
               viewport:{width:440,height:956},
               deviceScaleFactor:3,
               isMobile:true,
               hasTouch:true,
               colorScheme:'light',
-            });
+            };
+            const assertNoDojo=async(page,label)=>{
+              const text=await page.locator('body').innerText();
+              if(/\bDOJO\b/i.test(text)) throw new Error(label+': stale DOJO copy is visible');
+            };
+
             const state={
               onboarded:true,
               firstBaemilgiMax:null,
@@ -88,23 +93,21 @@ jobs:
                 },
               ],
             };
-            await context.addInitScript(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:'baemilgi2000-ios-v1',value:state});
-            const page=await context.newPage();
-            const assertNoDojo=async(label)=>{
-              const text=await page.locator('body').innerText();
-              if(/\bDOJO\b/i.test(text)) throw new Error(label+': stale DOJO copy is visible');
-            };
 
+            const mainContext=await browser.newContext(options);
+            await mainContext.addInitScript(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:'baemilgi2000-ios-v1',value:state});
+            const page=await mainContext.newPage();
             await page.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
+
             await page.getByText('레벨 9 달성 · LEVEL 009 CLEARED',{exact:true}).waitFor();
-            await assertNoDojo('home');
+            await assertNoDojo(page,'home');
             await page.screenshot({path:'/tmp/baemilgi-screens/01-home-level-9.png'});
 
             await page.getByRole('tab',{name:'퀘스트'}).click();
             await page.getByText('QUEST MAP',{exact:true}).waitFor();
             await page.getByText('레벨 9 달성',{exact:true}).waitFor();
             await page.getByText('CLEAR',{exact:true}).first().waitFor();
-            await assertNoDojo('quests');
+            await assertNoDojo(page,'quests');
             await page.screenshot({path:'/tmp/baemilgi-screens/02-quest-map-stamps.png'});
 
             await page.getByRole('tab',{name:'홈'}).click();
@@ -113,28 +116,57 @@ jobs:
             await page.getByRole('button',{name:'도전 시작'}).click();
             await page.getByText('3 · 2 · 1 · START',{exact:true}).waitFor();
             await page.waitForTimeout(300);
-            await assertNoDojo('countdown');
+            await assertNoDojo(page,'countdown');
             await page.screenshot({path:'/tmp/baemilgi-screens/03-countdown.png'});
+
+            await page.getByText('TARGET REPS',{exact:true}).waitFor({timeout:7000});
+            await page.getByText('COMPLETE',{exact:true}).waitFor();
+            await page.getByText('STOP HERE',{exact:true}).waitFor();
+            await assertNoDojo(page,'active challenge');
+            await page.screenshot({path:'/tmp/baemilgi-screens/04-active-challenge.png'});
 
             await page.getByRole('button',{name:'닫기'}).click();
             await page.getByRole('tab',{name:'기록'}).click();
             await page.getByText('BAEMILGI RECORDS',{exact:true}).first().waitFor();
             await page.getByText('STOPPED',{exact:true}).first().waitFor();
             await page.getByText('CLEARED',{exact:true}).first().waitFor();
-            await assertNoDojo('records');
-            await page.screenshot({path:'/tmp/baemilgi-screens/04-records.png'});
+            await assertNoDojo(page,'records');
+            await page.screenshot({path:'/tmp/baemilgi-screens/05-records.png'});
 
             await page.getByRole('tab',{name:'홈'}).click();
             await page.getByRole('button',{name:'TRAINING'}).click();
             await page.getByText('훈련 예시 · 현재 기록을 바탕으로 자동 구성',{exact:true}).waitFor();
-            await assertNoDojo('training');
-            await page.screenshot({path:'/tmp/baemilgi-screens/05-training.png'});
+            await page.getByText('COMPLETE SET',{exact:true}).waitFor();
+            await assertNoDojo(page,'training');
+            await page.screenshot({path:'/tmp/baemilgi-screens/06-training.png'});
+            await mainContext.close();
+
+            const onboardingContext=await browser.newContext(options);
+            const onboarding=await onboardingContext.newPage();
+            await onboarding.goto('http://127.0.0.1:8092',{waitUntil:'networkidle'});
+            await onboarding.getByRole('button',{name:'시작하기'}).waitFor();
+            await assertNoDojo(onboarding,'onboarding intro');
+            await onboarding.screenshot({path:'/tmp/baemilgi-screens/07-onboarding-intro.png'});
+
+            await onboarding.getByRole('button',{name:'시작하기'}).click();
+            await onboarding.getByText('배밀기를\n해본 적 있나요?').waitFor();
+            await onboarding.getByText('처음이에요',{exact:true}).waitFor();
+            await onboarding.getByText('해본 적 있어요',{exact:true}).waitFor();
+            await assertNoDojo(onboarding,'onboarding choice');
+            await onboarding.screenshot({path:'/tmp/baemilgi-screens/08-onboarding-choice.png'});
+
+            await onboarding.getByText('처음이에요',{exact:true}).click();
+            await onboarding.getByText('01 / 시작',{exact:true}).waitFor();
+            await onboarding.getByText('엉덩이를 높여 시작해.',{exact:true}).waitFor();
+            await assertNoDojo(onboarding,'form guide');
+            await onboarding.screenshot({path:'/tmp/baemilgi-screens/09-form-guide.png'});
+            await onboardingContext.close();
 
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
           file /tmp/baemilgi-screens/*.png
-          test "$(find /tmp/baemilgi-screens -name '*.png' | wc -l)" -eq 5
+          test "$(find /tmp/baemilgi-screens -name '*.png' | wc -l)" -eq 9
       - name: Save screenshots as workflow artifact
         uses: actions/upload-artifact@v4
         with:
@@ -142,7 +174,7 @@ jobs:
           path: /tmp/baemilgi-screens/*.png
           if-no-files-found: error
           retention-days: 14
-      - name: Upload screenshots to App Store Connect
+      - name: Upload screenshots to App Store Connect when editable
         env:
           ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
           ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
@@ -164,10 +196,20 @@ jobs:
           const sleep=ms=>new Promise(r=>setTimeout(r,ms));
           (async()=>{
             const appId=process.env.ASC_APP_ID;
+            const files=fs.readdirSync('/tmp/baemilgi-screens').filter(x=>x.endsWith('.png')).sort();
             const versions=await api('/v1/apps/'+appId+'/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10');
             const version=(versions.data||[]).find(v=>v.attributes?.versionString==='1.0')||(versions.data||[])[0];
             if(!version)throw new Error('No iOS version found');
-            console.log('Target App Store version',version.attributes?.versionString,version.attributes?.appStoreState,version.id);
+            const state=version.attributes?.appStoreState;
+            console.log('Target App Store version',version.attributes?.versionString,state,version.id);
+            const editable=new Set(['PREPARE_FOR_SUBMISSION','DEVELOPER_REJECTED','REJECTED','METADATA_REJECTED']);
+            if(!editable.has(state)){
+              const result={generatedAt:new Date().toISOString(),appId,versionId:version.id,versionString:version.attributes?.versionString,appStoreState:state,displayType:'APP_IPHONE_67',uploadSkipped:true,uploadSkippedReason:'App Store metadata is locked while submitted for review',screenshots:files.map(fileName=>({fileName,state:'GENERATED'}))};
+              fs.mkdirSync('docs',{recursive:true});
+              fs.writeFileSync('docs/BAEMILGI_APP_STORE_SCREENSHOTS.json',JSON.stringify(result,null,2)+'\n');
+              console.log(JSON.stringify(result,null,2));
+              return;
+            }
             const locs=await api('/v1/appStoreVersions/'+version.id+'/appStoreVersionLocalizations?limit=50');
             const loc=(locs.data||[]).find(x=>x.attributes?.locale==='en-US')||(locs.data||[])[0];
             if(!loc)throw new Error('No App Store localization');
@@ -179,8 +221,6 @@ jobs:
             }
             const old=await api('/v1/appScreenshotSets/'+set.id+'/appScreenshots?limit=50');
             for(const shot of (old.data||[]))await api('/v1/appScreenshots/'+shot.id,'DELETE');
-            const files=fs.readdirSync('/tmp/baemilgi-screens').filter(x=>x.endsWith('.png')).sort();
-            const uploaded=[];
             for(const fileName of files){
               const bytes=fs.readFileSync(path.join('/tmp/baemilgi-screens',fileName));
               const reserved=await api('/v1/appScreenshots','POST',{data:{type:'appScreenshots',attributes:{fileName,fileSize:bytes.length},relationships:{appScreenshotSet:{data:{type:'appScreenshotSets',id:set.id}}}}});
@@ -192,7 +232,6 @@ jobs:
                 if(!r.ok)throw new Error('Asset upload '+fileName+' '+r.status+' '+await r.text());
               }
               await api('/v1/appScreenshots/'+shot.id,'PATCH',{data:{type:'appScreenshots',id:shot.id,attributes:{uploaded:true}}});
-              uploaded.push({id:shot.id,fileName});
             }
             let states=[];
             for(let attempt=0;attempt<30;attempt++){
@@ -203,16 +242,16 @@ jobs:
               await sleep(5000);
             }
             if(states.length!==files.length || !states.every(x=>x.state==='COMPLETE'))throw new Error('Screenshot processing timed out '+JSON.stringify(states));
-            const result={uploadedAt:new Date().toISOString(),appId,versionId:version.id,versionString:version.attributes?.versionString,appStoreState:version.attributes?.appStoreState,localizationId:loc.id,screenshotSetId:set.id,displayType:'APP_IPHONE_67',screenshots:states};
+            const result={uploadedAt:new Date().toISOString(),appId,versionId:version.id,versionString:version.attributes?.versionString,appStoreState:state,localizationId:loc.id,screenshotSetId:set.id,displayType:'APP_IPHONE_67',screenshots:states};
             fs.mkdirSync('docs',{recursive:true});
             fs.writeFileSync('docs/BAEMILGI_APP_STORE_SCREENSHOTS.json',JSON.stringify(result,null,2)+'\n');
             console.log(JSON.stringify(result,null,2));
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
-      - name: Persist upload result
+      - name: Persist screenshot result
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add docs/BAEMILGI_APP_STORE_SCREENSHOTS.json
-          git commit -m 'Record refreshed Baemilgi App Store screenshots' || exit 0
+          git commit -m 'Record expanded Baemilgi App Store screenshots' || exit 0
           git push origin HEAD:main
