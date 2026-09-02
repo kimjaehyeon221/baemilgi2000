@@ -1,0 +1,123 @@
+name: Baemilgi Final App Store Submit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-final-submit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+      ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+      ASC_APP_ID: '6806588875'
+      ASC_VERSION_ID: '8698e177-b678-44c3-9c36-2e483be9ad73'
+      ASC_SUBMISSION_ID: '644b7b5a-47d6-4a25-8923-8cc99f53bbd9'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verify draft and submit for review
+        shell: bash
+        run: |
+          set +e
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          const b64 = v => Buffer.from(v).toString('base64url');
+          const now = Math.floor(Date.now()/1000);
+          const h = b64(JSON.stringify({alg:'ES256',kid:process.env.ASC_KEY_ID,typ:'JWT'}));
+          const p = b64(JSON.stringify({iss:process.env.ASC_ISSUER_ID,iat:now,exp:now+1200,aud:'appstoreconnect-v1'}));
+          const input = h + '.' + p;
+          const token = input + '.' + crypto.sign('sha256', Buffer.from(input), {
+            key: process.env.ASC_API_KEY_P8,
+            dsaEncoding: 'ieee-p1363'
+          }).toString('base64url');
+
+          async function api(route, options={}) {
+            const r = await fetch('https://api.appstoreconnect.apple.com' + route, {
+              ...options,
+              headers: {
+                Authorization: 'Bearer ' + token,
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
+              }
+            });
+            const text = await r.text();
+            let body = null;
+            try { body = text ? JSON.parse(text) : null; } catch { body = {raw:text}; }
+            return {ok:r.ok,status:r.status,body};
+          }
+
+          (async()=>{
+            const appId = process.env.ASC_APP_ID;
+            const versionId = process.env.ASC_VERSION_ID;
+            const submissionId = process.env.ASC_SUBMISSION_ID;
+            const report = {checkedAt:new Date().toISOString(),appId,versionId,submissionId};
+
+            const submission = await api('/v1/reviewSubmissions/' + submissionId);
+            report.submissionBefore = submission;
+            if (!submission.ok) throw new Error('Could not read review submission');
+            if (submission.body?.data?.attributes?.state !== 'READY_FOR_REVIEW') {
+              report.action = 'NO_SUBMIT';
+              report.reason = 'Submission state is not READY_FOR_REVIEW';
+            } else {
+              const items = await api('/v1/reviewSubmissions/' + submissionId + '/items?limit=200&include=appStoreVersion');
+              report.items = items;
+              if (!items.ok) throw new Error('Could not read review submission items');
+
+              const hasTargetVersion = (items.body?.included || []).some(x => x.type === 'appStoreVersions' && x.id === versionId)
+                || (items.body?.data || []).some(x => x.relationships?.appStoreVersion?.data?.id === versionId);
+              report.hasTargetVersion = hasTargetVersion;
+
+              if (!hasTargetVersion) {
+                report.action = 'NO_SUBMIT';
+                report.reason = 'READY_FOR_REVIEW draft does not contain the target App Store version; refusing to mutate the draft.';
+              } else {
+                const submit = await api('/v1/reviewSubmissions/' + submissionId, {
+                  method:'PATCH',
+                  body:JSON.stringify({
+                    data:{
+                      type:'reviewSubmissions',
+                      id:submissionId,
+                      attributes:{submitted:true}
+                    }
+                  })
+                });
+                report.submitAttempt = submit;
+                report.action = submit.ok ? 'SUBMITTED' : 'SUBMIT_REJECTED_BY_APPLE';
+              }
+            }
+
+            const after = await api('/v1/reviewSubmissions/' + submissionId);
+            report.submissionAfter = after;
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_FINAL_SUBMIT_RESULT.json', JSON.stringify(report,null,2)+'\n');
+            console.log(JSON.stringify(report,null,2));
+          })().catch(err=>{
+            const report={checkedAt:new Date().toISOString(),action:'WORKFLOW_ERROR',error:String(err?.stack||err)};
+            fs.mkdirSync('docs',{recursive:true});
+            fs.writeFileSync('docs/BAEMILGI_FINAL_SUBMIT_RESULT.json', JSON.stringify(report,null,2)+'\n');
+            console.error(report.error);
+          });
+          NODE
+      - name: Persist submit result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_FINAL_SUBMIT_RESULT.json
+          git commit -m 'Record Baemilgi final submit result' || exit 0
+          git push origin HEAD:main
