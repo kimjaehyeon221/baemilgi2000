@@ -295,9 +295,10 @@ export default function App() {
 
   const promptFailureReps = (index: number) => {
     const session = state.sessions[index];
+    const previousReps = session.success ? session.target : session.actualReps ?? 0;
     Alert.prompt(
-      '실패 기록 수정',
-      `레벨 ${session.level}에서 몇 개까지 성공했어?`,
+      session.success ? '성공 기록 낮추기' : '실패 기록 낮추기',
+      `레벨 ${session.level}에서 실제로 몇 개까지 했어? 기록은 낮추는 수정만 가능해.`,
       [
         { text: '취소', style: 'cancel' },
         {
@@ -305,7 +306,11 @@ export default function App() {
           onPress: (value?: string) => {
             const actualReps = Math.max(0, Math.floor(Number(value) || 0));
             if (actualReps >= session.target) {
-              Alert.alert('목표 이상을 기록했어', `${session.target}개를 완료했다면 ‘성공으로 수정’을 선택해줘.`);
+              Alert.alert('목표보다 낮은 횟수를 입력해줘', '성공 기록은 그대로 두거나 실제로 멈춘 횟수로 낮출 수 있어.');
+              return;
+            }
+            if (!session.success && actualReps > previousReps) {
+              Alert.alert('기록은 올릴 수 없어', '더 높은 횟수는 새 퀘스트 도전으로 남겨줘.');
               return;
             }
             saveEditedSession(index, { success: false, actualReps });
@@ -313,7 +318,7 @@ export default function App() {
         },
       ],
       'plain-text',
-      String(session.actualReps ?? 0),
+      String(session.success ? Math.max(0, session.target - 1) : previousReps),
       'number-pad',
     );
   };
@@ -333,10 +338,7 @@ export default function App() {
       session.success ? '현재 성공으로 기록돼 있어.' : `현재 ${session.actualReps ?? 0}개에서 실패로 기록돼 있어.`,
       [
         { text: '취소', style: 'cancel' },
-        session.success
-          ? { text: '실패로 수정', onPress: () => promptFailureReps(index) }
-          : { text: '성공으로 수정', onPress: () => saveEditedSession(index, { success: true, actualReps: session.target }) },
-        ...(!session.success ? [{ text: '횟수 수정', onPress: () => promptFailureReps(index) }] : []),
+        { text: session.success ? '실패로 낮추기' : '횟수 낮추기', onPress: () => promptFailureReps(index) },
         { text: '기록 삭제', style: 'destructive' as const, onPress: () => deleteSession(index) },
       ],
     );
