@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: challenge countdown + training progress fixes
+# Trigger refresh: remove manual progression shortcut
 on:
   workflow_dispatch:
   push:
