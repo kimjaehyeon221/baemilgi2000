@@ -1,0 +1,40 @@
+name: Apply Onboarding Start CTA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-onboarding-start-cta.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply patch
+        run: node scripts/fix-onboarding-start-cta.cjs
+      - name: Validate
+        run: |
+          npm ci
+          bash scripts/check-core.sh
+          npx tsc --noEmit
+          CI=1 npx expo export --platform ios --output-dir dist-ci
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/Onboarding.tsx
+          git commit -m 'Make onboarding start action unmistakable'
+          git push origin HEAD:main
