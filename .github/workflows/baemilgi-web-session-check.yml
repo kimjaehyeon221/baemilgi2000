@@ -1,0 +1,53 @@
+name: Baemilgi Apple Web Session Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/baemilgi-web-session-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_BYPASS_KEYCHAIN: '1'
+      ASC_NO_UPDATE: '1'
+      ASC_APP_ID: '6806588875'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: rudrankriyam/setup-asc@v1
+      - name: Check Apple web session capabilities
+        shell: bash
+        run: |
+          set +e
+          mkdir -p docs
+          {
+            echo '# asc web auth status'
+            asc web auth status
+            echo "EXIT=$?"
+            echo
+            echo '# asc web privacy help'
+            asc web privacy --help
+            echo "EXIT=$?"
+            echo
+            echo '# asc web agreements status'
+            asc web agreements status
+            echo "EXIT=$?"
+          } > docs/BAEMILGI_WEB_SESSION_CHECK.txt 2>&1
+          cat docs/BAEMILGI_WEB_SESSION_CHECK.txt
+          exit 0
+      - name: Persist report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/BAEMILGI_WEB_SESSION_CHECK.txt
+          git commit -m 'Record Apple web session readiness' || exit 0
+          git push origin HEAD:main
