@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-02T01:08:47.391Z",
+  "checkedAt": "2026-09-02T01:10:25.681Z",
   "appId": "6806588875",
   "versionId": "8698e177-b678-44c3-9c36-2e483be9ad73",
   "submissionId": "644b7b5a-47d6-4a25-8923-8cc99f53bbd9",
@@ -32,7 +32,7 @@
       }
     }
   },
-  "items": {
+  "itemsBefore": {
     "ok": true,
     "status": 200,
     "body": {
@@ -49,9 +49,73 @@
       }
     }
   },
-  "hasTargetVersion": false,
-  "action": "NO_SUBMIT",
-  "reason": "READY_FOR_REVIEW draft does not contain the target App Store version; refusing to mutate the draft.",
+  "hasTargetVersionBefore": false,
+  "addItemAttempt": {
+    "ok": false,
+    "status": 409,
+    "body": {
+      "errors": [
+        {
+          "id": "47b36860-1dbe-4e53-923a-28f5d21cf30b",
+          "status": "409",
+          "code": "STATE_ERROR.ENTITY_STATE_INVALID",
+          "title": "appStoreVersions with id '8698e177-b678-44c3-9c36-2e483be9ad73' is not in valid state.",
+          "detail": "This resource cannot be reviewed, please check associated errors to see why.",
+          "meta": {
+            "associatedErrors": {
+              "/v1/appInfos/737f43a4-13bc-45b3-a886-358812650ba8": [
+                {
+                  "id": "c8b12120-93e6-40e0-88bb-94da0023544b",
+                  "status": "409",
+                  "code": "STATE_ERROR.CANNOT_SUBMIT_MISSING_REGULATED_MEDICAL_DEVICE_APP_DECLARATION",
+                  "title": "Missing app declaration",
+                  "detail": "You must declare whether your app is a regulated medical device."
+                }
+              ],
+              "/v1/appDataUsages/": [
+                {
+                  "id": "924fbcba-7487-4a4b-8672-64c17e105029",
+                  "status": "409",
+                  "code": "STATE_ERROR.APP_DATA_USAGES_REQUIRED",
+                  "title": "Answers to what data your app collects and how it's used are needed.",
+                  "detail": "You must have published answers to your app's data usages."
+                }
+              ],
+              "/v2/appPrices/": [
+                {
+                  "id": "b0338789-8d5b-46d6-aab3-b03e0e7a8bd6",
+                  "status": "409",
+                  "code": "STATE_ERROR.APP_PRICING_REQUIRED",
+                  "title": "App is missing required pricing.",
+                  "detail": "App is not eligible for submission until pricing has been set."
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "itemsAfterAdd": {
+    "ok": true,
+    "status": 200,
+    "body": {
+      "data": [],
+      "included": [],
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/644b7b5a-47d6-4a25-8923-8cc99f53bbd9/items?include=appStoreVersion&limit=200"
+      },
+      "meta": {
+        "paging": {
+          "total": 0,
+          "limit": 200
+        }
+      }
+    }
+  },
+  "hasTargetVersionAfterAdd": false,
+  "action": "ADD_ITEM_REJECTED_BY_APPLE",
+  "reason": "Target App Store version could not be attached to the review submission.",
   "submissionAfter": {
     "ok": true,
     "status": 200,
