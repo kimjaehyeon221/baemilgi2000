@@ -1,0 +1,112 @@
+name: Apply review clarity UI pass
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-review-clarity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply review clarity changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workout = Path('src/Workout.tsx')
+          text = workout.read_text()
+          replacements = [
+            (
+              "아직 완료된 기록이 아니야. 시작을 누르면 바로 타이머가 켜지고, 직접 횟수를 세며 도전해.",
+              "아직 완료된 기록이 아니야. 시작을 누르면 3 · 2 · 1 카운트다운 뒤 타이머가 켜져. 직접 횟수를 세며 도전해.",
+            ),
+            (
+              '<Text style={S.readyActionText}>도전 시작</Text>',
+              '<Text style={S.readyActionText}>3 · 2 · 1 후 시작</Text>',
+            ),
+            (
+              '<Text style={S.countdownLabel}>목표 {target}개</Text>',
+              '<Text style={S.countdownSequence}>3 · 2 · 1 · START</Text>\n            <Text style={S.countdownLabel}>목표 {target}개</Text>',
+            ),
+            (
+              "  countdownLabel: { color: '#A9B9CF', fontFamily: mono, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },",
+              "  countdownSequence: { color: '#B22222', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 2.1, marginBottom: 14 },\n  countdownLabel: { color: '#A9B9CF', fontFamily: mono, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },",
+            ),
+          ]
+          for old, new in replacements:
+            if old not in text:
+              raise SystemExit(f'Workout patch target not found: {old[:70]}')
+            text = text.replace(old, new, 1)
+          workout.write_text(text)
+
+          app = Path('App.tsx')
+          text = app.read_text()
+          old = """              <View style={styles.dojoCurrentBestRow}>\n                <Text style={styles.dojoCurrentBestLabel}>CURRENT BEST:</Text>\n                <Text style={styles.dojoCurrentBestValue}>{hasPersonalRecord ? currentReps : '—'}</Text>\n              </View>"""
+          new = """              <View style={styles.dojoCurrentBestRow}>\n                <Text style={styles.dojoCurrentBestLabel}>CURRENT BEST:</Text>\n                <Text style={styles.dojoCurrentBestValue}>{hasPersonalRecord ? currentReps : '—'}</Text>\n              </View>\n              <View style={styles.dojoLevelStamp}>\n                <Text style={styles.dojoLevelStampText}>\n                  {state.clearedLevel > 0\n                    ? `레벨 ${state.clearedLevel} 달성 · LEVEL ${String(state.clearedLevel).padStart(3, '0')} CLEARED`\n                    : '첫 퀘스트 전 · LEVEL 000'}\n                </Text>\n              </View>"""
+          if old not in text:
+            raise SystemExit('home current best block not found')
+          text = text.replace(old, new, 1)
+
+          old = """                <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>\n                <Text style={styles.questHeroCopy}>{journeyComplete ? '최종 퀘스트 완료' : '다음 도전'}</Text>"""
+          new = """                <Text style={styles.questHeroLevel}>\n                  {journeyComplete\n                    ? '레벨 200 달성'\n                    : state.clearedLevel > 0\n                      ? `레벨 ${state.clearedLevel} 달성`\n                      : '레벨 0 · 시작'}\n                </Text>\n                <Text style={styles.questHeroCopy}>\n                  {journeyComplete ? '최종 퀘스트 완료' : `다음 도전 · 레벨 ${nextLevel}`}\n                </Text>"""
+          if old not in text:
+            raise SystemExit('quest hero current position block not found')
+          text = text.replace(old, new, 1)
+
+          old = """                >\n                  <Text style={[\n                    styles.cellLevel,"""
+          new = """                >\n                  {done ? (\n                    <View style={styles.cellStamp} pointerEvents=\"none\">\n                      <Text style={styles.cellStampText}>CLEAR</Text>\n                    </View>\n                  ) : null}\n                  <Text style={[\n                    styles.cellLevel,"""
+          if old not in text:
+            raise SystemExit('quest cell content block not found')
+          text = text.replace(old, new, 1)
+          app.write_text(text)
+
+          styles = Path('src/styles.ts')
+          text = styles.read_text()
+          old = "  dojoCurrentBestValue: { color: C.ink, fontSize: 13, fontFamily: metricFont, fontWeight: '900' },"
+          new = """  dojoCurrentBestValue: { color: C.ink, fontSize: 13, fontFamily: metricFont, fontWeight: '900' },\n  dojoLevelStamp: { marginTop: 13, borderWidth: 2, borderColor: C.stamp, paddingHorizontal: 11, paddingVertical: 6, transform: [{ rotate: '-1.5deg' }] },\n  dojoLevelStampText: { color: C.stamp, fontFamily: labelFont, fontSize: 9, fontWeight: '900', letterSpacing: 0.65 },"""
+          if old not in text:
+            raise SystemExit('dojo styles insertion target not found')
+          text = text.replace(old, new, 1)
+
+          old = "  cell: { width: '23%', minHeight: 58, borderWidth: 0, backgroundColor: C.panelLift, paddingVertical: 9, paddingHorizontal: 8, justifyContent: 'space-between' },\n  cellDone: { backgroundColor: '#E4E1DA' },"
+          new = """  cell: { width: '23%', minHeight: 64, borderWidth: 0, backgroundColor: C.panelLift, paddingVertical: 9, paddingHorizontal: 8, justifyContent: 'space-between', position: 'relative', overflow: 'hidden' },\n  cellDone: { backgroundColor: '#FFF8F6', borderWidth: 1, borderColor: '#D8A6A6' },\n  cellStamp: { position: 'absolute', right: -5, top: 8, borderWidth: 2, borderColor: C.stamp, paddingHorizontal: 5, paddingVertical: 2, transform: [{ rotate: '-8deg' }], opacity: 0.92 },\n  cellStampText: { color: C.stamp, fontFamily: displayFont, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },"""
+          if old not in text:
+            raise SystemExit('quest cell styles target not found')
+          text = text.replace(old, new, 1)
+          styles.write_text(text)
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate core
+        run: bash scripts/check-core.sh
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Validate iOS bundle
+        run: CI=1 npx expo export --platform ios --output-dir dist-review-clarity
+      - name: Verify requested UI signals
+        run: |
+          grep -F '3 · 2 · 1 후 시작' src/Workout.tsx
+          grep -F 'LEVEL ${String(state.clearedLevel).padStart' App.tsx
+          grep -F 'cellStamp' App.tsx
+      - name: Commit changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/apply-review-clarity.yml
+          git add App.tsx src/Workout.tsx src/styles.ts
+          git commit -m 'Clarify countdown level progress and quest stamps'
+          git push origin HEAD:main
