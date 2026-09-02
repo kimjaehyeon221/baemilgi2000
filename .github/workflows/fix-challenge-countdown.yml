@@ -1,0 +1,60 @@
+name: Fix challenge countdown
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-challenge-countdown.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Restore the 3-second countdown
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/Workout.tsx')
+          text = path.read_text()
+          old = """  const beginCountdown = () => {\n    accumulatedMsRef.current = 0;\n    runningSinceRef.current = Date.now();\n    setSeconds(0);\n    setPhase('active');\n    Vibration.vibrate(20);\n  };\n"""
+          new = """  const beginCountdown = () => {\n    accumulatedMsRef.current = 0;\n    runningSinceRef.current = null;\n    setSeconds(0);\n    setCountdown(3);\n    setPhase('countdown');\n  };\n"""
+          if old not in text:
+              raise SystemExit('challenge countdown start block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check core invariants
+        run: bash scripts/check-core.sh
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Commit countdown fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/fix-challenge-countdown.yml
+          git add src/Workout.tsx
+          git commit -m 'Restore challenge start countdown'
+          git push origin HEAD:main
