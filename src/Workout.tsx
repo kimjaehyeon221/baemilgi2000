@@ -210,10 +210,10 @@ export function Challenge({
 
   const beginCountdown = () => {
     accumulatedMsRef.current = 0;
-    runningSinceRef.current = Date.now();
+    runningSinceRef.current = null;
     setSeconds(0);
-    setPhase('active');
-    Vibration.vibrate(20);
+    setCountdown(3);
+    setPhase('countdown');
   };
 
   const persistPendingResult = async () => {
