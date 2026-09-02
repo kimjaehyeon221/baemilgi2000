@@ -553,7 +553,7 @@ export function Training({
           <Text style={S.trainingBandLabel}>{rest ? 'REST' : `SET ${setNumber} / ${plan.sets}`}</Text>
           <View style={S.trainingBandMarks}>
             {Array.from({ length: plan.sets }, (_, i) => (
-              <View key={i} style={[S.trainingMark, i < setNumber && S.trainingMarkDone]} />
+              <View key={i} style={[S.trainingMark, i < setNumber - 1 && S.trainingMarkDone]} />
             ))}
           </View>
         </View>
