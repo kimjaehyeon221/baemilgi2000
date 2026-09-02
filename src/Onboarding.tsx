@@ -336,8 +336,8 @@ export function Onboarding({
               onChangeText={(value) => setFirstTarget(digitsOnly(value))}
               keyboardType="number-pad"
               inputMode="numeric"
-              placeholder="10"
-              placeholderTextColor="#9F978B"
+              placeholder="예: 10"
+              placeholderTextColor="#AAA49A"
               style={O.targetInput}
               maxFontSizeMultiplier={1.2}
               maxLength={4}
@@ -353,15 +353,26 @@ export function Onboarding({
               : '성공해야 선택한 단계까지 완료돼요.'}
           </Text>
         </View>
-        <Button
-          label={
-            firstTarget.trim()
-              ? `${firstChallengeTarget}개 퀘스트 도전`
-              : '첫 도전 횟수를 입력해주세요'
-          }
-          disabled={!firstTarget.trim()}
-          onPress={startFirstChallenge}
-        />
+        <View style={O.targetCtaWrap}>
+          <Text style={O.targetCtaHint}>목표 횟수를 입력하면 바로 도전을 시작할 수 있어요.</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={firstTarget.trim() ? `${firstChallengeTarget}개 도전 시작` : '목표 횟수 입력 후 도전 시작'}
+            accessibilityState={{ disabled: !firstTarget.trim() }}
+            disabled={!firstTarget.trim()}
+            onPress={startFirstChallenge}
+            style={({ pressed }) => [
+              O.targetCta,
+              !firstTarget.trim() && O.targetCtaDisabled,
+              pressed && firstTarget.trim() && O.targetCtaPressed,
+            ]}
+          >
+            <Text style={[O.targetCtaText, !firstTarget.trim() && O.targetCtaTextDisabled]}>
+              {firstTarget.trim() ? `${firstChallengeTarget}개 도전 시작` : '목표 횟수 입력 후 시작'}
+            </Text>
+            <Text style={[O.targetCtaArrow, !firstTarget.trim() && O.targetCtaTextDisabled]}>→</Text>
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -503,4 +514,41 @@ const O = StyleSheet.create({
     fontWeight: '900',
     marginLeft: 8,
   },
+  targetCtaWrap: { paddingTop: 12 },
+  targetCtaHint: {
+    color: '#777168',
+    fontSize: 11,
+    lineHeight: 17,
+    fontWeight: '700',
+    marginBottom: 9,
+  },
+  targetCta: {
+    minHeight: 64,
+    backgroundColor: C.blue,
+    borderWidth: 2,
+    borderColor: '#0D223F',
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  targetCtaDisabled: {
+    backgroundColor: '#E7EBF0',
+    borderColor: '#8FA2BA',
+  },
+  targetCtaPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
+  targetCtaText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+  },
+  targetCtaArrow: {
+    color: '#FFFFFF',
+    fontSize: 23,
+    lineHeight: 26,
+    fontWeight: '900',
+  },
+  targetCtaTextDisabled: { color: C.blue },
 });
