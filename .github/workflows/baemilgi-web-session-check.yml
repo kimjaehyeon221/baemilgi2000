@@ -38,6 +38,10 @@ jobs:
             asc web privacy --help
             echo "EXIT=$?"
             echo
+            echo '# asc web privacy catalog'
+            asc web privacy catalog --output json --pretty
+            echo "EXIT=$?"
+            echo
             echo '# asc web agreements status'
             asc web agreements status
             echo "EXIT=$?"
