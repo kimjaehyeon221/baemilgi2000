@@ -296,7 +296,7 @@ export function Challenge({
               </View>
             </View>
             <Text style={S.readyCopy}>
-              아직 완료된 기록이 아니야. 시작을 누르면 바로 타이머가 켜지고, 직접 횟수를 세며 도전해.
+              아직 완료된 기록이 아니야. 시작을 누르면 3 · 2 · 1 카운트다운 뒤 타이머가 켜져. 직접 횟수를 세며 도전해.
             </Text>
           </View>
           <Pressable
@@ -305,7 +305,7 @@ export function Challenge({
             style={({ pressed }) => [S.readyAction, pressed && S.pressed]}
             onPress={beginCountdown}
           >
-            <Text style={S.readyActionText}>도전 시작</Text>
+            <Text style={S.readyActionText}>3 · 2 · 1 후 시작</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -327,6 +327,7 @@ export function Challenge({
             accessibilityLiveRegion="assertive"
             accessibilityLabel={countdown === 0 ? '시작' : `${countdown}초 뒤 시작`}
           >
+            <Text style={S.countdownSequence}>3 · 2 · 1 · START</Text>
             <Text style={S.countdownLabel}>목표 {target}개</Text>
             <Animated.Text
               style={[
@@ -611,6 +612,7 @@ const S = StyleSheet.create({
   readyActionText: { color: '#FAF9F6', fontFamily: headline, fontSize: 17, fontWeight: '900', letterSpacing: 0.4 },
   countdownPage: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
   countdownCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 64 },
+  countdownSequence: { color: '#B22222', fontFamily: mono, fontSize: 11, fontWeight: '900', letterSpacing: 2.1, marginBottom: 14 },
   countdownLabel: { color: '#A9B9CF', fontFamily: mono, fontSize: 12, fontWeight: '900', letterSpacing: 1.4 },
   countdownValue: { color: '#FAF9F6', fontFamily: metric, fontSize: 160, lineHeight: 190, fontWeight: '800', fontVariant: ['tabular-nums'] },
   countdownStart: { fontFamily: headline, fontSize: 70, lineHeight: 94, fontWeight: '900', letterSpacing: 4 },

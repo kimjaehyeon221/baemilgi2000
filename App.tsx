@@ -402,6 +402,13 @@ export default function App() {
                 <Text style={styles.dojoCurrentBestLabel}>CURRENT BEST:</Text>
                 <Text style={styles.dojoCurrentBestValue}>{hasPersonalRecord ? currentReps : '—'}</Text>
               </View>
+              <View style={styles.dojoLevelStamp}>
+                <Text style={styles.dojoLevelStampText}>
+                  {state.clearedLevel > 0
+                    ? `레벨 ${state.clearedLevel} 달성 · LEVEL ${String(state.clearedLevel).padStart(3, '0')} CLEARED`
+                    : '첫 퀘스트 전 · LEVEL 000'}
+                </Text>
+              </View>
             </View>
 
             {journeyComplete ? (
@@ -496,8 +503,16 @@ export default function App() {
             <Text style={styles.kicker}>현재 위치</Text>
             <View style={styles.questHeroRow}>
               <View>
-                <Text style={styles.questHeroLevel}>레벨 {nextLevel}</Text>
-                <Text style={styles.questHeroCopy}>{journeyComplete ? '최종 퀘스트 완료' : '다음 도전'}</Text>
+                <Text style={styles.questHeroLevel}>
+                  {journeyComplete
+                    ? '레벨 200 달성'
+                    : state.clearedLevel > 0
+                      ? `레벨 ${state.clearedLevel} 달성`
+                      : '레벨 0 · 시작'}
+                </Text>
+                <Text style={styles.questHeroCopy}>
+                  {journeyComplete ? '최종 퀘스트 완료' : `다음 도전 · 레벨 ${nextLevel}`}
+                </Text>
               </View>
               <Text style={styles.questHeroTarget} maxFontSizeMultiplier={1.2}>{nextTarget}<Text style={styles.questHeroUnit}>개</Text></Text>
             </View>
@@ -550,6 +565,11 @@ export default function App() {
                     },
                   ]}
                 >
+                  {done ? (
+                    <View style={styles.cellStamp} pointerEvents="none">
+                      <Text style={styles.cellStampText}>CLEAR</Text>
+                    </View>
+                  ) : null}
                   <Text style={[
                     styles.cellLevel,
                     inverse && styles.cellTextInverse,
