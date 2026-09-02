@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: publish onboarding start CTA update
+# Trigger refresh: publish onboarding start CTA revert
 on:
   workflow_dispatch:
   push:
