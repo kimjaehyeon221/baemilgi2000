@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: remove manual progression shortcut
+# Trigger refresh: prevent upward manual record edits
 on:
   workflow_dispatch:
   push:
