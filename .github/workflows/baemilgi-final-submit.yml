@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Add version to review draft and submit
+      - name: Set free pricing, attach version, and submit
         shell: bash
         run: |
           set +e
@@ -66,11 +66,49 @@ jobs:
             (items?.body?.included || []).some(x => x.type === 'appStoreVersions' && x.id === versionId) ||
             (items?.body?.data || []).some(x => x.relationships?.appStoreVersion?.data?.id === versionId);
 
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+
           (async()=>{
             const appId = process.env.ASC_APP_ID;
             const versionId = process.env.ASC_VERSION_ID;
             const submissionId = process.env.ASC_SUBMISSION_ID;
             const report = {checkedAt:new Date().toISOString(),appId,versionId,submissionId};
+
+            // Ensure the app has an explicit price. Baemilgi 2000 is released as a free app.
+            report.priceScheduleBefore = await api('/v1/apps/' + appId + '/appPriceSchedule?include=baseTerritory,manualPrices');
+            const points = await api('/v1/apps/' + appId + '/appPricePoints?filter%5Bterritory%5D=KOR&include=territory&limit=200');
+            report.korPricePointsStatus = {ok:points.ok,status:points.status,count:points.body?.data?.length ?? null};
+            const freePoint = (points.body?.data || []).find(x => Number(x.attributes?.customerPrice) === 0);
+            report.freePricePoint = freePoint ? {id:freePoint.id,customerPrice:freePoint.attributes?.customerPrice} : null;
+
+            if (freePoint) {
+              const tempId = '${freeprice-0}';
+              report.setFreePriceAttempt = await api('/v1/appPriceSchedules', {
+                method:'POST',
+                body:JSON.stringify({
+                  data:{
+                    type:'appPriceSchedules',
+                    relationships:{
+                      app:{data:{type:'apps',id:appId}},
+                      manualPrices:{data:[{type:'appPrices',id:tempId}]},
+                      baseTerritory:{data:{type:'territories',id:'KOR'}}
+                    }
+                  },
+                  included:[{
+                    type:'appPrices',
+                    id:tempId,
+                    attributes:{startDate:null,endDate:null},
+                    relationships:{
+                      appPricePoint:{data:{type:'appPricePoints',id:freePoint.id}}
+                    }
+                  }]
+                })
+              });
+              await sleep(1200);
+            } else {
+              report.setFreePriceAttempt = {ok:false,status:null,body:{error:'No zero-price KOR price point returned by Apple'}};
+            }
+            report.priceScheduleAfter = await api('/v1/apps/' + appId + '/appPriceSchedule?include=baseTerritory,manualPrices');
 
             const submission = await api('/v1/reviewSubmissions/' + submissionId);
             report.submissionBefore = submission;
@@ -97,12 +135,8 @@ jobs:
                       data:{
                         type:'reviewSubmissionItems',
                         relationships:{
-                          reviewSubmission:{
-                            data:{type:'reviewSubmissions',id:submissionId}
-                          },
-                          appStoreVersion:{
-                            data:{type:'appStoreVersions',id:versionId}
-                          }
+                          reviewSubmission:{data:{type:'reviewSubmissions',id:submissionId}},
+                          appStoreVersion:{data:{type:'appStoreVersions',id:versionId}}
                         }
                       }
                     })
@@ -122,11 +156,7 @@ jobs:
                   const submit = await api('/v1/reviewSubmissions/' + submissionId, {
                     method:'PATCH',
                     body:JSON.stringify({
-                      data:{
-                        type:'reviewSubmissions',
-                        id:submissionId,
-                        attributes:{submitted:true}
-                      }
+                      data:{type:'reviewSubmissions',id:submissionId,attributes:{submitted:true}}
                     })
                   });
                   report.submitAttempt = submit;
