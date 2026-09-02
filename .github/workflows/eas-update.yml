@@ -1,6 +1,6 @@
 name: EAS OTA Update
 
-# Trigger refresh: prevent upward manual record edits
+# Trigger refresh: publish review clarity UI update
 on:
   workflow_dispatch:
   push:
