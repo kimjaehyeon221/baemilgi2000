@@ -1,0 +1,40 @@
+name: Apply Quest State Contrast
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-quest-state-contrast.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply patch
+        run: node scripts/fix-quest-state-contrast.cjs
+      - name: Validate
+        run: |
+          npm ci
+          bash scripts/check-core.sh
+          npx tsc --noEmit
+          CI=1 npx expo export --platform ios --output-dir dist-ci
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add App.tsx src/styles.ts
+          git commit -m 'Clarify current and upcoming quest states'
+          git push origin HEAD:main
