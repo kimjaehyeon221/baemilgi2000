@@ -1,0 +1,60 @@
+name: Fix training progress marks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-training-progress-marks.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Fix completed-set progress marks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/Workout.tsx')
+          text = path.read_text()
+          old = "<View key={i} style={[S.trainingMark, i < setNumber && S.trainingMarkDone]} />"
+          new = "<View key={i} style={[S.trainingMark, i < setNumber - 1 && S.trainingMarkDone]} />"
+          if old not in text:
+              raise SystemExit('training progress mark block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check core invariants
+        run: bash scripts/check-core.sh
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Commit training progress fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/fix-training-progress-marks.yml
+          git add src/Workout.tsx
+          git commit -m 'Fix training completed-set indicators'
+          git push origin HEAD:main
