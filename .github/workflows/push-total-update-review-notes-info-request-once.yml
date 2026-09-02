@@ -1,0 +1,40 @@
+name: PUSH TOTAL Update Review Notes Info Request Once
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-update-review-notes-info-request-once.yml'
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update App Review Notes
+        env:
+          ASC_APP_ID: '6806938654'
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function asc(path,opts={}){const h={Authorization:`Bearer ${jwt()}`};if(opts.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:opts.method||'GET',headers:h,body:opts.body?JSON.stringify(opts.body):undefined});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok)throw new Error(`ASC ${r.status} ${path}\n${typeof j==='string'?j:JSON.stringify(j)}`);return j}
+          (async()=>{
+            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0'); if(!v) throw Error('version 1.0 missing');
+            const rd=await asc(`/v1/appStoreVersions/${v.id}/appStoreReviewDetail`);
+            const id=rd.data?.id; if(!id) throw Error('review detail missing');
+            const notes=`PUSH TOTAL — App Review Information\n\nPurpose / Target Audience\nPUSH TOTAL is a simple push-up tracking app for people who want to record cumulative push-ups with minimal interaction during exercise. It solves the friction of manually entering every set by using the iPhone's motion sensor while the phone is placed in the user's front pocket. The app turns long-term progress into a visual wall: 100 push-ups equals one brick.\n\nTypical Setup and Test Flow\nNo account, login, demo credentials, subscription, purchase, or sample file is required.\n1. Launch PUSH TOTAL.\n2. Tap POCKET COUNT.\n3. During the first 5 seconds, place the iPhone fully in the front pocket.\n4. During the next 5 seconds, hold the starting push-up position.\n5. A sound and strong haptic indicate that counting has started.\n6. Perform push-ups normally.\n7. After the final push-up, remain still for approximately 5 seconds; the set ends automatically.\n8. Review the detected count and, if needed, correct it within +/-10, then confirm.\n9. The lifetime total, brick wall, and History screens update.\nMotion permission should be allowed when requested. Camera access is not used.\n\nExternal Services / Platforms\nCore counting uses the iPhone motion sensors through Apple's device motion APIs via Expo Sensors. Workout records are stored locally on the device. There is no cloud backend for workout data, no account/authentication provider, no payment processor, no advertising SDK, no AI service, and no third-party data provider used for core functionality. React Native / Expo is used as the app development framework, and Expo/EAS is used for build/update delivery only.\n\nRegional Availability\nThe app's features and behavior are consistent across all regions. There are no region-specific functions, services, or restricted content. The current App Store localization and in-app interface are Korean.\n\nRegulated Industry / Third-Party Material\nThe app is a general fitness logging utility. It does not provide medical diagnosis or treatment, does not operate in a regulated financial/medical service, and does not include protected third-party content requiring authorization.\n\nAccount / UGC\nThe app has no account creation or login, no user-generated content, no social posting, and no account deletion flow is applicable.\n\nA physical-device screen recording demonstrating the typical user flow is provided in the App Review correspondence for this submission.`;
+            await asc(`/v1/appStoreReviewDetails/${id}`,{method:'PATCH',body:{data:{type:'appStoreReviewDetails',id,attributes:{notes}}}});
+            const chk=await asc(`/v1/appStoreReviewDetails/${id}`);
+            console.log('NOTES_UPDATED='+(chk.data?.attributes?.notes?.includes('PUSH TOTAL — App Review Information')===true));
+            console.log('NOTES_LENGTH='+(chk.data?.attributes?.notes?.length||0));
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
