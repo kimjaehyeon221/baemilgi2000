@@ -31,6 +31,34 @@ SUBCOMMANDS
 
 EXIT=0
 
+# asc web privacy catalog
+Error: --apple-id is required when no cached web session is available
+DESCRIPTION
+  List app privacy catalog values.
+
+USAGE
+  asc web privacy catalog [flags]
+
+WEB SESSION WORKFLOWS
+
+Fetch category, purpose, and data-protection tokens that can be used in
+privacy declaration files.
+
+Examples:
+  asc web privacy catalog --apple-id "user@example.com"
+
+FLAGS
+  --apple-id     Apple Account email used to scope a user-owned session cache (optional when a cached session exists)
+  --output       Output format: json, table, markdown (default: json)
+  --pretty       Pretty-print JSON output (default: false)
+  --provider-id  Numeric App Store Connect provider ID to select for this web session (default: 0)
+  --public-provider-id Public App Store Connect provider/team ID to select for this web session
+  --two-factor-code Deprecated: direct 2FA code if verification is required; prefer --two-factor-code-command
+  --two-factor-code-command Shell command that prints the 2FA code to stdout if verification is required
+
+
+EXIT=2
+
 # asc web agreements status
 Error: --apple-id is required when no cached web session is available
 DESCRIPTION
