@@ -1,34 +1,48 @@
 {
-  "uploadedAt": "2026-09-01T09:32:09.696Z",
+  "generatedAt": "2026-09-02T07:15:41.304Z",
   "appId": "6806588875",
   "versionId": "8698e177-b678-44c3-9c36-2e483be9ad73",
-  "localizationId": "b6b95ed8-525a-4002-8783-85e480390ab7",
-  "screenshotSetId": "cd974930-6fab-4211-8594-3dde12dd055d",
+  "versionString": "1.0",
+  "appStoreState": "WAITING_FOR_REVIEW",
   "displayType": "APP_IPHONE_67",
+  "uploadSkipped": true,
+  "uploadSkippedReason": "App Store metadata is locked while submitted for review",
   "screenshots": [
     {
-      "id": "2aa8b866-3c9b-4f5f-9a04-636e20bd1a8d",
-      "fileName": "01-home.png",
-      "state": "COMPLETE",
-      "errors": []
+      "fileName": "01-home-level-9.png",
+      "state": "GENERATED"
     },
     {
-      "id": "09ef8879-ecb0-4616-b205-038ba945451e",
-      "fileName": "02-quests.png",
-      "state": "COMPLETE",
-      "errors": []
+      "fileName": "02-quest-map-stamps.png",
+      "state": "GENERATED"
     },
     {
-      "id": "24ed8026-88cb-4fea-9085-a20656a13508",
-      "fileName": "03-challenge.png",
-      "state": "COMPLETE",
-      "errors": []
+      "fileName": "03-countdown.png",
+      "state": "GENERATED"
     },
     {
-      "id": "604f04bb-acf7-430b-8da7-49f7c0ca7ee4",
-      "fileName": "04-records.png",
-      "state": "COMPLETE",
-      "errors": []
+      "fileName": "04-active-challenge.png",
+      "state": "GENERATED"
+    },
+    {
+      "fileName": "05-records.png",
+      "state": "GENERATED"
+    },
+    {
+      "fileName": "06-training.png",
+      "state": "GENERATED"
+    },
+    {
+      "fileName": "07-onboarding-intro.png",
+      "state": "GENERATED"
+    },
+    {
+      "fileName": "08-onboarding-choice.png",
+      "state": "GENERATED"
+    },
+    {
+      "fileName": "09-form-guide.png",
+      "state": "GENERATED"
     }
   ]
 }
