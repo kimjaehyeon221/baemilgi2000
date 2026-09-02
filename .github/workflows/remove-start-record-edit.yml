@@ -1,0 +1,67 @@
+name: Remove manual starting-record edit
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/remove-start-record-edit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Remove manual progression shortcut
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('App.tsx')
+          text = path.read_text()
+
+          old_fn = """  const editStartingRecord = () => {\n    Alert.prompt(\n      '시작 기록 수정',\n      '처음 입력한 배밀기 최고 기록을 수정해. 0을 입력하면 시작 기록을 비워둘게.',\n      [\n        { text: '취소', style: 'cancel' },\n        {\n          text: '저장',\n          onPress: async (value?: string) => {\n            const reps = Math.max(0, Math.floor(Number(value) || 0));\n            await commit(recomputeProgress({ ...state, firstBaemilgiMax: reps > 0 ? reps : null }));\n          },\n        },\n      ],\n      'plain-text',\n      String(state.firstBaemilgiMax ?? 0),\n      'number-pad',\n    );\n  };\n\n"""
+          if old_fn not in text:
+              raise SystemExit('editStartingRecord function not found')
+          text = text.replace(old_fn, '', 1)
+
+          old_stat = """              <Pressable\n                style={styles.stat}\n                onPress={editStartingRecord}\n                accessibilityRole=\"button\"\n                accessibilityLabel={`시작 기록 ${state.firstBaemilgiMax ?? '없음'}. 수정`}\n                accessibilityHint=\"두 번 탭하여 처음 입력한 최고 기록을 수정합니다\"\n              >\n                <Text style={styles.statLabel}>START / EDIT</Text>\n                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>\n                  {state.firstBaemilgiMax ?? '—'}\n                </Text>\n              </Pressable>\n"""
+          new_stat = """              <View style={styles.stat} accessible accessibilityLabel={`전체 기록 ${state.sessions.length}개`}>\n                <Text style={styles.statLabel}>TOTAL RECORDS</Text>\n                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>\n                  {state.sessions.length}\n                </Text>\n              </View>\n"""
+          if old_stat not in text:
+              raise SystemExit('starting record stat block not found')
+          text = text.replace(old_stat, new_stat, 1)
+          path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check core invariants
+        run: bash scripts/check-core.sh
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Commit manual-edit removal
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/remove-start-record-edit.yml
+          git add App.tsx
+          git commit -m 'Remove manual starting-record progression shortcut'
+          git push origin HEAD:main
