@@ -1,0 +1,51 @@
+name: PUSH TOTAL Resubmit After Info Once
+on:
+  push:
+    branches: [push-total-rc]
+    paths:
+      - '.github/workflows/push-total-resubmit-after-info-once.yml'
+jobs:
+  resubmit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resubmit existing review submission
+        env:
+          ASC_APP_ID: '6806938654'
+          ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.APPLE_ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY"
+          chmod 600 "$KEY"
+          export ASC_KEY_PATH="$KEY"
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const appId=process.env.ASC_APP_ID,kid=process.env.ASC_KEY_ID,iss=process.env.ASC_ISSUER_ID,key=fs.readFileSync(process.env.ASC_KEY_PATH,'utf8');
+          const b=v=>Buffer.from(v).toString('base64url');
+          function jwt(){const n=Math.floor(Date.now()/1000),u=`${b(JSON.stringify({alg:'ES256',kid,typ:'JWT'}))}.${b(JSON.stringify({iss,iat:n-5,exp:n+600,aud:'appstoreconnect-v1'}))}`;return `${u}.${crypto.sign('sha256',Buffer.from(u),{key,dsaEncoding:'ieee-p1363'}).toString('base64url')}`}
+          async function asc(path,opts={}){const h={Authorization:`Bearer ${jwt()}`};if(opts.body)h['Content-Type']='application/json';const r=await fetch(`https://api.appstoreconnect.apple.com${path}`,{method:opts.method||'GET',headers:h,body:opts.body?JSON.stringify(opts.body):undefined});const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch{j=t}if(!r.ok)throw new Error(`ASC ${r.status} ${path}\n${typeof j==='string'?j:JSON.stringify(j)}`);return j}
+          (async()=>{
+            const vs=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v=(vs.data||[]).find(x=>x.attributes?.versionString==='1.0'); if(!v) throw Error('version 1.0 missing');
+            console.log('VERSION_BEFORE='+v.attributes?.appStoreState);
+            const subs=await asc(`/v1/apps/${appId}/reviewSubmissions?include=items,appStoreVersionForReview&limit=50`);
+            const s=(subs.data||[]).find(x=>x.attributes?.state==='UNRESOLVED_ISSUES') || (subs.data||[])[0];
+            if(!s) throw Error('review submission missing');
+            console.log('SUBMISSION_ID='+s.id);
+            console.log('SUBMISSION_BEFORE='+s.attributes?.state);
+            await asc(`/v1/reviewSubmissions/${s.id}`,{method:'PATCH',body:{data:{type:'reviewSubmissions',id:s.id,attributes:{submitted:true}}}});
+            console.log('RESUBMIT_REQUEST_SENT=true');
+            await new Promise(r=>setTimeout(r,2500));
+            const check=await asc(`/v1/reviewSubmissions/${s.id}?include=items,appStoreVersionForReview`);
+            console.log('SUBMISSION_AFTER='+check.data?.attributes?.state);
+            for(const x of (check.included||[])){
+              if(x.type==='reviewSubmissionItems') console.log('ITEM_AFTER='+(x.attributes?.state||''));
+              if(x.type==='appStoreVersions') console.log('VERSION_INCLUDED_AFTER='+(x.attributes?.appStoreState||''));
+            }
+            const vs2=await asc(`/v1/apps/${appId}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=50`);
+            const v2=(vs2.data||[]).find(x=>x.attributes?.versionString==='1.0');
+            console.log('VERSION_AFTER='+v2?.attributes?.appStoreState);
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
