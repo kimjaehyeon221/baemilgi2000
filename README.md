@@ -7,6 +7,10 @@
 > **Concept**  
 > 큰 운동 목표를 작은 관문으로 바꾸면 더 오래 이어갈 수 있을까?
 
+## Demo Video
+
+[▶ 실제 앱 구동 영상 보기](demo/BAEMILGI_2000_Demo.mp4)
+
 ## What it does
 
 - 1개부터 시작하는 **200개의 Quest**
@@ -22,30 +26,12 @@
 
 단순히 오늘 몇 개 했는지 세는 운동 앱보다, **‘다음 관문을 하나씩 통과한다’는 감각**을 만들고 싶었습니다. 주짓수의 띠처럼 단계가 쌓이는 시각 언어와 Quest 구조를 이용해 반복 운동을 하나의 장기적인 도전으로 바꾸는 것이 핵심입니다.
 
-## Status
-
-**iOS · App Store 배포**
-
 ## Tech
 
 - React Native / Expo
 - EAS Build / EAS Update
 - Local-first workout records
 
-## Product principles
-
-- 카메라 없이 사용
-- 템포를 강제하지 않음
-- 사용자의 자기 기록을 신뢰
-- 2,000은 의학적 권장량이 아니라 오래된 Dand 고반복 훈련 기록에서 가져온 Final Quest
-
-## Screenshots
-
-App Store에 사용한 실제 제품 스크린샷을 이 섹션에 추가해, 처음 보는 사람도 `Quest 선택 → 운동 → 완료 → 성장 확인` 흐름을 한눈에 이해할 수 있도록 정리할 예정입니다.
-
 ## Development
 
-- 원본 코드: 이 저장소
-- iOS: Expo / React Native
-- 배포: EAS Build → TestFlight → App Store
-- 일상적인 JS/UI 변경: EAS Update production 채널
+AI를 활용해 아이디어 구체화, UI 반복 개선, 구현과 iOS 배포 준비까지 직접 진행했습니다.
